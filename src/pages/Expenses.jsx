@@ -286,7 +286,7 @@ export default function Expenses() {
 
   // third Query
   const { data: expenseDataList, isSuccess: expenseListSuccess } = useQuery({
-    queryKey: ["getExpenseListService", tripId],
+    queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
     enabled: !!tripId && !!token,
   });

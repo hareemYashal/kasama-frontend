@@ -32,7 +32,7 @@ export default function ExpenseList({
     onSuccess: (data) => {
       console.log(data);
       toast.success(data.message);
-      queryClient.invalidateQueries(["getExpenseListService"]);
+      queryClient.invalidateQueries(["getExpenseListQuery"]);
     },
     onError: (error) => {
       console.log(error);

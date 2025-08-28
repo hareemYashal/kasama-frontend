@@ -45,10 +45,21 @@ const changePasswordService = async (data) => {
     throw error;
   }
 };
+
+const getAllRegisteredUsers = async () => {
+  try {
+    const response = await axiosInstance.get(`/user/getAllRegisteredUsers`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export {
   loginService,
   registerService,
   forgotPasswordService,
   verifyOtpService,
   changePasswordService,
+  getAllRegisteredUsers,
 };

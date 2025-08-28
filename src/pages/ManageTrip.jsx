@@ -25,170 +25,11 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { addWeeks, format } from "date-fns";
+import { useMutation } from "@tanstack/react-query";
+import { updateTripService } from "@/services/trip";
+import { useSelector } from "react-redux";
 
 export default function ManageTrip() {
-  // const navigate = useNavigate();
-  // const [user, setUser] = useState(null);
-  // const [trip, setTrip] = useState(null);
-  // const [formData, setFormData] = useState({
-  //   occasion: '',
-  //   destination: '',
-  //   start_date: '',
-  //   end_date: '',
-  //   booking_deadline_weeks: '',
-  //   welcome_message: '',
-  //   trip_image_url: ''
-  // });
-  // const [tripImageFile, setTripImageFile] = useState(null);
-  // const [previewUrl, setPreviewUrl] = useState('');
-  // const [loading, setLoading] = useState(true);
-  // const [saving, setSaving] = useState(false);
-  // const [uploadingImage, setUploadingImage] = useState(false);
-
-  // useEffect(() => {
-  //   loadTripData();
-  // }, []);
-
-  // const loadTripData = async () => {
-  //   try {
-  //     const currentUser = await User.me();
-  //     setUser(currentUser);
-
-  //     if (!currentUser.current_trip_id || currentUser.trip_role !== 'admin') {
-  //       navigate(createPageUrl("Dashboard"));
-  //       return;
-  //     }
-
-  //     const currentTrip = await Trip.get(currentUser.current_trip_id);
-  //     setTrip(currentTrip);
-
-  //     // Calculate weeks between start date and booking deadline
-  //     const startDate = new Date(currentTrip.start_date);
-  //     const deadlineDate = new Date(currentTrip.booking_deadline);
-  //     const weeksDiff = Math.round((startDate - deadlineDate) / (7 * 24 * 60 * 60 * 1000));
-
-  //     setFormData({
-  //       occasion: currentTrip.occasion || '',
-  //       destination: currentTrip.destination || '',
-  //       start_date: currentTrip.start_date || '',
-  //       end_date: currentTrip.end_date || '',
-  //       booking_deadline_weeks: weeksDiff.toString() || '2',
-  //       welcome_message: currentTrip.welcome_message || '',
-  //       trip_image_url: currentTrip.trip_image_url || ''
-  //     });
-  //     setPreviewUrl(currentTrip.trip_image_url || '');
-
-  //   } catch (error) {
-  //     console.error("Error loading trip data:", error);
-  //     navigate(createPageUrl("Home"));
-  //   }
-  //   setLoading(false);
-  // };
-
-  // const updateFormData = (field, value) => {
-  //   setFormData(prev => ({ ...prev, [field]: value }));
-  // };
-
-  // const handleImageChange = (e) => {
-  //   const file = e.target.files[0];
-  //   if (file) {
-  //     // Validate file type
-  //     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  //     if (!allowedTypes.includes(file.type)) {
-  //       alert('Please select a valid image file (JPG, PNG, or WebP)');
-  //       return;
-  //     }
-
-  //     // Validate file size (max 5MB)
-  //     if (file.size > 5 * 1024 * 1024) {
-  //       alert('Image file size must be less than 5MB');
-  //       return;
-  //     }
-
-  //     setTripImageFile(file);
-  //     setPreviewUrl(URL.createObjectURL(file));
-  //   }
-  // };
-
-  // const handleSave = async () => {
-  //   setSaving(true);
-  //   try {
-  //     let imageUrl = formData.trip_image_url;
-  //     const adminFirstName = user.full_name.split(' ')[0];
-
-  //     // Check for welcome message change before upload/update
-  //     if (formData.welcome_message !== trip.welcome_message) {
-  //       await TripActivity.create({
-  //           trip_id: trip.id,
-  //           user_id: user.id,
-  //           user_first_name: adminFirstName,
-  //           action_type: 'UPDATED_WELCOME_MESSAGE',
-  //           description: `${adminFirstName} updated the trip welcome message.`,
-  //           metadata: {}
-  //       });
-  //     }
-
-  //     // Upload new image if selected
-  //     if (tripImageFile) {
-  //       setUploadingImage(true);
-  //       try {
-  //         const uploadResult = await UploadFile({ file: tripImageFile });
-  //         if (uploadResult && uploadResult.file_url) {
-  //           imageUrl = uploadResult.file_url;
-  //           // Log photo change
-  //           await TripActivity.create({
-  //               trip_id: trip.id,
-  //               user_id: user.id,
-  //               user_first_name: adminFirstName,
-  //               action_type: 'UPDATED_TRIP_PHOTO',
-  //               description: `${adminFirstName} updated the trip photo.`,
-  //               metadata: {}
-  //           });
-  //         }
-  //       } catch (error) {
-  //         console.error("Error uploading image:", error);
-  //         alert('Failed to upload image. Please try again.');
-  //         setSaving(false);
-  //         setUploadingImage(false);
-  //         return;
-  //       }
-  //       setUploadingImage(false);
-  //     }
-
-  //     // Calculate booking deadline based on start date
-  //     let deadlineDate = '';
-  //     if (formData.start_date && formData.booking_deadline_weeks) {
-  //       const startDate = new Date(formData.start_date);
-  //       const weeksBeforeInt = parseInt(formData.booking_deadline_weeks);
-  //       deadlineDate = format(addWeeks(startDate, -weeksBeforeInt), 'yyyy-MM-dd');
-  //     }
-
-  //     await Trip.update(trip.id, {
-  //       occasion: formData.occasion,
-  //       destination: formData.destination,
-  //       start_date: formData.start_date,
-  //       end_date: formData.end_date,
-  //       booking_deadline: deadlineDate,
-  //       welcome_message: formData.welcome_message,
-  //       trip_image_url: imageUrl
-  //     });
-
-  //     // Auto-redirect to dashboard after successful save
-  //     navigate(createPageUrl("Dashboard"));
-
-  //   } catch (error) {
-  //     console.error("Error saving trip:", error);
-  //   }
-  //   setSaving(false);
-  // };
-
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  //     </div>
-  //   );
-  // }
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [trip, setTrip] = useState(null);
@@ -199,13 +40,29 @@ export default function ManageTrip() {
     end_date: "",
     booking_deadline_weeks: "",
     welcome_message: "",
-    trip_image_url: "",
   });
   const [tripImageFile, setTripImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const tripId = useSelector((state) => state.trips.activeTripId);
+  const token = useSelector((state) => state.user.token);
+
+  const { mutate, isLoading: isMutating } = useMutation({
+    mutationFn: ({ formDataToSend, tripId, token }) =>
+      updateTripService(formDataToSend, tripId, token),
+    onSuccess: (data) => {
+      console.log("Trip Updated Successfully", data);
+      setSaving(false);
+      navigate("/dashboard");
+    },
+    onError: (error) => {
+      console.error("Error updating trip:", error);
+      setSaving(false);
+      alert("Failed to update trip. Please try again.");
+    },
+  });
 
   const dummyUser = {
     id: 1,
@@ -236,12 +93,14 @@ export default function ManageTrip() {
 
       setTrip(dummyTrip);
 
+      // Calculate weeks difference for booking deadline
       const startDate = new Date(dummyTrip.start_date);
       const deadlineDate = new Date(dummyTrip.booking_deadline);
       const weeksDiff = Math.round(
         (startDate - deadlineDate) / (7 * 24 * 60 * 60 * 1000)
       );
 
+      // Set form data with actual trip data
       setFormData({
         occasion: dummyTrip.occasion,
         destination: dummyTrip.destination,
@@ -249,7 +108,6 @@ export default function ManageTrip() {
         end_date: dummyTrip.end_date,
         booking_deadline_weeks: weeksDiff.toString(),
         welcome_message: dummyTrip.welcome_message,
-        trip_image_url: dummyTrip.trip_image_url,
       });
 
       setPreviewUrl(dummyTrip.trip_image_url);
@@ -257,7 +115,7 @@ export default function ManageTrip() {
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [navigate]);
 
   const updateFormData = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -285,36 +143,27 @@ export default function ManageTrip() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSubmit = async () => {
     setSaving(true);
 
-    let imageUrl = formData.trip_image_url;
+    // Create FormData object for multipart form data
+    const formDataToSend = new FormData();
 
+    // Append form fields (map correctly to your backend schema!)
+    formDataToSend.append("trip_occasion", formData.occasion);
+    formDataToSend.append("destination", formData.destination);
+    formDataToSend.append("start_date", formData.start_date);
+    formDataToSend.append("end_date", formData.end_date);
+    formDataToSend.append("booking_deadline", formData.booking_deadline_weeks);
+    formDataToSend.append("welcome_message", formData.welcome_message);
+
+    // Append image file if exists
     if (tripImageFile) {
-      setUploadingImage(true);
-      // Simulate image upload
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      imageUrl = "https://example.com/fake-uploaded-image.jpg";
-      setUploadingImage(false);
+      formDataToSend.append("image", tripImageFile);
     }
 
-    let deadlineDate = "";
-    if (formData.start_date && formData.booking_deadline_weeks) {
-      const startDate = new Date(formData.start_date);
-      const weeksBeforeInt = parseInt(formData.booking_deadline_weeks);
-      deadlineDate = format(addWeeks(startDate, -weeksBeforeInt), "yyyy-MM-dd");
-    }
-
-    console.log("Saving trip with data:", {
-      ...formData,
-      trip_image_url: imageUrl,
-      booking_deadline: deadlineDate,
-    });
-
-    setTimeout(() => {
-      setSaving(false);
-      navigate("/dashboard");
-    }, 1000);
+    // Call the mutation
+    mutate({ formDataToSend, tripId, token });
   };
 
   if (loading) {
@@ -324,6 +173,7 @@ export default function ManageTrip() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -515,20 +365,16 @@ export default function ManageTrip() {
 
             <div className="flex justify-end pt-6">
               <Button
-                onClick={handleSave}
-                disabled={saving || uploadingImage}
+                onClick={handleSubmit}
+                disabled={saving || isMutating}
                 className="px-8 py-3 bg-blue-600 hover:bg-blue-700"
               >
-                {saving || uploadingImage ? (
+                {saving || isMutating ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                {uploadingImage
-                  ? "Uploading Image..."
-                  : saving
-                  ? "Saving..."
-                  : "Save Changes"}
+                {saving || isMutating ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

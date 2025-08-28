@@ -1,10 +1,9 @@
 import axiosInstance from "@/utils/axiosInstance";
 
-const createItineraryService = async (token, data) => {
+const getPaymentRemainingsService = async (token, tripId, userId) => {
   try {
-    const response = await axiosInstance.post(
-      `/itinerary/createItinerary`,
-      data,
+    const response = await axiosInstance(
+      `/payment/getPaymentRemainings?tripId=${tripId}&userId=${userId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -17,4 +16,4 @@ const createItineraryService = async (token, data) => {
   }
 };
 
-export { createItineraryService };
+export { getPaymentRemainingsService };

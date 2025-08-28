@@ -228,7 +228,6 @@ export default function Layout({ children, currentPageName }) {
     },
     { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
     { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
-    { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
     { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 

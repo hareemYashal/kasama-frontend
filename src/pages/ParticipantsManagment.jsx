@@ -19,86 +19,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Users, Search, Filter, ArrowLeft } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAllRegisteredUsers } from "@/services/auth";
+import moment from "moment";
+import { useSelector } from "react-redux";
 import {
-  Users,
-  Search,
-  Send,
-  Check,
-  X,
-  Clock,
-  ArrowLeft,
-  Filter,
-} from "lucide-react";
-
-// Mock data for demonstration
-const mockUsers = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@email.com",
-    phone: "09012345678",
-    status: "invited",
-    invitedDate: "2024-01-15",
-    avatar: "SJ",
-  },
-  {
-    id: 2,
-    name: "Mike Chen",
-    email: "mike.chen@email.com",
-    phone: "09087654321",
-    status: "pending_request",
-    requestDate: "2024-01-14",
-    avatar: "MC",
-  },
-  {
-    id: 3,
-    name: "Emily Rodriguez",
-    email: "emily.rodriguez@email.com",
-    phone: "09011223344",
-    status: "not_invited",
-    avatar: "ER",
-  },
-  {
-    id: 4,
-    name: "David Kim",
-    email: "david.kim@email.com",
-    phone: "09055667788",
-    status: "accepted",
-    acceptedDate: "2024-01-13",
-    avatar: "DK",
-  },
-  {
-    id: 5,
-    name: "Lisa Wang",
-    email: "lisa.wang@email.com",
-    phone: "09099887766",
-    status: "declined",
-    declinedDate: "2024-01-12",
-    avatar: "LW",
-  },
-  {
-    id: 6,
-    name: "Alex Thompson",
-    email: "alex.thompson@email.com",
-    phone: "09033445566",
-    status: "not_invited",
-    avatar: "AT",
-  },
-];
-
-const mockTrip = {
-  id: 1,
-  occasion: "Beach Vacation",
-  destination: "Maldives",
-  startDate: "2024-02-15",
-  endDate: "2024-02-22",
-};
+  addParticipantService,
+  participantStatusUpdateService,
+  removeParticipantService,
+} from "@/services/participant";
+import { toast } from "sonner";
 
 export default function ParticipantsManagment() {
-  const [users, setUsers] = useState(mockUsers);
+  const queryClient = useQueryClient();
+  const { data: registeredUsersData, isSuccess } = useQuery({
+    queryKey: ["getAllRegisteredUsers"],
+    queryFn: () => getAllRegisteredUsers(),
+  });
+
+  const users = registeredUsersData?.data || [];
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState({});
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -111,174 +54,116 @@ export default function ParticipantsManagment() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      invited: {
-        label: "Invited",
-        variant: "default",
-        color: "bg-blue-100 text-blue-800",
-      },
-      pending_request: {
-        label: "Pending Request",
-        variant: "secondary",
-        color: "bg-yellow-100 text-yellow-800",
-      },
-      not_invited: {
-        label: "Not Invited",
-        variant: "outline",
-        color: "bg-gray-100 text-gray-800",
-      },
-      accepted: {
-        label: "Accepted",
-        variant: "default",
-        color: "bg-green-100 text-green-800",
-      },
-      declined: {
-        label: "Declined",
-        variant: "destructive",
-        color: "bg-red-100 text-red-800",
-      },
-    };
-
-    const config = statusConfig[status] || statusConfig.not_invited;
-    return <Badge className={config.color}>{config.label}</Badge>;
-  };
-
-  const handleSendInvite = async (userId) => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId
-            ? {
-                ...user,
-                status: "invited",
-                invitedDate: new Date().toISOString().split("T")[0],
-              }
-            : user
-        )
-      );
-      setLoading(false);
-    }, 1000);
-  };
-
-  const handleAcceptRequest = async (userId) => {
-    setLoading(true);
-    setTimeout(() => {
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId
-            ? {
-                ...user,
-                status: "accepted",
-                acceptedDate: new Date().toISOString().split("T")[0],
-              }
-            : user
-        )
-      );
-      setLoading(false);
-    }, 1000);
-  };
-
-  const handleDeclineRequest = async (userId) => {
-    setLoading(true);
-    setTimeout(() => {
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId
-            ? {
-                ...user,
-                status: "declined",
-                declinedDate: new Date().toISOString().split("T")[0],
-              }
-            : user
-        )
-      );
-      setLoading(false);
-    }, 1000);
-  };
-
-  const getActionButtons = (user) => {
-    switch (user.status) {
-      case "not_invited":
-        return (
-          <Button
-            size="sm"
-            onClick={() => handleSendInvite(user.id)}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Send className="w-4 h-4 mr-1" />
-            Send Invite
-          </Button>
-        );
-
-      case "pending_request":
-        return (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => handleAcceptRequest(user.id)}
-              disabled={loading}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Accept
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleDeclineRequest(user.id)}
-              disabled={loading}
-              className="border-red-300 text-red-600 hover:bg-red-50"
-            >
-              <X className="w-4 h-4 mr-1" />
-              Decline
-            </Button>
-          </div>
-        );
-
-      case "invited":
-        return (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Clock className="w-4 h-4" />
-            Waiting for response
-          </div>
-        );
-
-      case "accepted":
-        return (
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <Check className="w-4 h-4" />
-            Participating
-          </div>
-        );
-
-      case "declined":
-        return (
-          <div className="flex items-center gap-2 text-sm text-red-600">
-            <X className="w-4 h-4" />
-            Declined
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
   const statusCounts = users.reduce((acc, user) => {
     acc[user.status] = (acc[user.status] || 0) + 1;
     return acc;
   }, {});
 
+  const tripId = useSelector((state) => state.trips.activeTripId);
+  const token = useSelector((state) => state.user.token);
+
+  const { mutate: addMutate } = useMutation({
+    mutationFn: ({ token, data }) => addParticipantService(token, data),
+    onSuccess: async () => {
+      toast.success("Invitation sent successfully");
+      await queryClient.invalidateQueries({
+        queryKey: ["getAllRegisteredUsers"],
+      });
+    },
+    onError: (error) => {
+      toast.error(error?.message || "An error occurred");
+    },
+    onSettled: (_, __, variables) => {
+      const userId = variables.data.userId;
+      setLoadingUsers((prev) => {
+        const newPrev = { ...prev };
+        delete newPrev[userId];
+        return newPrev;
+      });
+    },
+  });
+
+  const { mutate: updateMutate } = useMutation({
+    mutationFn: ({ token, userId, tripId, status }) =>
+      participantStatusUpdateService(token, userId, tripId, status),
+    onSuccess: async () => {
+      toast.success("Status updated successfully");
+      await queryClient.invalidateQueries({
+        queryKey: ["getAllRegisteredUsers"],
+      });
+    },
+    onError: (error) => {
+      toast.error(error?.message || "An error occurred");
+    },
+    onSettled: (_, __, variables) => {
+      const userId = variables.userId;
+      setLoadingUsers((prev) => {
+        const newPrev = { ...prev };
+        delete newPrev[userId];
+        return newPrev;
+      });
+    },
+  });
+
+  const { mutate: deleteMutate } = useMutation({
+    mutationFn: ({ token, userId, tripId }) =>
+      removeParticipantService(token, userId, tripId),
+    onSuccess: async () => {
+      toast.success("Participant removed successfully");
+      await queryClient.invalidateQueries({
+        queryKey: ["getAllRegisteredUsers"],
+      });
+    },
+    onError: (error) => {
+      toast.error(error?.message || "An error occurred");
+    },
+    onSettled: (_, __, variables) => {
+      const userId = variables.userId;
+      setLoadingUsers((prev) => {
+        const newPrev = { ...prev };
+        delete newPrev[userId];
+        return newPrev;
+      });
+    },
+  });
+
+  const handleSendInvite = (userId) => {
+    setLoadingUsers((prev) => ({ ...prev, [userId]: true }));
+    const data = {
+      tripId: tripId,
+      userId: userId,
+    };
+    addMutate({ token, data });
+  };
+
+  const handleAcceptTripInvitation = (userId) => {
+    setLoadingUsers((prev) => ({ ...prev, [userId]: true }));
+    const status = "ACCEPTED";
+    updateMutate({ token, userId, tripId, status });
+  };
+
+  // const handleRejectTripInvitation = (userId) => {
+  //   setLoadingUsers((prev) => ({ ...prev, [userId]: true }));
+  //   const status = "REJECTED";
+  //   updateMutate({ token, userId, tripId, status });
+  // };
+
+  const handleRemoveFromTrip = (userId) => {
+    setLoadingUsers((prev) => ({ ...prev, [userId]: true }));
+    deleteMutate({ token, userId, tripId });
+  };
+
+  const statusColors = {
+    INVITED: "blue",
+    "Not Invited": "pink",
+    REQUESTED: "yellow",
+    ACCEPTED: "green",
+    REJECTED: "red",
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Sidebar */}
-
-      {/* Main Content */}
-      <div className=" p-4 md:p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Back Button */}
           <div className="flex items-center gap-4">
@@ -302,8 +187,7 @@ export default function ParticipantsManagment() {
                   Manage Participants
                 </h1>
                 <p className="text-xl text-slate-600">
-                  {filteredUsers.length} users • {statusCounts.accepted || 0}{" "}
-                  participating
+                  {filteredUsers.length} users
                 </p>
               </div>
             </div>
@@ -316,6 +200,52 @@ export default function ParticipantsManagment() {
                 <Users className="w-5 h-5 text-blue-600" />
                 User List
               </CardTitle>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4">
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-md"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="shrink-0">
+                      <Filter className="w-4 h-4 mr-2" />
+                      {statusFilter === "all" ? "All Statuses" : statusFilter}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                      All Statuses
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setStatusFilter("INVITED")}
+                    >
+                      Invited
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setStatusFilter("Not Invited")}
+                    >
+                      Not Invited
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setStatusFilter("REQUESTED")}
+                    >
+                      Requested
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setStatusFilter("ACCEPTED")}
+                    >
+                      Accepted
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setStatusFilter("REJECTED")}
+                    >
+                      Rejected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -329,47 +259,112 @@ export default function ParticipantsManagment() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
-                            {user.avatar}
+                  {filteredUsers.map((user) => {
+                    const color = statusColors[user.status] || "gray";
+                    const isLoading = !!loadingUsers[user.id];
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                              {user.avatar}
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-800">
+                                {user.name}
+                              </p>
+                              <p className="text-sm text-slate-500">
+                                {user.email}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-slate-800">
-                              {user.name}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                              {user.email}
-                            </p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm text-slate-600">
+                            {user?.phoneNumber}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`bg-${color}-100 text-${color}-800`}
+                          >
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm text-slate-600">
+                            {user?.date
+                              ? moment(user?.date).format(
+                                  "MMMM Do YYYY, h:mm:ss a"
+                                )
+                              : "N/A"}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {user?.status === "INVITED" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleRemoveFromTrip(user.id)}
+                                disabled={isLoading}
+                              >
+                                {isLoading ? "Removing..." : "Remove from Trip"}
+                              </Button>
+                            )}
+                            {user?.status === "REQUESTED" && (
+                              <>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleAcceptTripInvitation(user.id)
+                                  }
+                                  disabled={isLoading}
+                                >
+                                  {isLoading
+                                    ? "Accepting..."
+                                    : "Accept Invitation"}
+                                </Button>
+                                {/* <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleRejectTripInvitation(user.id)
+                                  }
+                                  disabled={isLoading}
+                                >
+                                  {isLoading
+                                    ? "Rejecting..."
+                                    : "Reject Invitation"}
+                                </Button> */}
+                              </>
+                            )}
+                            {user?.status === "ACCEPTED" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleRemoveFromTrip(user.id)}
+                                disabled={isLoading}
+                              >
+                                {isLoading ? "Removing..." : "Remove from Trip"}
+                              </Button>
+                            )}
+                            {user?.status === "Not Invited" && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleSendInvite(user.id)}
+                                disabled={isLoading}
+                              >
+                                {isLoading ? "Sending..." : "Send Invite"}
+                              </Button>
+                            )}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm text-slate-600">{user.phone}</p>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(user.status)}</TableCell>
-                      <TableCell>
-                        <p className="text-sm text-slate-600">
-                          {user.invitedDate && `Invited: ${user.invitedDate}`}
-                          {user.requestDate && `Requested: ${user.requestDate}`}
-                          {user.acceptedDate &&
-                            `Accepted: ${user.acceptedDate}`}
-                          {user.declinedDate &&
-                            `Declined: ${user.declinedDate}`}
-                          {!user.invitedDate &&
-                            !user.requestDate &&
-                            !user.acceptedDate &&
-                            !user.declinedDate &&
-                            "-"}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {getActionButtons(user)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>

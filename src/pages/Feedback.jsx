@@ -8,8 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Loader2, MessageSquare, CheckCircle, AlertCircle } from "lucide-react";
 import StarRating from "../components/feedback/StarRating"; // Import the new component
 
@@ -17,10 +29,10 @@ export default function FeedbackPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    feedback_type: '',
-    message: ''
+    name: "",
+    email: "",
+    feedback_type: "",
+    message: "",
   });
   const [rating, setRating] = useState(0); // Add state for rating
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,12 +41,12 @@ export default function FeedbackPage() {
 
   useEffect(() => {
     User.me()
-      .then(currentUser => {
+      .then((currentUser) => {
         setUser(currentUser);
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          name: currentUser.full_name || '',
-          email: currentUser.email || ''
+          name: currentUser.full_name || "",
+          email: currentUser.email || "",
         }));
       })
       .catch(() => setUser(null));
@@ -42,11 +54,11 @@ export default function FeedbackPage() {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
-  
+
   const handleSelectChange = (value) => {
-    setFormData(prev => ({ ...prev, feedback_type: value }));
+    setFormData((prev) => ({ ...prev, feedback_type: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -77,15 +89,19 @@ export default function FeedbackPage() {
         subject: `New Feedback Received: ${formData.feedback_type}`,
         body: `
           <h1>New Feedback from Kasama App</h1>
-          <p><strong>From:</strong> ${formData.name || 'Anonymous'}</p>
-          <p><strong>Email:</strong> ${formData.email || 'Not provided'}</p>
-          <p><strong>User ID:</strong> ${user?.id || 'N/A'}</p>
-          <p><strong>Trip ID:</strong> ${user?.current_trip_id || 'N/A'}</p>
-          ${rating > 0 ? `<p><strong>Rating:</strong> ${rating} / 5 stars</p>` : ''}
+          <p><strong>From:</strong> ${formData.name || "Anonymous"}</p>
+          <p><strong>Email:</strong> ${formData.email || "Not provided"}</p>
+          <p><strong>User ID:</strong> ${user?.id || "N/A"}</p>
+          <p><strong>Trip ID:</strong> ${user?.current_trip_id || "N/A"}</p>
+          ${
+            rating > 0
+              ? `<p><strong>Rating:</strong> ${rating} / 5 stars</p>`
+              : ""
+          }
           <hr>
           <h2>${formData.feedback_type}</h2>
-          <p>${formData.message.replace(/\n/g, '<br>')}</p>
-        `
+          <p>${formData.message.replace(/\n/g, "<br>")}</p>
+        `,
       });
 
       setSubmitted(true);
@@ -104,7 +120,8 @@ export default function FeedbackPage() {
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-slate-800">Thank you!</h1>
           <p className="text-slate-600 mt-2 mb-8">
-            Your feedback has been submitted successfully. Our team will review it shortly.
+            Your feedback has been submitted successfully. Our team will review
+            it shortly.
           </p>
           <Button onClick={() => navigate(createPageUrl("Dashboard"))}>
             Back to Dashboard
@@ -124,7 +141,8 @@ export default function FeedbackPage() {
               Submit Feedback
             </CardTitle>
             <CardDescription>
-              Have a bug to report or a feature to request? We'd love to hear from you.
+              Have a bug to report or a feature to request? We'd love to hear
+              from you.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -132,26 +150,44 @@ export default function FeedbackPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="name">Name (Optional)</Label>
-                  <Input id="name" value={formData.name} onChange={handleInputChange} />
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="email">Email (Optional)</Label>
-                  <Input id="email" type="email" value={formData.email} onChange={handleInputChange} />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="feedback_type">Feedback Type *</Label>
-                <Select onValueChange={handleSelectChange} value={formData.feedback_type}>
+                <Select
+                  onValueChange={handleSelectChange}
+                  value={formData.feedback_type}
+                >
                   <SelectTrigger id="feedback_type">
                     <SelectValue placeholder="Select a category..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Bug Report">Bug Report</SelectItem>
-                    <SelectItem value="Feature Request">Feature Request</SelectItem>
+                    <SelectItem value="Feature Request">
+                      Feature Request
+                    </SelectItem>
                     <SelectItem value="Payment Issue">Payment Issue</SelectItem>
-                    <SelectItem value="General Feedback">General Feedback</SelectItem>
-                    <SelectItem value="Account/Login Problem">Account/Login Problem</SelectItem>
+                    <SelectItem value="General Feedback">
+                      General Feedback
+                    </SelectItem>
+                    <SelectItem value="Account/Login Problem">
+                      Account/Login Problem
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -187,10 +223,22 @@ export default function FeedbackPage() {
 
               <div className="flex justify-between items-center pt-4">
                 <p className="text-sm text-slate-500">
-                  Still need help? <a href="mailto:support@kasama.com" className="text-blue-600 hover:underline">Contact Support</a>
+                  Still need help?{" "}
+                  <a
+                    href="mailto:support@kasama.com"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Contact Support
+                  </a>
                 </p>
-                <Button type="submit" disabled={isSubmitting} className="px-8 bg-blue-600 hover:bg-blue-700">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-8 bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : null}
                   Submit Feedback
                 </Button>
               </div>

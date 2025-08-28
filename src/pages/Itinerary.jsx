@@ -342,6 +342,10 @@ import { Calendar, Plus, ArrowLeft, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import ItineraryForm from "../components/itinerary/ItineraryForm";
 import ItineraryDayGroup from "../components/itinerary/ItineraryDayGroup";
+import { useMutation } from "@tanstack/react-query";
+import { createItineraryService } from "@/services/itinerary";
+import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 export default function Itinerary() {
   const navigate = useNavigate();
@@ -419,6 +423,7 @@ export default function Itinerary() {
 
   const handleAddItem = () => {
     setEditingItem(null);
+
     setShowForm(true);
   };
 
@@ -566,9 +571,7 @@ export default function Itinerary() {
                 Trip Itinerary
               </h1>
               <div className="flex items-center gap-2 text-xl text-slate-600">
-                <MapPin clas
-                
-                sName="w-5 h-5" />
+                <MapPin clas sName="w-5 h-5" />
                 {trip.destination} •{" "}
                 {format(new Date(trip.start_date), "MMM d")} -{" "}
                 {format(new Date(trip.end_date), "MMM d, yyyy")}
@@ -594,6 +597,7 @@ export default function Itinerary() {
             item={editingItem}
             onSubmit={handleFormSubmit}
             onCancel={handleFormCancel}
+            setShowForm={setShowForm}
           />
         )}
 
