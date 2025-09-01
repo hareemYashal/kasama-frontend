@@ -124,7 +124,7 @@ export default function Payments() {
     queryFn: () => participantTripCheck(authToken, authUerId, authTripId),
     enabled: !!authToken && !!authTripId && !!authUerId,
   });
-
+  console.log("isInvitedData", isInvitedData);
   useEffect(() => {
     if (invitedSuccess) {
       setIsInvited(!!isInvitedData?.invitation);
@@ -857,7 +857,9 @@ export default function Payments() {
                     {selectedFriend && (
                       <p className="text-xs text-slate-500 mt-1">
                         Maximum: $
-                        {selectedFriendContribution?.paymentInfo?.remainings?.toFixed(2)}
+                        {selectedFriendContribution?.paymentInfo?.remainings?.toFixed(
+                          2
+                        )}
                       </p>
                     )}
                   </div>

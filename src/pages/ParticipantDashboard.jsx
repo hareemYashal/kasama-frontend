@@ -28,13 +28,14 @@ import ActivityFeed from "../components/dashboard/ActivityFeed";
 import ContributionBreakdown from "../components/dashboard/ContributionBreakdown";
 import { useQuery } from "@tanstack/react-query";
 import { getExpenseListService } from "@/services/expense";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   getParticipantsWithContributions,
   totalParticipantsService,
 } from "@/services/participant";
 import { getActiveTripService } from "@/services/trip";
 import { getPaymentRemainingsService } from "@/services/paynent";
+import { setActiveTripId } from "@/store/tripSlice";
 
 export default function ParticipantDashboard() {
   // const navigate = useNavigate();
@@ -159,7 +160,7 @@ export default function ParticipantDashboard() {
   const token = useSelector((state) => state.user.token);
   const authUser = useSelector((state) => state.user.user);
   const authUerId = authUser?.id;
-
+ const dispatch = useDispatch();
   const { data: expenseDataList, isSuccess: expenseListSuccess } = useQuery({
     queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
@@ -178,11 +179,22 @@ export default function ParticipantDashboard() {
     enabled: !!token,
   });
 
-  const { data: paymentData, isSuccess: isPaymentDataSuccess } = useQuery({
+  const { data: paymentData,  isSuccess: activeTripSuccess  } = useQuery({
     queryKey: ["getPaymentRemainingsQuery", tripId, authUerId],
     queryFn: () => getPaymentRemainingsService(token, tripId, authUerId),
     enabled: !!token && !!tripId && !!authUerId,
   });
+
+ 
+  useEffect(() => {
+    if (activeTripSuccess && activeTripData?.data?.activeTrip?.id) {
+      dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
+      localStorage.setItem(
+        "activeTripId",
+        JSON.stringify(activeTripData.data.activeTrip.id)
+      );
+    }
+  }, [activeTripData, activeTripSuccess, dispatch]);
 
   const myContribution = paymentData?.data?.data;
   console.log("paymentData()()", paymentData);
@@ -469,8 +481,7 @@ export default function ParticipantDashboard() {
               <Progress
                 value={
                   myContribution.your_goal > 0
-                    ? (myContribution.amountPaid /
-                        myContribution.your_goal) *
+                    ? (myContribution.amountPaid / myContribution.your_goal) *
                       100
                     : 0
                 }
