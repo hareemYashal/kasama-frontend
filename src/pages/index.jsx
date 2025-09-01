@@ -82,10 +82,10 @@ function PagesContent() {
   let userRole = user?.role;
   console.log('userRole',userRole)
   useEffect(() => {
-    if (user && userRole === "admin") {
+    if (user) {
       navigate("/dashboard");
     } else {
-      navigate("/participantdashboard");
+      navigate("/");
     }
   }, [user]);
 
