@@ -10,23 +10,19 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
     name: "",
     amount: "",
-    description: "",
+    description: "", // ✅ added
   });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (expense) {
       setFormData({
-        name: expense.name || "",
-        amount: expense.amount?.toString() || "",
-        description: expense.description || "",
+        name: expense.expense_name || "",
+        amount: expense.expense_amount?.toString() || "",
+        description: expense.description || "", // ✅ added
       });
     } else {
-      setFormData({
-        name: "",
-        amount: "",
-        description: "",
-      });
+      setFormData({ name: "", amount: "", description: "" });
     }
   }, [expense]);
 
@@ -52,20 +48,29 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }) {
       newErrors.amount = "Valid amount is required";
     }
 
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required"; // ✅ new
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSubmit({
-        ...formData,
-        amount: parseFloat(formData.amount),
-      });
-    }
+    if (!validateForm()) return;
+
+    onSubmit({
+      expense_name: formData.name,
+      expense_amount: parseFloat(formData.amount),
+      description: formData.description,
+      tripId: expense.tripId,
+    });
+
+    // ✅ Reset local form state
+    setFormData({ name: "", amount: "", description: "" });
   };
-  const totalAmount = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-slate-200/60 shadow-xl">
@@ -127,21 +132,26 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }) {
             </div>
           </div>
 
+          {/* ✅ Description field */}
           <div>
             <Label
               htmlFor="description"
               className="text-base font-semibold text-slate-700"
             >
-              Description (Optional)
+              Description *
             </Label>
             <Textarea
               id="description"
-              placeholder="Add details about this expense..."
+              placeholder="Enter details about this expense"
               value={formData.description}
               onChange={(e) => updateFormData("description", e.target.value)}
-              className="mt-2 border-slate-200 min-h-24"
-              rows={3}
+              className={`mt-2 ${
+                errors.description ? "border-red-500" : "border-slate-200"
+              }`}
             />
+            {errors.description && (
+              <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-4 pt-4">

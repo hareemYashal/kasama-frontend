@@ -4,19 +4,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, Save, X } from "lucide-react";
+import { Calendar, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import { useSelector } from "react-redux";
 import { useMutation } from "@tanstack/react-query";
-import { createItineraryService } from "@/services/itinerary";
+import {
+  createItineraryService,
+  updateItineraryService,
+} from "@/services/itinerary";
 import { toast } from "sonner";
 
 export default function ItineraryForm({
   trip,
   item,
-  onSubmit,
   onCancel,
   setShowForm,
+  refetch,
 }) {
   const [formData, setFormData] = useState({
     date: "",
@@ -26,49 +29,40 @@ export default function ItineraryForm({
     notes: "",
   });
   const [errors, setErrors] = useState({});
-
   const token = useSelector((state) => state.user.token);
   const activeTripId = useSelector((state) => state.trips.activeTripId);
-
-  const { mutate } = useMutation({
-    mutationFn: ({ token, data }) => createItineraryService(token, data),
-    onSuccess: () => {
-      toast.success("Itinerary Created");
-      setShowForm(false);
-    },
-  });
-  console.log(formData, "Hey I am the formData");
 
   useEffect(() => {
     if (item) {
       setFormData({
-        date: item.date || "",
-        start_time: item.start_time || "",
-        end_time: item.end_time || "",
+        date: item.date ? format(new Date(item.date), "yyyy-MM-dd") : "",
+        start_time: item.start_time
+          ? format(new Date(item.start_time), "HH:mm")
+          : "",
+        end_time: item.end_time ? format(new Date(item.end_time), "HH:mm") : "",
         activity_title: item.activity_title || "",
         notes: item.notes || "",
-      });
-    } else {
-      setFormData({
-        date: "",
-        start_time: "",
-        end_time: "",
-        activity_title: "",
-        notes: "",
       });
     }
   }, [item]);
 
-  const updateFormData = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: null }));
-    }
-  };
+  const { mutate: saveItinerary } = useMutation({
+    mutationFn: (data) =>
+      item
+        ? updateItineraryService(token, item.id, data)
+        : createItineraryService(token, data),
+    onSuccess: () => {
+      toast.success(item ? "Itinerary updated" : "Itinerary created");
+      setShowForm(false);
+      refetch();
+    },
+    onError: () => toast.error("Failed to save itinerary"),
+  });
 
   const validateForm = () => {
     const newErrors = {};
 
+    // Date validation
     if (!formData.date) {
       newErrors.date = "Date is required";
     } else {
@@ -81,21 +75,35 @@ export default function ItineraryForm({
       }
     }
 
+    // Activity title
+    if (!formData.activity_title.trim()) {
+      newErrors.activity_title = "Title is required";
+    } else if (formData.activity_title.trim().length < 3) {
+      newErrors.activity_title = "Title must be at least 3 characters";
+    }
+
+    // Time validation
     if (!formData.start_time) {
       newErrors.start_time = "Start time is required";
     }
-
     if (!formData.end_time) {
       newErrors.end_time = "End time is required";
-    } else if (
-      formData.start_time &&
-      formData.end_time <= formData.start_time
-    ) {
-      newErrors.end_time = "End time must be after start time";
+    }
+    if (formData.start_time && formData.end_time) {
+      const start = new Date(`${formData.date}T${formData.start_time}`);
+      const end = new Date(`${formData.date}T${formData.end_time}`);
+      if (end <= start) {
+        newErrors.end_time = "End time must be after start time";
+      }
     }
 
-    if (!formData.activity_title) {
-      newErrors.activity_title = "Activity title is required";
+    if (!formData.notes || formData.notes.trim() === "") {
+      newErrors.notes = "Notes are required";
+    }
+
+    // Notes (optional, max length)
+    if (formData.notes && formData.notes.length > 500) {
+      newErrors.notes = "Notes cannot exceed 500 characters";
     }
 
     setErrors(newErrors);
@@ -104,159 +112,106 @@ export default function ItineraryForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    const data = {
-      date: formData.date,
+    saveItinerary({
+      date: formData.date, // yyyy-MM-dd only
+      start_time: formData.start_time, // HH:mm
+      end_time: formData.end_time, // HH:mm
       activity_title: formData.activity_title,
-      start_time: formData.start_time,
-      end_time: formData.end_time,
       notes: formData.notes,
       tripId: activeTripId,
-    };
-    if (validateForm()) {
-      mutate({ token, data });
-    }
+    });
   };
 
   return (
-    <Card className="bg-white/90 backdrop-blur-sm border-slate-200/60 shadow-xl">
+    <Card className="bg-white/90 shadow-xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-slate-800">
+        <CardTitle className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-blue-600" />
           {item ? "Edit Activity" : "Add New Activity"}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Date + Title */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <Label
-                htmlFor="date"
-                className="text-base font-semibold text-slate-700"
-              >
-                Date *
-              </Label>
+              <Label>Date *</Label>
               <Input
-                id="date"
                 type="date"
                 value={formData.date}
-                onChange={(e) => updateFormData("date", e.target.value)}
-                min={trip.start_date}
-                max={trip.end_date}
-                className={`mt-2 ${
-                  errors.date ? "border-red-500" : "border-slate-200"
-                }`}
+                onChange={(e) =>
+                  setFormData({ ...formData, date: e.target.value })
+                }
+                min={format(new Date(trip.start_date), "yyyy-MM-dd")}
+                max={format(new Date(trip.end_date), "yyyy-MM-dd")}
               />
-              {errors.date && (
-                <p className="text-red-500 text-sm mt-1">{errors.date}</p>
-              )}
-              <p className="text-sm text-slate-500 mt-1">
-                Must be between {format(new Date(trip.start_date), "MMM d")} -{" "}
-                {format(new Date(trip.end_date), "MMM d, yyyy")}
-              </p>
-            </div>
 
+              {errors.date && (
+                <p className="text-red-500 text-sm">{errors.date}</p>
+              )}
+            </div>
             <div>
-              <Label
-                htmlFor="activity_title"
-                className="text-base font-semibold text-slate-700"
-              >
-                Activity Title *
-              </Label>
+              <Label>Activity Title *</Label>
               <Input
-                id="activity_title"
-                placeholder="e.g., Beach Day, City Tour, Dinner at Restaurant"
                 value={formData.activity_title}
                 onChange={(e) =>
-                  updateFormData("activity_title", e.target.value)
+                  setFormData({ ...formData, activity_title: e.target.value })
                 }
-                className={`mt-2 ${
-                  errors.activity_title ? "border-red-500" : "border-slate-200"
-                }`}
               />
               {errors.activity_title && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.activity_title}
-                </p>
+                <p className="text-red-500 text-sm">{errors.activity_title}</p>
               )}
             </div>
           </div>
-
+          {/* Times */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <Label
-                htmlFor="start_time"
-                className="text-base font-semibold text-slate-700"
-              >
-                Start Time *
-              </Label>
+              <Label>Start Time *</Label>
               <Input
-                id="start_time"
                 type="time"
                 value={formData.start_time}
-                onChange={(e) => updateFormData("start_time", e.target.value)}
-                className={`mt-2 ${
-                  errors.start_time ? "border-red-500" : "border-slate-200"
-                }`}
+                onChange={(e) =>
+                  setFormData({ ...formData, start_time: e.target.value })
+                }
               />
               {errors.start_time && (
-                <p className="text-red-500 text-sm mt-1">{errors.start_time}</p>
+                <p className="text-red-500 text-sm">{errors.start_time}</p>
               )}
             </div>
-
             <div>
-              <Label
-                htmlFor="end_time"
-                className="text-base font-semibold text-slate-700"
-              >
-                End Time *
-              </Label>
+              <Label>End Time *</Label>
               <Input
-                id="end_time"
                 type="time"
                 value={formData.end_time}
-                onChange={(e) => updateFormData("end_time", e.target.value)}
-                className={`mt-2 ${
-                  errors.end_time ? "border-red-500" : "border-slate-200"
-                }`}
+                onChange={(e) =>
+                  setFormData({ ...formData, end_time: e.target.value })
+                }
               />
               {errors.end_time && (
-                <p className="text-red-500 text-sm mt-1">{errors.end_time}</p>
+                <p className="text-red-500 text-sm">{errors.end_time}</p>
               )}
             </div>
           </div>
-
+          {/* Notes */}
           <div>
-            <Label
-              htmlFor="notes"
-              className="text-base font-semibold text-slate-700"
-            >
-              Notes (Optional)
-            </Label>
+            <Label>Notes</Label>
             <Textarea
-              id="notes"
-              placeholder="Add any additional details, meeting points, or special instructions..."
               value={formData.notes}
-              onChange={(e) => updateFormData("notes", e.target.value)}
-              className="mt-2 border-slate-200 min-h-24"
-              rows={3}
+              onChange={(e) =>
+                setFormData({ ...formData, notes: e.target.value })
+              }
             />
+            {errors.notes && (
+              <p className="text-red-500 text-sm">{errors.notes}</p>
+            )}
           </div>
-
-          <div className="flex justify-end gap-4 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              className="px-6"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Cancel
+          <div className="flex justify-end gap-4">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              <X className="w-4 h-4 mr-2" /> Cancel
             </Button>
-            <Button
-              type="submit"
-              className="px-6 bg-blue-600 hover:bg-blue-700"
-            >
+            <Button type="submit" className="bg-blue-600">
               <Save className="w-4 h-4 mr-2" />
               {item ? "Update Activity" : "Add Activity"}
             </Button>

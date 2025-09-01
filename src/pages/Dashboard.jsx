@@ -99,7 +99,7 @@ export default function Dashboard() {
   }, [activeTripData, dispatch]);
 
   const tripDataList = tripExpenseDetails?.data?.data;
-
+  console.log("tripDataList", tripDataList);
   // Handle loading state
   const isLoading =
     isLoadingExpenses ||
@@ -214,31 +214,65 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Total Contributed */}
               <div className="flex justify-between">
                 <span>Total Contributed</span>
                 <span className="font-bold text-green-600">
-                  ${tripDataList.contributed?.toFixed(2) || "0.00"}
+                  ${tripDataList.baseAmountContributed?.toFixed(2) || "0.00"}
                 </span>
               </div>
+
+              {/* Goal Amount */}
               <div className="flex justify-between">
                 <span>Goal Amount</span>
                 <span>${tripDataList.total_goal?.toFixed(2) || "0.00"}</span>
               </div>
+
+              {/* Remaining */}
+              <div className="flex justify-between">
+                <span>Remaining</span>
+                <span className="text-red-600 font-semibold">
+                  ${tripDataList.remaining?.toFixed(2) || "0.00"}
+                </span>
+              </div>
+
+              {/* Overpaid (only show if > 0) */}
+              {tripDataList.overpaid > 0 && (
+                <div className="flex justify-between">
+                  <span>Overpaid</span>
+                  <span className="text-orange-500 font-semibold">
+                    ${tripDataList.overpaid?.toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Progress Bar */}
               <Progress
                 value={
                   tripDataList?.total_goal
-                    ? (tripDataList.contributed / tripDataList.total_goal) * 100
+                    ? (tripDataList.baseAmountContributed /
+                        tripDataList.total_goal) *
+                      100
                     : 0
                 }
               />
+
+              {/* Progress Text */}
               <p className="text-sm text-slate-500">
                 {tripDataList?.total_goal
                   ? `${(
-                      (tripDataList.contributed / tripDataList.total_goal) *
+                      (tripDataList.baseAmountContributed /
+                        tripDataList.total_goal) *
                       100
                     ).toFixed(1)}% of goal reached`
                   : "No expenses set"}
               </p>
+
+              {/* Per Person */}
+              <div className="flex justify-between text-sm text-slate-600">
+                <span>Per Person Goal</span>
+                <span>${tripDataList.per_person?.toFixed(2) || "0.00"}</span>
+              </div>
             </CardContent>
           </Card>
         )}

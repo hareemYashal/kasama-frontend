@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Trip } from "@/api/entities";
@@ -46,6 +46,7 @@ import { useSelector } from "react-redux";
 import {
   participantStatusUpdateService,
   participantTripCheck,
+  totalParticipantsService,
 } from "@/services/participant";
 
 export default function Payments() {
@@ -54,20 +55,67 @@ export default function Payments() {
   const authTripId = useSelector((state) => state.trips.activeTripId);
   const authUerId = authUser?.id;
 
-  const [requestText, setRequestText] = useState("Request");
-  const [paymentDetailData, setPaymentDetailData] = useState();
-  const [isInvited, setIsInvited] = useState(false); // ✅ default false
+  const tripId = useSelector((state) => state.trips.activeTripId);
+  const token = useSelector((state) => state.user.token);
 
+  const { data: participantsData } = useQuery({
+    queryKey: ["totalParticipantsService"],
+    queryFn: () => totalParticipantsService(token, tripId),
+    enabled: !!token && !!tripId,
+  });
+  let totalParticipant = participantsData?.data?.participants;
+  let tripParticipantsNumber =
+    participantsData?.data?.participants?.length || 0;
+  console.log(totalParticipant, "totalParticipant");
+  console.log(tripParticipantsNumber, "tripParticipantsNumber");
+
+  console.log("authUser", authUser);
+  const [requestText, setRequestText] = useState("Request");
+  const [isInvited, setIsInvited] = useState(false); // ✅ default false
+  const [paymentDetailData, setPaymentDetailData] = useState(null);
+  const [contribution, setContribution] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [methodType, setMethodType] = useState("ach"); // Default to ACH (cheaper)
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [loading, setLoading] = useState(null);
+  const [oneTimeAmount, setOneTimeAmount] = useState("");
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [friendPaymentAmount, setFriendPaymentAmount] = useState("");
+  const [processingFriendPayment, setProcessingFriendPayment] = useState(false);
+  // const [friendBreakdown, setFriendBreakdown] = useState({
+  //   amount: 0,
+  //   stripeFee: 0,
+  //   totalCharge: 0,
+  // });
+
+  // ✅ Instead of allContributions, use totalParticipant directly
+  const selectedFriendContribution = totalParticipant?.find(
+    (c) => c.userId === selectedFriend
+  );
+
+  const [processingOneTimePayment, setProcessingOneTimePayment] =
+    useState(false);
   const { data: paymentData, isSuccess: isPaymentDataSuccess } = useQuery({
     queryKey: ["getPaymentRemainingsQuery", authTripId, authUerId],
     queryFn: () =>
       getPaymentRemainingsService(authToken, authTripId, authUerId),
     enabled: !!authToken && !!authTripId && !!authUerId,
   });
+  console.log("paymentData", paymentData);
 
   useEffect(() => {
     if (paymentData?.data?.data) {
-      setPaymentDetailData(paymentData.data.data);
+      const apiData = paymentData.data.data;
+      console.log("paymentData", apiData);
+
+      setPaymentDetailData(apiData);
+
+      // keep `contribution` in sync for legacy UI
+      setContribution({
+        goal_amount: apiData.your_goal,
+        amount_paid: apiData.amountPaid,
+        amount_remaining: apiData.remainings,
+      });
     }
   }, [isPaymentDataSuccess]);
 
@@ -100,335 +148,162 @@ export default function Payments() {
   };
 
   // -----------------------------
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [trip, setTrip] = useState(null);
-  const [contribution, setContribution] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [allContributions, setAllContributions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Payment method states (trip-scoped)
-  const [paymentMethod, setPaymentMethod] = useState(null);
-  const [methodType, setMethodType] = useState("ach"); // Default to ACH (cheaper)
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-
-  // Auto-pay states (stored in localStorage per trip)
-  const [autoPayEnabled, setAutoPayEnabled] = useState(false);
-  const [paymentFrequency, setPaymentFrequency] = useState("monthly");
-  const [recurringPaymentDay, setRecurringPaymentDay] = useState("monday"); // New state
-
-  // Pay for friend states - enhanced with real-time data
-  const [selectedFriend, setSelectedFriend] = useState("");
-  const [friendPaymentAmount, setFriendPaymentAmount] = useState("");
-  const [processingFriendPayment, setProcessingFriendPayment] = useState(false);
-  const [selectedFriendContribution, setSelectedFriendContribution] =
-    useState(null);
-
-  // One-time payment states
-  const [oneTimeAmount, setOneTimeAmount] = useState("");
-  const [processingOneTimePayment, setProcessingOneTimePayment] =
-    useState(false);
-
-  // Withdrawal states
-  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
-  const [payoutMethod, setPayoutMethod] = useState("standard"); // 'standard' or 'instant'
-  const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
-  const [fundsWithdrawn, setFundsWithdrawn] = useState(false);
 
   useEffect(() => {
-    loadPaymentData();
-  }, []);
+    const fetchPaymentRemainings = async () => {
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:4000/payment/getPaymentRemainings?tripId=${authTripId}&userId=${authUerId}`,
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        const result = await response.json();
 
-  useEffect(() => {
-    if (trip?.id) {
-      loadTripScopedPreferences();
-    }
-  }, [trip]);
+        if (result.success) {
+          console.log("fetchPaymentRemainings", result.data);
 
-  // Enhanced useEffect to handle friend selection with real-time data
-  useEffect(() => {
-    if (selectedFriend) {
-      const friendContrib = allContributions.find(
-        (c) => c.user_id === selectedFriend
-      );
-      setSelectedFriendContribution(friendContrib);
-      // Pre-fill with their remaining amount if exists and greater than 0
-      if (friendContrib && friendContrib.amount_remaining > 0) {
-        setFriendPaymentAmount(friendContrib.amount_remaining.toFixed(2));
-      } else {
-        setFriendPaymentAmount("0.00"); // Or empty string, depending on desired UX
-      }
-    } else {
-      setSelectedFriendContribution(null);
-      setFriendPaymentAmount("");
-    }
-  }, [selectedFriend, allContributions]); // Depend on allContributions to update if data changes
-
-  // const loadPaymentData = async () => {
-  //   try {
-  //     const currentUser = await User.me();
-  //     setUser(currentUser);
-
-  //     if (!currentUser.current_trip_id) {
-  //       navigate(createPageUrl("Home"));
-  //       return;
-  //     }
-
-  //     const currentTrip = await Trip.get(currentUser.current_trip_id);
-  //     setTrip(currentTrip);
-
-  //     // Load user's contribution
-  //     const userContributions = await Contribution.filter({
-  //       trip_id: currentTrip.id,
-  //       user_id: currentUser.id
-  //     });
-
-  //     if (userContributions.length > 0) {
-  //       setContribution(userContributions[0]);
-  //     }
-
-  //     // Load all participants for "pay for friend" feature
-  //     const allParticipants = await User.filter({ current_trip_id: currentTrip.id });
-  //     setParticipants(allParticipants.filter(p => p.id !== currentUser.id));
-
-  //     // Load all contributions for withdrawal calculations and friend payment details
-  //     const tripContributions = await Contribution.filter({ trip_id: currentTrip.id });
-  //     setAllContributions(tripContributions);
-
-  //     // Check if funds have been withdrawn (mock state for now)
-  //     const withdrawalStatus = localStorage.getItem(`kasama_funds_withdrawn_${currentTrip.id}`);
-  //     setFundsWithdrawn(withdrawalStatus === 'true');
-
-  //     // Load mock payment method (for development)
-  //     loadMockPaymentMethod(currentTrip.id);
-
-  //   } catch (error) {
-  //     console.error("Error loading payment data:", error);
-  //     navigate(createPageUrl("Home"));
-  //   }
-  //   setLoading(false);
-  // };
-  const loadPaymentData = async () => {
-    try {
-      // DUMMY LOGIC START
-      const isDev = process.env.NODE_ENV === "development";
-
-      const mockUser = {
-        id: "user_123",
-        full_name: "Alice Smith",
-        current_trip_id: "trip_456",
-        trip_role: "admin",
-      };
-
-      const mockTrip = {
-        id: "trip_456",
-        name: "Mock Island Getaway",
-      };
-
-      const mockContribution = {
-        id: "contrib_1",
-        trip_id: "trip_456",
-        user_id: "user_123",
-        goal_amount: 500,
-        amount_paid: 150,
-        amount_remaining: 350,
-      };
-
-      const mockParticipants = [
-        { id: "user_234", full_name: "Bob Jones" },
-        { id: "user_345", full_name: "Clara Wu" },
-      ];
-
-      const mockAllContributions = [
-        mockContribution,
-        {
-          id: "contrib_2",
-          trip_id: "trip_456",
-          user_id: "user_234",
-          goal_amount: 500,
-          amount_paid: 300,
-          amount_remaining: 200,
-        },
-        {
-          id: "contrib_3",
-          trip_id: "trip_456",
-          user_id: "user_345",
-          goal_amount: 500,
-          amount_paid: 500,
-          amount_remaining: 0,
-        },
-      ];
-
-      if (isDev) {
-        setUser(mockUser);
-        setTrip(mockTrip);
-        setContribution(mockContribution);
-        setParticipants(mockParticipants);
-        setAllContributions(mockAllContributions);
-        setFundsWithdrawn(false);
-        loadMockPaymentMethod(mockTrip.id);
+          // 🔑 set both paymentInfo + contribution from API
+          setPaymentInfo(result.data.data);
+          setContribution((prev) => ({
+            ...(prev || {}), // keep goal_amount, amount_paid if already set
+            amount_remaining: result.data.data.remainings, // adjust if API shape differs
+          }));
+        }
+      } catch (err) {
+        console.error("Error fetching remainings", err);
+      } finally {
         setLoading(false);
-        return;
       }
-      // DUMMY LOGIC END
-
-      // REAL LOGIC (only runs if not in development)
-      const currentUser = await User.me();
-      setUser(currentUser);
-
-      if (!currentUser.current_trip_id) {
-        navigate(createPageUrl("Home"));
-        return;
-      }
-
-      const currentTrip = await Trip.get(currentUser.current_trip_id);
-      setTrip(currentTrip);
-
-      const userContributions = await Contribution.filter({
-        trip_id: currentTrip.id,
-        user_id: currentUser.id,
-      });
-
-      if (userContributions.length > 0) {
-        setContribution(userContributions[0]);
-      }
-
-      const allParticipants = await User.filter({
-        current_trip_id: currentTrip.id,
-      });
-      setParticipants(allParticipants.filter((p) => p.id !== currentUser.id));
-
-      const tripContributions = await Contribution.filter({
-        trip_id: currentTrip.id,
-      });
-      setAllContributions(tripContributions);
-
-      const withdrawalStatus = localStorage.getItem(
-        `kasama_funds_withdrawn_${currentTrip.id}`
-      );
-      setFundsWithdrawn(withdrawalStatus === "true");
-
-      loadMockPaymentMethod(currentTrip.id);
-    } catch (error) {
-      console.error("Error loading payment data:", error);
-      navigate(createPageUrl("Home"));
-    }
-
-    setLoading(false);
-  };
-
-  const loadMockPaymentMethod = (tripId) => {
-    const savedMethod = localStorage.getItem(`kasama_payment_method_${tripId}`);
-    if (savedMethod) {
-      setPaymentMethod(JSON.parse(savedMethod));
-    }
-  };
-
-  const loadTripScopedPreferences = () => {
-    if (!trip?.id) return;
-
-    const savedAutoPlay = localStorage.getItem(
-      `kasama_autopay_enabled_${trip.id}`
-    );
-    const savedFrequency = localStorage.getItem(
-      `kasama_payment_frequency_${trip.id}`
-    );
-    const savedRecurringDay = localStorage.getItem(
-      `kasama_recurring_day_${trip.id}`
-    ); // Load new state
-
-    if (savedAutoPlay) setAutoPayEnabled(JSON.parse(savedAutoPlay));
-    if (savedFrequency) setPaymentFrequency(savedFrequency);
-    if (savedRecurringDay) setRecurringPaymentDay(savedRecurringDay); // Set new state
-  };
-
-  const saveTripScopedPreferences = (autopay, frequency, recurringDay) => {
-    if (!trip?.id) return;
-
-    localStorage.setItem(
-      `kasama_autopay_enabled_${trip.id}`,
-      JSON.stringify(autopay)
-    );
-    localStorage.setItem(`kasama_payment_frequency_${trip.id}`, frequency);
-    localStorage.setItem(`kasama_recurring_day_${trip.id}`, recurringDay); // Save new state
-  };
-
-  const handleAddPaymentMethod = async () => {
-    // Mock adding payment method (will be replaced with Stripe integration)
-    const mockPaymentMethod = {
-      id: `pm_mock_${Date.now()}`,
-      type: methodType,
-      last4: methodType === "ach" ? "4455" : "1234",
-      brand: methodType === "ach" ? "Wells Fargo Checking" : "Visa",
-      trip_id: trip.id,
     };
 
-    // Save to localStorage (trip-scoped)
-    localStorage.setItem(
-      `kasama_payment_method_${trip.id}`,
-      JSON.stringify(mockPaymentMethod)
-    );
-    setPaymentMethod(mockPaymentMethod);
-    setShowPaymentModal(false);
+    fetchPaymentRemainings();
+  }, [authTripId, authUerId, authToken]);
 
-    // Log activity
-    const firstName = user.full_name.split(" ")[0];
-    await TripActivity.create({
-      trip_id: trip.id,
-      user_id: user.id,
-      user_first_name: firstName,
-      action_type: "PAYMENT_METHOD_UPDATE",
-      description: `${firstName} added a payment method.`,
-      metadata: {}, // Added metadata field
-    });
-  };
-
-  const handleAutoPayToggle = async (enabled) => {
-    setAutoPayEnabled(enabled);
-    saveTripScopedPreferences(enabled, paymentFrequency, recurringPaymentDay); // Pass new state
-
-    // Log activity
-    const firstName = user.full_name.split(" ")[0];
-    await TripActivity.create({
-      trip_id: trip.id,
-      user_id: user.id,
-      user_first_name: firstName,
-      action_type: "PAYMENT_METHOD_UPDATE",
-      description: enabled
-        ? `${firstName} enabled auto-pay.`
-        : `${firstName} disabled auto-pay.`,
-      metadata: {}, // Added metadata field
-    });
-  };
-
-  const handleFrequencyChange = (frequency) => {
-    setPaymentFrequency(frequency);
-    saveTripScopedPreferences(autoPayEnabled, frequency, recurringPaymentDay); // Pass new state
-  };
-
-  const handleRecurringDayChange = (day) => {
-    // New function
-    setRecurringPaymentDay(day);
-    saveTripScopedPreferences(autoPayEnabled, paymentFrequency, day);
-  };
-
-  const calculateAutoPayAmount = () => {
-    if (!contribution || contribution.amount_remaining <= 0) return 0;
-
-    const remaining = contribution.amount_remaining;
-    // Assuming trip duration is roughly 4 weeks for weekly, 2 payments for biweekly.
-    // This is a simplification; in a real app, trip start/end dates would be used.
-    switch (paymentFrequency) {
-      case "weekly":
-        return remaining / 4;
-      case "biweekly":
-        return remaining / 2;
-      case "monthly":
-        return remaining; // Pay off in one go if monthly
-      default:
-        return 0;
+  const handleOneTimePayment = async () => {
+    if (!oneTimeAmount || !paymentMethod || !contribution) {
+      alert(
+        "Please enter an amount and ensure you have a payment method added"
+      );
+      return;
     }
+
+    const { amount, totalCharge } = calculateOneTimePaymentBreakdown();
+
+    // Debug logs
+    console.log("=== DEBUG ONE TIME PAYMENT ===");
+    console.log("Raw oneTimeAmount (string):", oneTimeAmount);
+    console.log("Parsed oneTimeAmount (number):", parseFloat(oneTimeAmount));
+    console.log("Breakdown.amount (base):", amount);
+    console.log("Breakdown.totalCharge:", totalCharge);
+    console.log("Remaining balance:", contribution.amount_remaining);
+
+    // Safe parse
+    const parsedAmount = parseFloat(oneTimeAmount);
+
+    // Validate using parsedAmount (not breakdown just yet)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      alert("Please enter a valid positive amount");
+      return;
+    }
+
+    if (parsedAmount > contribution.amount_remaining) {
+      alert(`Please enter a valid amount not exceeding your remaining balance`);
+      return;
+    }
+
+    setProcessingOneTimePayment(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:4000/payment/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            userId: authUerId,
+            tripId: authTripId,
+            baseAmount: parsedAmount,
+            totalCharge,
+            paymentType: "self",
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error) {
+      console.error("Error creating one-time payment session:", error);
+      alert("Something went wrong while starting payment");
+    }
+
+    setProcessingOneTimePayment(false);
+  };
+  const handlePayForFriend = async () => {
+    console.log("selectedFriend", selectedFriend);
+    console.log("friendPaymentAmount", friendPaymentAmount);
+    console.log("paymentMethod", paymentMethod);
+
+    if (!selectedFriend || !friendPaymentAmount) {
+      alert("Please select a participant and enter a valid amount");
+      return;
+    }
+
+    const { totalCharge } = friendBreakdown;
+
+    setProcessingFriendPayment(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:4000/payment/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            paidBy: authUerId, // the actual payer
+            userId: selectedFriend, // the credited participant (receiver)
+            tripId: authTripId, // trip reference
+            baseAmount: parseFloat(friendPaymentAmount), // original amount
+            totalCharge, // after any fees/charges
+            paymentType: "participant", // "self" or "participant"
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data?.url) {
+        window.location.href = data.url; // redirect to Stripe Checkout
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err) {
+      console.error("Error creating friend payment session:", err);
+      alert("Something went wrong while starting payment");
+    }
+
+    setProcessingFriendPayment(false);
+  };
+
+  const handleAddPaymentMethod = () => {
+    const defaultCard = {
+      brand: "Visa",
+      last4: "4242",
+      type: "card",
+    };
+    setPaymentMethod(defaultCard);
+    setShowPaymentModal(false);
+    localStorage.setItem(
+      `kasama_payment_method_${authTripId}`,
+      JSON.stringify(defaultCard)
+    );
   };
 
   const calculateStripeFee = (amount, paymentType = "card") => {
@@ -440,7 +315,6 @@ export default function Payments() {
       return amount * 0.029 + 0.3;
     }
   };
-
   const calculateOneTimePaymentBreakdown = () => {
     const amount = parseFloat(oneTimeAmount) || 0;
     const stripeFee = calculateStripeFee(amount, paymentMethod?.type || "card");
@@ -454,230 +328,19 @@ export default function Payments() {
       totalCharge,
     };
   };
-
-  // Enhanced friend payment with cost breakdown
-  const calculateFriendPaymentBreakdown = () => {
-    const amount = parseFloat(friendPaymentAmount) || 0;
-    const stripeFee = calculateStripeFee(amount, paymentMethod?.type || "card");
-    const kasamaFee = 1.0; // Flat fee for Kasama platform
-    const totalCharge = amount + stripeFee + kasamaFee;
-
-    return {
-      amount,
-      stripeFee,
-      kasamaFee,
-      totalCharge,
-    };
-  };
-
-  const handlePayForFriend = async () => {
-    if (
-      !selectedFriend ||
-      !friendPaymentAmount ||
-      !paymentMethod ||
-      !selectedFriendContribution
-    ) {
-      alert(
-        "Please select a friend, enter an amount, and ensure you have a payment method added"
-      );
-      return;
-    }
-
+  // inside your component
+  const friendBreakdown = useMemo(() => {
     const amount = parseFloat(friendPaymentAmount);
-    if (amount <= 0 || amount > selectedFriendContribution.amount_remaining) {
-      alert(
-        `Please enter a valid amount not exceeding ${selectedFriendContribution.amount_remaining.toFixed(
-          2
-        )}`
-      );
-      return;
+    if (!friendPaymentAmount || isNaN(amount) || amount <= 0) {
+      return { amount: 0, stripeFee: 0, totalCharge: 0 };
     }
 
-    setProcessingFriendPayment(true);
+    const platformFee = 1.0;
+    const stripeFee = 0.029 * amount + 0.3;
+    const totalCharge = amount + platformFee + stripeFee;
 
-    // Mock payment processing (will be replaced with Stripe)
-    setTimeout(async () => {
-      try {
-        // Find friend's contribution
-        // The selectedFriendContribution state is already holding the correct object
-        // const friendContribution = allContributions.find(c => c.user_id === selectedFriend);
-
-        // Update friend's contribution
-        const newAmountPaid = selectedFriendContribution.amount_paid + amount;
-        const newAmountRemaining = Math.max(
-          0,
-          selectedFriendContribution.goal_amount - newAmountPaid
-        );
-
-        await Contribution.update(selectedFriendContribution.id, {
-          amount_paid: newAmountPaid,
-          amount_remaining: newAmountRemaining,
-        });
-
-        // Log this transaction
-        const payerFirstName = user.full_name.split(" ")[0];
-        const recipient = participants.find((p) => p.id === selectedFriend);
-        const recipientFirstName = recipient.full_name.split(" ")[0];
-        await TripActivity.create({
-          trip_id: trip.id,
-          user_id: user.id,
-          user_first_name: payerFirstName,
-          action_type: "PAID_FOR_FRIEND",
-          description: `${payerFirstName} paid $${amount.toFixed(
-            2
-          )} on behalf of ${recipientFirstName}.`,
-          metadata: {
-            amount: amount,
-            recipient_id: selectedFriend,
-            recipient_name: recipient.full_name,
-          },
-        });
-
-        // Refresh data
-        loadPaymentData();
-
-        // Reset form
-        setSelectedFriend("");
-        setFriendPaymentAmount("");
-        setSelectedFriendContribution(null); // Clear selected friend's contribution info
-      } catch (error) {
-        console.error("Error processing friend payment:", error);
-      }
-      setProcessingFriendPayment(false);
-    }, 2000); // Mock 2-second processing time
-  };
-
-  const handleOneTimePayment = async () => {
-    if (!oneTimeAmount || !paymentMethod || !contribution) {
-      alert(
-        "Please enter an amount and ensure you have a payment method added"
-      );
-      return;
-    }
-
-    const amount = parseFloat(oneTimeAmount);
-    if (amount <= 0 || amount > contribution.amount_remaining) {
-      alert("Please enter a valid amount not exceeding your remaining balance");
-      return;
-    }
-
-    setProcessingOneTimePayment(true);
-
-    // Mock payment processing (will be replaced with Stripe)
-    setTimeout(async () => {
-      try {
-        const breakdown = calculateOneTimePaymentBreakdown();
-
-        // Update user's contribution
-        const newAmountPaid = contribution.amount_paid + amount;
-        const newAmountRemaining = Math.max(
-          0,
-          contribution.goal_amount - newAmountPaid
-        );
-
-        await Contribution.update(contribution.id, {
-          amount_paid: newAmountPaid,
-          amount_remaining: newAmountRemaining,
-        });
-
-        // Log this transaction
-        const firstName = user.full_name.split(" ")[0];
-        await TripActivity.create({
-          trip_id: trip.id,
-          user_id: user.id,
-          user_first_name: firstName,
-          action_type: "MADE_PAYMENT",
-          description: `${firstName} contributed $${amount.toFixed(
-            2
-          )} toward the trip.`,
-          metadata: { amount },
-        });
-
-        // Log transaction (in real implementation, this would go to a Transaction entity)
-        console.log("Transaction Log:", {
-          user_id: user.id,
-          trip_id: trip.id,
-          payment_amount: amount,
-          stripe_fee: breakdown.stripeFee,
-          kasama_fee: breakdown.kasamaFee,
-          total_charged: breakdown.totalCharge,
-          payment_method: paymentMethod.type,
-          timestamp: new Date().toISOString(),
-          type: "one_time_payment",
-        });
-
-        // Refresh data and reset form
-        loadPaymentData();
-        setOneTimeAmount("");
-      } catch (error) {
-        console.error("Error processing one-time payment:", error);
-      }
-      setProcessingOneTimePayment(false);
-    }, 2000); // Mock 2-second processing time
-  };
-
-  const calculateWithdrawalBreakdown = () => {
-    const totalContributed = allContributions.reduce(
-      (sum, c) => sum + c.amount_paid,
-      0
-    );
-    // This is a simplification. Ideally, transaction fees would be stored per transaction.
-    // For now, assuming an average fee for calculation purposes.
-    const transactionCount = allContributions.length;
-
-    // Mock Stripe processing fees (2.9% + 30¢ per card transaction, 0.8% per ACH)
-    // Assuming mostly card payments for aggregate calculation
-    const estimatedStripeFees =
-      totalContributed * 0.029 + transactionCount * 0.3;
-
-    // Kasama platform fee ($1 per contribution)
-    const kasamaFee = transactionCount * 1.0;
-
-    // Stripe payout fee
-    const payoutFee =
-      payoutMethod === "instant" ? Math.min(totalContributed * 0.01, 10) : 0.25;
-
-    const netAmount =
-      totalContributed - estimatedStripeFees - kasamaFee - payoutFee;
-
-    return {
-      totalContributed,
-      stripeFees: estimatedStripeFees,
-      kasamaFee,
-      payoutFee,
-      netAmount: Math.max(0, netAmount),
-    };
-  };
-
-  const handleWithdrawFunds = async () => {
-    if (user?.trip_role !== "admin" || fundsWithdrawn) return;
-
-    setProcessingWithdrawal(true);
-
-    // Mock withdrawal processing (will be replaced with Stripe Connect)
-    setTimeout(async () => {
-      // Mark funds as withdrawn
-      localStorage.setItem(`kasama_funds_withdrawn_${trip.id}`, "true");
-      setFundsWithdrawn(true);
-
-      // Log withdrawal
-      const firstName = user.full_name.split(" ")[0];
-      const breakdown = calculateWithdrawalBreakdown();
-      await TripActivity.create({
-        trip_id: trip.id,
-        user_id: user.id,
-        user_first_name: firstName,
-        action_type: "WITHDREW_FUNDS",
-        description: `Admin withdrew $${breakdown.netAmount.toFixed(
-          2
-        )} from the trip fund.`,
-        metadata: { amount: breakdown.netAmount },
-      });
-
-      setShowWithdrawalModal(false);
-      setProcessingWithdrawal(false);
-    }, 3000); // Mock 3-second processing time
-  };
+    return { amount, stripeFee, totalCharge };
+  }, [friendPaymentAmount]);
 
   if (loading) {
     return (
@@ -686,11 +349,11 @@ export default function Payments() {
       </div>
     );
   }
-
-  const isAdmin = user?.trip_role === "admin";
-  const autoPayAmount = calculateAutoPayAmount();
-  const withdrawalBreakdown = calculateWithdrawalBreakdown();
-  const friendBreakdown = calculateFriendPaymentBreakdown();
+  console.log("paymentDetailData", paymentDetailData);
+  // const isAdmin = user?.trip_role === "admin";
+  // const autoPayAmount = calculateAutoPayAmount();
+  // const withdrawalBreakdown = calculateWithdrawalBreakdown();
+  // const friendBreakdown = calculateFriendPaymentBreakdown();
 
   // const token = useSelector((state) => state.user.token);
   // const tripId = useSelector((state) => state.trips.activeTripId);
@@ -744,7 +407,8 @@ export default function Payments() {
                     Payments
                   </h1>
                   <p className="text-slate-600">
-                    Manage your contributions for {trip.destination}
+                    Manage your contributions for
+                    {/* {trip?.destination} */}
                   </p>
                 </div>
               </div>
@@ -785,12 +449,23 @@ export default function Payments() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {!paymentMethod ? (
+                {paymentDetailData?.remainings <= 0 ? (
+                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                    <Check className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="font-semibold text-green-700">
+                        Payment Complete
+                      </p>
+                      <p className="text-sm text-green-600">
+                        You have fully paid your share for this trip.
+                      </p>
+                    </div>
+                  </div>
+                ) : !paymentMethod ? (
                   <div className="space-y-6">
                     <p className="text-slate-600">
                       Add a secure payment method for this trip
                     </p>
-
                     <Dialog
                       open={showPaymentModal}
                       onOpenChange={setShowPaymentModal}
@@ -801,62 +476,34 @@ export default function Payments() {
                           Add Payment Method
                         </Button>
                       </DialogTrigger>
+
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                           <DialogTitle>Add Payment Method</DialogTitle>
                           <DialogDescription>
-                            Choose your preferred payment method for this trip
+                            Add a secure credit/debit card for this trip
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 gap-4">
-                            <div
-                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                methodType === "ach"
-                                  ? "border-green-500 bg-green-50"
-                                  : "border-slate-200 hover:border-slate-300"
-                              }`}
-                              onClick={() => setMethodType("ach")}
-                            >
-                              <div className="flex items-center gap-3">
-                                <Banknote className="w-5 h-5 text-slate-600" />
-                                <div>
-                                  <h4 className="font-semibold">
-                                    Bank (ACH) - Recommended
-                                  </h4>
-                                  <p className="text-sm text-slate-500">
-                                    0.8% fee, capped at $5
-                                  </p>
-                                </div>
-                              </div>
-                              <p className="text-xs text-green-700 mt-2 font-medium">
-                                💡 Save money on fees — pay with your bank
-                                account
-                              </p>
-                            </div>
 
-                            <div
-                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                methodType === "card"
-                                  ? "border-blue-500 bg-blue-50"
-                                  : "border-slate-200 hover:border-slate-300"
-                              }`}
-                              onClick={() => setMethodType("card")}
-                            >
-                              <div className="flex items-center gap-3">
-                                <CreditCard className="w-5 h-5 text-slate-600" />
-                                <div>
-                                  <h4 className="font-semibold">
-                                    Credit/Debit Card
-                                  </h4>
-                                  <p className="text-sm text-slate-500">
-                                    2.9% + 30¢ per transaction
-                                  </p>
-                                </div>
+                        <div className="space-y-4">
+                          <div
+                            className="p-4 border-2 rounded-xl cursor-pointer border-blue-500 bg-blue-50"
+                            onClick={() => setMethodType("card")}
+                          >
+                            <div className="flex items-center gap-3">
+                              <CreditCard className="w-5 h-5 text-slate-600" />
+                              <div>
+                                <h4 className="font-semibold">
+                                  Credit/Debit Card
+                                </h4>
+                                <p className="text-sm text-slate-500">
+                                  2.9% + 30¢ per transaction
+                                </p>
                               </div>
                             </div>
                           </div>
                         </div>
+
                         <DialogFooter>
                           <Button
                             variant="outline"
@@ -868,7 +515,7 @@ export default function Payments() {
                             onClick={handleAddPaymentMethod}
                             className="bg-blue-600 hover:bg-blue-700"
                           >
-                            Add {methodType === "ach" ? "Bank Account" : "Card"}
+                            Add Card
                           </Button>
                         </DialogFooter>
                       </DialogContent>
@@ -890,7 +537,7 @@ export default function Payments() {
                           </p>
                         </div>
                       </div>
-                      <Button
+                      {/* <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -901,7 +548,7 @@ export default function Payments() {
                         }}
                       >
                         Change
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
                 )}
@@ -910,8 +557,8 @@ export default function Payments() {
 
             {/* 2. One-Time Payment */}
             {paymentMethod &&
-              contribution &&
-              contribution.amount_remaining > 0 && (
+              paymentDetailData &&
+              paymentDetailData.remainings > 0 && (
                 <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -919,6 +566,7 @@ export default function Payments() {
                       Make a One-Time Payment
                     </CardTitle>
                   </CardHeader>
+
                   <CardContent className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
@@ -929,15 +577,34 @@ export default function Payments() {
                             type="number"
                             step="0.01"
                             min="0"
-                            max={contribution.amount_remaining}
                             placeholder="0.00"
                             value={oneTimeAmount}
-                            onChange={(e) => setOneTimeAmount(e.target.value)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (isNaN(val) || val < 0) {
+                                setOneTimeAmount("");
+                                return;
+                              }
+                              setOneTimeAmount(val.toString());
+                            }}
                             className="pl-10"
                           />
                         </div>
+
+                        {/* Error message */}
+                        {oneTimeAmount &&
+                          (parseFloat(oneTimeAmount) <= 0 ||
+                            parseFloat(oneTimeAmount) >
+                              paymentDetailData.remainings) && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {parseFloat(oneTimeAmount) <= 0
+                                ? "Please enter a valid positive amount."
+                                : "Amount cannot exceed remaining balance."}
+                            </p>
+                          )}
+
                         <p className="text-xs text-slate-500 mt-1">
-                          Maximum: ${contribution.amount_remaining.toFixed(2)}
+                          Maximum: ${paymentDetailData.remainings.toFixed(2)}
                         </p>
                       </div>
 
@@ -959,9 +626,12 @@ export default function Payments() {
                             </div>
                             <div className="flex justify-between">
                               <span>Estimated Stripe Fee:</span>
-                              <span>{`$${calculateOneTimePaymentBreakdown().stripeFee.toFixed(
-                                2
-                              )}`}</span>
+                              <span>
+                                $
+                                {calculateOneTimePaymentBreakdown().stripeFee.toFixed(
+                                  2
+                                )}
+                              </span>
                             </div>
                             <div className="text-xs text-slate-500">
                               (
@@ -974,9 +644,12 @@ export default function Payments() {
                             <hr className="my-2" />
                             <div className="flex justify-between font-bold text-green-600">
                               <span>Total You'll Be Charged Today:</span>
-                              <span>{`$${calculateOneTimePaymentBreakdown().totalCharge.toFixed(
-                                2
-                              )}`}</span>
+                              <span>
+                                $
+                                {calculateOneTimePaymentBreakdown().totalCharge.toFixed(
+                                  2
+                                )}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -988,21 +661,30 @@ export default function Payments() {
                       disabled={
                         !oneTimeAmount ||
                         parseFloat(oneTimeAmount) <= 0 ||
+                        parseFloat(oneTimeAmount) >
+                          paymentDetailData.remainings ||
                         processingOneTimePayment
                       }
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      {processingOneTimePayment ? (
+                      {processingOneTimePayment && (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      ) : null}
-                      Pay ${oneTimeAmount || "0.00"}
+                      )}
+                      Pay $
+                      {oneTimeAmount &&
+                      parseFloat(oneTimeAmount) > 0 &&
+                      parseFloat(oneTimeAmount) <= paymentDetailData.remainings
+                        ? calculateOneTimePaymentBreakdown().totalCharge.toFixed(
+                            2
+                          )
+                        : "0.00"}
                     </Button>
                   </CardContent>
                 </Card>
               )}
 
             {/* 3. Auto-Pay Setup - Enhanced with recurring day selection */}
-            {paymentMethod &&
+            {/* {paymentMethod &&
               contribution &&
               contribution.amount_remaining > 0 && (
                 <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
@@ -1077,10 +759,10 @@ export default function Payments() {
                     </CardContent>
                   )}
                 </Card>
-              )}
+              )} */}
 
             {/* 4. Pay for a Friend - Enhanced with real-time data and cost breakdown */}
-            {paymentMethod && (
+            {tripParticipantsNumber > 0 && (
               <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -1088,206 +770,153 @@ export default function Payments() {
                     Pay for a Friend
                   </CardTitle>
                 </CardHeader>
+
                 <CardContent className="space-y-4">
-                  {participants.length > 0 ? (
-                    <>
-                      <div>
-                        <Label>Select Participant</Label>
-                        <Select
-                          value={selectedFriend}
-                          onValueChange={setSelectedFriend}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose a friend" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {participants.map((participant) => {
-                              const participantContrib = allContributions.find(
-                                (c) => c.user_id === participant.id
-                              );
-                              return (
-                                <SelectItem
-                                  key={participant.id}
-                                  value={participant.id}
-                                >
-                                  <div className="flex justify-between items-center w-full">
-                                    <span>{participant.full_name}</span>
-                                    <span className="text-xs text-slate-500 ml-4">
-                                      Owes: $
-                                      {participantContrib?.amount_remaining?.toFixed(
-                                        2
-                                      ) || "0.00"}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <div>
+                    <Label>Select Participant</Label>
+                    <Select
+                      value={selectedFriend}
+                      onValueChange={(val) => setSelectedFriend(val)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a friend" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {totalParticipant
+                          // ✅ Filter out logged-in user
+                          .filter((p) => p.userId !== authUerId)
+                          .map((p) => {
+                            const isFullyPaid =
+                              (p.paymentInfo?.remainings ?? 0) <= 0; // ✅ use remainings
+                            return (
+                              <SelectItem
+                                key={p.id}
+                                value={p.userId}
+                                disabled={isFullyPaid} // ✅ disable fully paid
+                              >
+                                <div className="flex justify-between items-center w-full">
+                                  <span>{p.user?.name}</span>
+                                  <span className="text-xs text-slate-500 ml-4">
+                                    Paid: $
+                                    {p.paymentInfo?.amountPaid?.toFixed(2) || 0}{" "}
+                                    / ${p.paymentInfo?.your_goal?.toFixed(2)}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                      {selectedFriendContribution && (
-                        <div className="bg-slate-50 rounded-xl p-4">
-                          <h4 className="font-semibold text-slate-800 mb-2">
-                            {
-                              participants.find((p) => p.id === selectedFriend)
-                                ?.full_name
-                            }
-                            's Contribution Status
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-slate-500">
-                                Goal Amount:
-                              </span>
-                              <p className="font-semibold">
-                                $
-                                {selectedFriendContribution.goal_amount.toFixed(
-                                  2
-                                )}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-slate-500">
-                                Amount Paid:
-                              </span>
-                              <p className="font-semibold text-green-600">
-                                $
-                                {selectedFriendContribution.amount_paid.toFixed(
-                                  2
-                                )}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-slate-500">
-                                Amount Remaining:
-                              </span>
-                              <p className="font-semibold text-coral-600">
-                                $
-                                {selectedFriendContribution.amount_remaining.toFixed(
-                                  2
-                                )}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-slate-500">
-                                Percent Paid:
-                              </span>
-                              <p className="font-semibold">
-                                {(
-                                  (selectedFriendContribution.amount_paid /
-                                    selectedFriendContribution.goal_amount) *
-                                  100
-                                ).toFixed(1)}
-                                %
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div>
-                        <Label>Amount to Pay</Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max={
-                              selectedFriendContribution?.amount_remaining || 0
-                            }
-                            placeholder="0.00"
-                            value={friendPaymentAmount}
-                            onChange={(e) =>
-                              setFriendPaymentAmount(e.target.value)
-                            }
-                            className="pl-10"
-                            disabled={!selectedFriend}
-                          />
-                        </div>
-                        {selectedFriend && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            Maximum: $
-                            {selectedFriendContribution?.amount_remaining?.toFixed(
-                              2
-                            ) || "0.00"}
-                          </p>
-                        )}
-                      </div>
-
-                      {friendPaymentAmount &&
-                        parseFloat(friendPaymentAmount) > 0 &&
-                        selectedFriendContribution && (
-                          <div className="bg-purple-50 rounded-xl p-4">
-                            <h4 className="font-semibold text-slate-800 mb-3">
-                              Payment Breakdown
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span>Contribution Amount:</span>
-                                <span>
-                                  ${friendBreakdown.amount.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Kasama Platform Fee:</span>
-                                <span>$1.00</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Stripe Processing Fee:</span>
-                                <span>
-                                  ${friendBreakdown.stripeFee.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                (
-                                {paymentMethod.type === "ach"
-                                  ? "0.8% (capped at $5)"
-                                  : "2.9% + 30¢"}{" "}
-                                for{" "}
-                                {paymentMethod.type === "ach" ? "ACH" : "card"})
-                              </div>
-                              <hr className="my-2" />
-                              <div className="flex justify-between font-bold text-purple-600">
-                                <span>Total You'll Be Charged:</span>
-                                <span>
-                                  ${friendBreakdown.totalCharge.toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                      <Button
-                        onClick={handlePayForFriend}
-                        disabled={
-                          !selectedFriend ||
-                          !friendPaymentAmount ||
-                          parseFloat(friendPaymentAmount) <= 0 ||
-                          processingFriendPayment
-                        }
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                      >
-                        {processingFriendPayment ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        ) : null}
-                        Pay ${friendPaymentAmount || "0.00"} for{" "}
-                        {selectedFriend &&
-                          participants.find((p) => p.id === selectedFriend)
-                            ?.full_name}
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-500">
-                        There are no other participants to pay for yet.
+                  {selectedFriendContribution && (
+                    <div className="mt-3 text-sm text-slate-600">
+                      <p>
+                        <strong>Paid:</strong> $
+                        {selectedFriendContribution.paymentInfo?.amountPaid?.toFixed(
+                          2
+                        ) || 0}
                       </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Invite friends to the trip to use this feature.
+                      <p>
+                        <strong>Goal:</strong> $
+                        {selectedFriendContribution.paymentInfo?.your_goal?.toFixed(
+                          2
+                        )}
+                      </p>
+                      <p>
+                        <strong>Remaining:</strong> $
+                        {selectedFriendContribution.paymentInfo?.remainings?.toFixed(
+                          2
+                        )}
                       </p>
                     </div>
                   )}
+
+                  <div>
+                    <Label>Amount to Pay</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        type="number"
+                        min="0"
+                        max={
+                          selectedFriendContribution?.paymentInfo?.remainings ||
+                          0
+                        } // ✅ block overpayment
+                        placeholder="0.00"
+                        value={friendPaymentAmount}
+                        onChange={(e) => setFriendPaymentAmount(e.target.value)}
+                        className="pl-10"
+                        disabled={
+                          !selectedFriend ||
+                          (selectedFriendContribution?.paymentInfo
+                            ?.remainings || 0) <= 0 // ✅ disable if fully paid
+                        }
+                      />
+                    </div>
+                    {selectedFriend && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Maximum: $
+                        {selectedFriendContribution?.paymentInfo?.remainings?.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+
+                  {friendPaymentAmount &&
+                    parseFloat(friendPaymentAmount) > 0 &&
+                    selectedFriendContribution && (
+                      <div className="bg-purple-50 rounded-xl p-4">
+                        <h4 className="font-semibold text-slate-800 mb-3">
+                          Payment Breakdown
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Contribution Amount:</span>
+                            <span>${friendBreakdown.amount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Kasama Platform Fee:</span>
+                            <span>$1.00</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Estimated Stripe Fee:</span>
+                            <span>${friendBreakdown.stripeFee.toFixed(2)}</span>
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            ("2.9% + 30¢" for card)
+                          </div>
+                          <hr className="my-2" />
+                          <div className="flex justify-between font-bold text-purple-600">
+                            <span>Total You'll Be Charged:</span>
+                            <span>
+                              ${friendBreakdown.totalCharge.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  <Button
+                    onClick={handlePayForFriend}
+                    disabled={
+                      !selectedFriend ||
+                      !friendPaymentAmount ||
+                      parseFloat(friendPaymentAmount) <= 0 ||
+                      (selectedFriendContribution?.paymentInfo?.remainings ||
+                        0) <= 0 || // ✅ use remainings
+                      parseFloat(friendPaymentAmount) >
+                        (selectedFriendContribution?.paymentInfo?.remainings ||
+                          0) ||
+                      processingFriendPayment
+                    }
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {processingFriendPayment && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    )}
+                    Pay ${friendBreakdown?.totalCharge.toFixed(2)} for{" "}
+                    {selectedFriendContribution?.user?.name}
+                  </Button>
                 </CardContent>
               </Card>
             )}

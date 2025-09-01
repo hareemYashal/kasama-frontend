@@ -80,11 +80,12 @@ function PagesContent() {
   const navigate = useNavigate();
   console.log("User from Route", user);
   let userRole = user?.role;
+  console.log('userRole',userRole)
   useEffect(() => {
-    if (user) {
+    if (user && userRole === "admin") {
       navigate("/dashboard");
     } else {
-      navigate("/");
+      navigate("/participantdashboard");
     }
   }, [user]);
 

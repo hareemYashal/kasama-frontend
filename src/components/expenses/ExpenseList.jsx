@@ -18,7 +18,11 @@ export default function ExpenseList({
   onAdd,
 }) {
   const [showInlineForm, setShowInlineForm] = useState(false);
-  const [formData, setFormData] = useState({ name: "", amount: "" });
+  const [formData, setFormData] = useState({
+    name: "",
+    amount: "",
+    description: "",
+  });
   const [submitting, setSubmitting] = useState(false);
   const totalAmount = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
@@ -40,39 +44,36 @@ export default function ExpenseList({
     },
   });
 
-  const handleInlineSubmit = async (e) => {
-    e.preventDefault();
-    console.log(formData, "Hey I am the Add Expense");
-    let dataToSend = {
+const handleInlineSubmit = async (e) => {
+  e.preventDefault();
+  setSubmitting(true);
+  try {
+    const newExpense = {
       expense_name: formData.name,
-      expense_amount: Number(formData.amount),
+      expense_amount: parseFloat(formData.amount),
+      description: formData.description,  // ✅ required
       tripId,
     };
-    addExpenseMutate(dataToSend);
 
-    // if (
-    //   !formData.name.trim() ||
-    //   !formData.amount ||
-    //   parseFloat(formData.amount) <= 0
-    // )
-    //   return;
+    const res = await createExpenseService(token, newExpense);
 
-    // setSubmitting(true);
-    // try {
-    //   await onAdd({
-    //     name: formData.name.trim(),
-    //     amount: parseFloat(formData.amount),
-    //   });
-    //   setFormData({ name: "", amount: "" });
-    //   setShowInlineForm(false);
-    // } catch (error) {
-    //   console.error("Error adding expense:", error);
-    // }
-    // setSubmitting(false);
-  };
+    const success = onAdd(res.data);   // ✅ handleAddExpense runs
+    if (success) {
+      // ✅ Reset form
+      setFormData({ name: "", amount: "", description: "" });
+      // ✅ Close inline form
+      setShowInlineForm(false);
+    }
+  } catch (error) {
+    console.error("Error creating expense:", error);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   const handleInlineCancel = () => {
-    setFormData({ name: "", amount: "" });
+    setFormData({ name: "", amount: "", description: "" });
     setShowInlineForm(false);
   };
 
@@ -87,8 +88,7 @@ export default function ExpenseList({
     onSuccess: (data, variables) => {
       dispatch(deleteExpenseRed(Number(variables)));
       console.log(variables, "000000");
-      toast.success("Expense deleted!");
-      console.log("Delete response:", data);
+      toast.success(data.message || "Expense deleted successfully!");
       setFormData({ name: "", amount: "" });
     },
     onError: (error) => {
@@ -222,6 +222,19 @@ export default function ExpenseList({
                           className="pl-10 border-slate-300"
                         />
                       </div>
+                      <div className="col-span-1 md:col-span-2">
+                        <Input
+                          placeholder="Description"
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              description: e.target.value,
+                            }))
+                          }
+                          className="border-slate-300"
+                        />
+                      </div>
                     </div>
                     <div className="flex justify-end gap-3">
                       <Button
@@ -240,6 +253,7 @@ export default function ExpenseList({
                           !formData.name.trim() ||
                           !formData.amount ||
                           parseFloat(formData.amount) <= 0 ||
+                          !formData.description?.trim() || 
                           submitting
                         }
                         size="sm"

@@ -332,7 +332,7 @@
 //     </div>
 //   );
 // }
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -342,162 +342,83 @@ import { Calendar, Plus, ArrowLeft, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import ItineraryForm from "../components/itinerary/ItineraryForm";
 import ItineraryDayGroup from "../components/itinerary/ItineraryDayGroup";
-import { useMutation } from "@tanstack/react-query";
-import { createItineraryService } from "@/services/itinerary";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  getItinerariesService,
+  deleteItineraryService,
+} from "@/services/itinerary";
+import { getActiveTripService } from "@/services/trip";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 
 export default function Itinerary() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [trip, setTrip] = useState(null);
-  const [itineraryItems, setItineraryItems] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [expandedDays, setExpandedDays] = useState(new Set());
 
-  useEffect(() => {
-    loadItineraryData();
-  }, []);
+  const tripId = useSelector((state) => state.trips.activeTripId);
+  const token = useSelector((state) => state.user.token);
+  const authUser = useSelector((state) => state.user.user);
+  // ✅ Active Trip
+  const { data: activeTripData, isLoading: isLoadingTrip } = useQuery({
+    queryKey: ["getActiveTripData"],
+    queryFn: () => getActiveTripService(token),
+    enabled: !!token,
+  });
 
-  const loadItineraryData = async () => {
-    setLoading(true);
-    try {
-      const currentUser = {
-        id: 1,
-        full_name: "Alex Morgan",
-        current_trip_id: 101,
-        trip_role: "admin",
-      };
-      setUser(currentUser);
+  const activeTrip = activeTripData?.data?.activeTrip;
+  const isAdmin = authUser?.role === "admin";
 
-      const currentTrip = {
-        id: 101,
-        name: "Europe Adventure",
-        destination: "Paris",
-        start_date: "2025-08-10",
-        end_date: "2025-08-20",
-      };
-      setTrip(currentTrip);
+  // ✅ Get Itineraries
+  const {
+    data: itineraryRes,
+    isLoading: isLoadingItineraries,
+    refetch,
+  } = useQuery({
+    queryKey: ["getItineraries", tripId],
+    queryFn: () => getItinerariesService(token, tripId),
+    enabled: !!tripId,
+  });
 
-      const dummyItinerary = [
-        {
-          id: 1,
-          trip_id: 101,
-          date: "2025-08-10",
-          activity_title: "Arrival & Check-in",
-          start_time: "10:00 AM",
-          end_time: "12:00 PM",
-          notes: "Hotel lobby meetup",
-        },
-        {
-          id: 2,
-          trip_id: 101,
-          date: "2025-08-10",
-          activity_title: "City Walking Tour",
-          start_time: "2:00 PM",
-          end_time: "5:00 PM",
-          notes: "Wear comfortable shoes",
-        },
-        {
-          id: 3,
-          trip_id: 101,
-          date: "2025-08-11",
-          activity_title: "Museum Visit",
-          start_time: "11:00 AM",
-          end_time: "1:00 PM",
-          notes: "Tickets already booked",
-        },
-      ];
-      setItineraryItems(dummyItinerary);
+  const itineraries = itineraryRes?.data || [];
 
-      const uniqueDays = [...new Set(dummyItinerary.map((item) => item.date))];
-      setExpandedDays(new Set(uniqueDays));
-    } catch (error) {
-      console.error("Error loading dummy itinerary:", error);
-      navigate(createPageUrl("Home"));
-    }
-    setLoading(false);
-  };
+  // ✅ Delete Itinerary
+  const { mutate: deleteItinerary } = useMutation({
+    mutationFn: (id) => deleteItineraryService(token, id),
+    onSuccess: () => {
+      toast.success("Itinerary deleted");
+      refetch();
+    },
+    onError: () => toast.error("Failed to delete"),
+  });
 
   const handleAddItem = () => {
     setEditingItem(null);
-
     setShowForm(true);
   };
 
   const handleEditItem = (item) => {
-    if (user?.trip_role !== "admin") return;
     setEditingItem(item);
     setShowForm(true);
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (user?.trip_role !== "admin") return;
-    try {
-      const updatedItems = itineraryItems.filter((item) => item.id !== itemId);
-      setItineraryItems(updatedItems);
-
-      const uniqueDays = [...new Set(updatedItems.map((item) => item.date))];
-      setExpandedDays(new Set(uniqueDays));
-    } catch (error) {
-      console.error("Error deleting dummy itinerary item:", error);
-    }
-  };
-
-  const handleFormSubmit = async (formData) => {
-    if (user?.trip_role !== "admin") return;
-
-    try {
-      const itemData = {
-        ...formData,
-        id: editingItem ? editingItem.id : Date.now(),
-        trip_id: trip.id,
-      };
-
-      const updatedItems = editingItem
-        ? itineraryItems.map((item) =>
-            item.id === editingItem.id ? itemData : item
-          )
-        : [...itineraryItems, itemData];
-
-      setItineraryItems(updatedItems);
-
-      const uniqueDays = [...new Set(updatedItems.map((item) => item.date))];
-      setExpandedDays(new Set(uniqueDays));
-
-      setShowForm(false);
-      setEditingItem(null);
-    } catch (error) {
-      console.error("Error saving dummy itinerary item:", error);
-    }
-  };
-
-  const handleFormCancel = () => {
-    setShowForm(false);
-    setEditingItem(null);
+  const handleDeleteItem = (itemId) => {
+    deleteItinerary(itemId);
   };
 
   const toggleDay = (date) => {
     const newExpanded = new Set(expandedDays);
-    if (newExpanded.has(date)) {
-      newExpanded.delete(date);
-    } else {
-      newExpanded.add(date);
-    }
+    newExpanded.has(date) ? newExpanded.delete(date) : newExpanded.add(date);
     setExpandedDays(newExpanded);
   };
-
+  console.log("itineraries", itineraries);
   const groupItemsByDay = () => {
     const groups = {};
-    itineraryItems.forEach((item) => {
-      if (!groups[item.date]) {
-        groups[item.date] = [];
-      }
+    itineraries?.itineraries?.forEach((item) => {
+      if (!groups[item.date]) groups[item.date] = [];
       groups[item.date].push(item);
     });
-
     return Object.keys(groups)
       .sort((a, b) => new Date(a) - new Date(b))
       .map((date) => ({
@@ -508,21 +429,19 @@ export default function Itinerary() {
       }));
   };
 
-  if (loading) {
+  if (isLoadingTrip || isLoadingItineraries) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-12 w-12 border-b-2 border-blue-600 rounded-full"></div>
       </div>
     );
   }
 
-  if (!trip) {
+  if (!activeTrip) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">
-            No Active Trip
-          </h2>
+          <h2 className="text-2xl font-bold mb-4">No Active Trip</h2>
           <Button onClick={() => navigate(createPageUrl("Home"))}>
             Go Home
           </Button>
@@ -531,11 +450,10 @@ export default function Itinerary() {
     );
   }
 
-  const isAdmin = user?.trip_role === "admin";
   const dayGroups = groupItemsByDay();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <Button
@@ -545,14 +463,14 @@ export default function Itinerary() {
                 createPageUrl(isAdmin ? "Dashboard" : "ParticipantDashboard")
               )
             }
-            className="bg-white/80"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-slate-200/60">
+        {/* Trip Header */}
+        <div className="bg-white/80 p-8 rounded-3xl shadow-xl border">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -567,58 +485,54 @@ export default function Itinerary() {
                   {isAdmin ? "Admin - Can Edit" : "Participant - View Only"}
                 </Badge>
               </div>
-              <h1 className="text-4xl font-bold text-slate-800 mb-2">
-                Trip Itinerary
-              </h1>
+              <h1 className="text-4xl font-bold mb-2">Trip Itinerary</h1>
               <div className="flex items-center gap-2 text-xl text-slate-600">
-                <MapPin clas sName="w-5 h-5" />
-                {trip.destination} •{" "}
-                {format(new Date(trip.start_date), "MMM d")} -{" "}
-                {format(new Date(trip.end_date), "MMM d, yyyy")}
+                <MapPin className="w-5 h-5" />
+                {activeTrip.destination} •{" "}
+                {format(new Date(activeTrip.start_date), "MMM d")} -{" "}
+                {format(new Date(activeTrip.end_date), "MMM d, yyyy")}
               </div>
+              {activeTrip.welcome_message && (
+                <p className="mt-2 text-slate-500">
+                  {activeTrip.welcome_message}
+                </p>
+              )}
             </div>
 
             {isAdmin && (
               <Button
                 onClick={handleAddItem}
                 size="lg"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
               >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Activity
+                <Plus className="w-5 h-5 mr-2" /> Add Activity
               </Button>
             )}
           </div>
         </div>
 
+        {/* Form */}
         {showForm && isAdmin && (
           <ItineraryForm
-            trip={trip}
+            trip={activeTrip}
             item={editingItem}
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
+            onCancel={() => setShowForm(false)}
             setShowForm={setShowForm}
+            refetch={refetch}
           />
         )}
 
+        {/* Itinerary Groups */}
         <div className="space-y-6">
           {dayGroups.length === 0 ? (
-            <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+            <Card className="bg-white/80 shadow-lg">
               <CardContent className="py-16 text-center">
                 <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-slate-600 mb-2">
+                <h3 className="text-xl font-semibold mb-2">
                   No itinerary has been added yet
                 </h3>
-                <p className="text-slate-500 mb-6">
-                  {isAdmin
-                    ? "Start planning your trip by adding your first activity"
-                    : "Check back soon. The trip admin hasn't added any activities yet."}
-                </p>
                 {isAdmin && (
-                  <Button
-                    onClick={handleAddItem}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
+                  <Button onClick={handleAddItem} className="bg-blue-600">
                     <Plus className="w-4 h-4 mr-2" />
                     Add First Activity
                   </Button>

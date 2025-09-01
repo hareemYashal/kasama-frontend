@@ -117,6 +117,7 @@ const removeParticipantService = async (token, userId, tripId) => {
     throw error;
   }
 };
+
 export {
   addParticipantService,
   totalParticipantsService,

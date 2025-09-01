@@ -1,49 +1,56 @@
-import React from 'react';
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Clock, 
-  Edit, 
-  Trash2, 
-  FileText 
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Edit,
+  Trash2,
+  FileText,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
-export default function ItineraryDayGroup({ 
-  date, 
-  items, 
-  isExpanded, 
-  onToggle, 
-  isAdmin, 
-  onEdit, 
-  onDelete 
+export default function ItineraryDayGroup({
+  date,
+  items,
+  isExpanded,
+  onToggle,
+  isAdmin,
+  onEdit,
+  onDelete,
 }) {
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
-      <CardHeader 
+      <CardHeader
         className="cursor-pointer hover:bg-slate-50/60 transition-colors duration-200"
         onClick={onToggle}
       >
         <CardTitle className="flex items-center justify-between text-slate-800">
           <div className="flex items-center gap-3">
-            {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            {isExpanded ? (
+              <ChevronDown className="w-5 h-5" />
+            ) : (
+              <ChevronRight className="w-5 h-5" />
+            )}
             <span>{format(parseISO(date), "EEEE, MMMM d")}</span>
           </div>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            {items.length} activit{items.length !== 1 ? 'ies' : 'y'}
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200"
+          >
+            {items.length} activit{items.length !== 1 ? "ies" : "y"}
           </Badge>
         </CardTitle>
       </CardHeader>
-      
+
       {isExpanded && (
         <CardContent className="pt-0 pb-4 pr-4">
           <div className="pl-8 space-y-4">
-            {items.map(item => (
-              <div 
-                key={item.id} 
+            {items.map((item) => (
+              <div
+                key={item.id}
                 className="flex items-start gap-4 p-4 border-l-2 border-blue-200"
               >
                 <div className="pt-1">
@@ -51,13 +58,16 @@ export default function ItineraryDayGroup({
                     <Clock className="w-4 h-4 text-blue-600" />
                   </div>
                 </div>
-                
+
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-semibold text-slate-800">{item.activity_title}</p>
+                      <p className="font-semibold text-slate-800">
+                        {item.activity_title}
+                      </p>
                       <p className="text-sm text-blue-600 font-medium">
-                        {item.start_time} {item.end_time && ` - ${item.end_time}`}
+                        {format(new Date(item.start_time), "h:mm a")} -{" "}
+                        {format(new Date(item.end_time), "h:mm a")}
                       </p>
                     </div>
                     {isAdmin && (
@@ -81,7 +91,7 @@ export default function ItineraryDayGroup({
                       </div>
                     )}
                   </div>
-                  
+
                   {item.notes && (
                     <div className="mt-3 p-3 bg-slate-50 rounded-lg text-sm text-slate-600 flex items-start gap-2">
                       <FileText className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />

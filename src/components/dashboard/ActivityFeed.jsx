@@ -62,15 +62,10 @@ const ActivityItem = ({ activity }) => (
 export default function ActivityFeed({ trip }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const PAGE_SIZE = 10;
 
   useEffect(() => {
     if (trip?.id) {
-      fetchActivities(true, 1, trip.id);
+      fetchActivities(trip.id);
 
       // Inject meta activities
       const metaActivities = [
@@ -113,44 +108,19 @@ export default function ActivityFeed({ trip }) {
     }
   }, [trip]);
 
-  const fetchActivities = async (isInitial = false, fetchPage, tripId) => {
-    if (isInitial) setLoading(true);
-    else setIsFetchingMore(true);
-
+  const fetchActivities = async (tripId) => {
+    setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       const newActivities = await TripActivity.filter(
         { trip_id: tripId },
-        "-created_date",
-        PAGE_SIZE,
-        (fetchPage - 1) * PAGE_SIZE
+        "-created_date"
       );
-
-      if (newActivities.length < PAGE_SIZE) {
-        setHasMore(false);
-      }
-
-      setActivities((prev) =>
-        fetchPage === 1 ? [...newActivities] : [...prev, ...newActivities]
-      );
+      setActivities((prev) => [...newActivities, ...prev]);
     } catch (error) {
       console.error("Error fetching trip activities:", error);
     }
-
-    if (isInitial) setLoading(false);
-    else setIsFetchingMore(false);
+    setLoading(false);
   };
-
-  const handleLoadMore = () => {
-    if (hasMore && !isFetchingMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchActivities(false, nextPage, trip.id);
-    }
-  };
-
-  const visibleActivities = isExpanded ? activities : activities.slice(0, 3);
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg h-full">
@@ -159,54 +129,21 @@ export default function ActivityFeed({ trip }) {
           <History className="w-5 h-5 text-slate-600" />
           Activity Feed
         </CardTitle>
-        {isExpanded && activities.length > 3 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsExpanded(false)}
-            className="h-7 w-7 rounded-full"
-          >
-            <X className="w-4 h-4 text-slate-500" />
-          </Button>
-        )}
       </CardHeader>
+
       <CardContent className="p-4 space-y-4">
         {loading ? (
           <div className="flex justify-center py-4">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
           </div>
-        ) : visibleActivities.length > 0 ? (
-          visibleActivities.map((activity) => (
+        ) : activities.length > 0 ? (
+          activities.map((activity) => (
             <ActivityItem key={activity.id} activity={activity} />
           ))
         ) : (
           <p className="text-sm text-slate-500 text-center py-4">
             No activity yet. Be the first to do something!
           </p>
-        )}
-
-        {!isExpanded && activities.length > 3 && (
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="text-sm text-blue-600 hover:underline w-full pt-2"
-          >
-            Load More
-          </button>
-        )}
-
-        {isExpanded && hasMore && !isFetchingMore && (
-          <Button
-            variant="outline"
-            onClick={handleLoadMore}
-            className="w-full mt-2"
-          >
-            Load More...
-          </Button>
-        )}
-        {isFetchingMore && (
-          <div className="flex justify-center pt-2">
-            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-          </div>
         )}
       </CardContent>
     </Card>

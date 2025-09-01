@@ -57,8 +57,32 @@ const createExpenseService = async (token, data) => {
   }
 };
 
+const updateExpenseService = (token, expenseId, data) => {
+  return axiosInstance.put(`/expense/updateExpense/${expenseId}`, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+const getExpenseByIdService = async (token, expenseId) => {
+  try {
+    const response = await axiosInstance.get(
+      `/expense/getExpenseById/${expenseId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export {
   createExpenseService,
+  updateExpenseService,
+  getExpenseByIdService,
   getExpenseByTripIdService,
   getExpenseListService,
   deleteExpenseService,

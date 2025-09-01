@@ -29,14 +29,17 @@ import {
 import ExpenseForm from "../components/expenses/ExpenseForm";
 import ExpenseList from "../components/expenses/ExpenseList";
 import ContributionOverview from "../components/expenses/ContributionOverview";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  getExpenseByIdService,
   getExpenseByTripIdService,
   getExpenseListService,
+  updateExpenseService,
 } from "@/services/expense";
 import { useDispatch, useSelector } from "react-redux";
 import { totalParticipantsService } from "@/services/participant";
 import { setExpensesList } from "@/store/expenseSlice";
+import { toast } from "sonner";
 
 export default function Expenses() {
   // const navigate = useNavigate();
@@ -304,6 +307,7 @@ export default function Expenses() {
     (sum, exp) => sum + (Number(exp.amount) || 0),
     0
   );
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     loadDashboardData();
@@ -412,9 +416,14 @@ export default function Expenses() {
     return contributions.find((c) => c.user_id === user?.id);
   };
 
-  const handleStartEdit = (expense) => {
-    setEditingExpense(expense);
-    setIsEditModalOpen(true);
+  const handleStartEdit = async (expense) => {
+    try {
+      const res = await getExpenseByIdService(token, expense.id);
+      setEditingExpense(res.data);
+      setIsEditModalOpen(true);
+    } catch (err) {
+      console.error("Failed to fetch expense by id:", err);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -422,11 +431,24 @@ export default function Expenses() {
     setIsEditModalOpen(false);
   };
 
-  const handleEditExpense = (updatedExpense) => {
-    setExpenses((prev) =>
-      prev.map((exp) => (exp.id === updatedExpense.id ? updatedExpense : exp))
-    );
-    handleCancelEdit();
+  const handleEditExpense = async (formData) => {
+    if (!editingExpense) return;
+    try {
+      await updateExpenseService(token, editingExpense.id, {
+        ...formData, // ✅ includes description now
+        tripId,
+      });
+
+      // ✅ Invalidate queries after update
+      queryClient.invalidateQueries(["getExpenseByTripIdService", tripId]);
+      queryClient.invalidateQueries(["getExpenseListQuery", tripId]);
+      queryClient.invalidateQueries(["totalParticipantsService"]);
+
+      toast.success("Expense updated successfully!");
+      handleCancelEdit();
+    } catch (error) {
+      console.error("Error updating expense:", error);
+    }
   };
 
   const handleDeleteExpense = (id) => {
@@ -435,6 +457,13 @@ export default function Expenses() {
 
   const handleAddExpense = (newExpense) => {
     setExpenses((prev) => [...prev, newExpense]);
+
+    // ✅ Invalidate react-query caches so data is fresh
+    queryClient.invalidateQueries(["getExpenseByTripIdService", tripId]);
+    queryClient.invalidateQueries(["getExpenseListQuery", tripId]);
+
+    // ✅ Also return success so ExpenseList knows to reset/close form
+    return true;
   };
 
   const isAdmin = user?.trip_role === "admin";
@@ -463,6 +492,8 @@ export default function Expenses() {
       </div>
     );
   }
+
+  console.log("tripData", tripData);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
@@ -524,6 +555,7 @@ export default function Expenses() {
             </CardContent>
           </Card>
 
+          {/* Contributed Card */}
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-slate-700">
@@ -532,18 +564,45 @@ export default function Expenses() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-blue-600">
-                ${tripData?.contributed}
+              <p className="text-2xl font-semibold text-blue-600">
+                Base: ${(tripData?.baseAmountContributed ?? 0).toFixed(2)}
+              </p>
+              <p className="text-2xl font-semibold text-green-600">
+                Total Paid: $
+                {(tripData?.totalChargeContributed ?? 0).toFixed(2)}
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                {totalAmount > 0
-                  ? `${((totalContributed / totalAmount) * 100).toFixed(
-                      1
-                    )}% of goal`
+                {tripData?.total_goal > 0
+                  ? `${(
+                      (tripData?.baseAmountContributed / tripData?.total_goal) *
+                      100
+                    ).toFixed(1)}% of goal`
                   : "0% of goal"}
               </p>
             </CardContent>
           </Card>
+
+          {/* Remaining Card */}
+          {/* <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-slate-700">
+                <DollarSign className="w-5 h-5 text-coral-600" />
+                Remaining
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {tripData?.remaining > 0 ? (
+                <>
+                  <p className="text-3xl font-bold text-coral-600">
+                    ${(tripData?.remaining ?? 0).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">Still needed</p>
+                </>
+              ) : (
+                <p className="text-2xl font-bold text-green-600">Paid ✅</p>
+              )}
+            </CardContent>
+          </Card> */}
 
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader className="pb-3">
@@ -592,22 +651,36 @@ export default function Expenses() {
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600">Total Contributed</span>
                   <span className="text-2xl font-bold text-green-600">
-                    ${tripData?.contributed.toFixed(2)} / $
-                    {tripData?.total_goal.toFixed(2)}
+                    ${(tripData?.baseAmountContributed ?? 0).toFixed(2)} / $
+                    {(tripData?.total_goal ?? 0).toFixed(2)}
                   </span>
                 </div>
                 <Progress
                   value={
                     tripData?.total_goal > 0
-                      ? (tripData?.contributed / tripData?.total_goal) * 100
+                      ? ((tripData?.baseAmountContributed ?? 0) /
+                          (tripData?.total_goal ?? 1)) *
+                        100
                       : 0
                   }
                   className="h-4"
                 />
                 <p className="text-sm text-slate-500">
-                  {((totalContributed / totalAmount) * 100).toFixed(1)}% of
-                  total goal reached
+                  {tripData?.total_goal > 0
+                    ? (
+                        ((tripData?.baseAmountContributed ?? 0) /
+                          (tripData?.total_goal ?? 1)) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  % of total goal reached
                 </p>
+                {tripData?.totalChargeContributed > 0 && (
+                  <p className="text-sm text-slate-400">
+                    Including platform fees: $
+                    {(tripData?.totalChargeContributed ?? 0).toFixed(2)}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
