@@ -18,120 +18,248 @@ import CancelTrip from "./CancelTrip.jsx";
 import Policies from "./Policies.jsx";
 import PoliciesAgreement from "./PoliciesAgreement.jsx";
 import ExpediaTeaser from "./ExpediaTeaser.jsx";
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import ParticipantsManagment from "./ParticipantsManagment.jsx";
 import LoginPage from "./Login.jsx";
 import RegisterPage from "./Register.jsx";
-import { useSelector } from "react-redux";
-import { useEffect } from "react";
-import EmailVerifiedPage from "./EmailSuccess.jsx";
-import ParticipantsManagment from "./ParticipantsManagment.jsx";
 import ForgotPassword from "./ForgotPassword.jsx";
 import VerifyOtp from "./VerifyOtp.jsx";
 import ChangePassword from "./ChangePassword.jsx";
+import TripSelection from "./TripList.jsx";
+import EmailVerifiedPage from "./EmailSuccess.jsx";
 
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import { useSelector } from "react-redux";
+
+// Pages mapping (for Layout)
 const PAGES = {
-  Home: Home,
-  TripCreation: TripCreation,
-  Dashboard: Dashboard,
-  JoinTrip: JoinTrip,
-  Itinerary: Itinerary,
-  Expenses: Expenses,
-  Participants: Participants,
-  Profile: Profile,
-  Chat: Chat,
-  ManageTrip: ManageTrip,
-  MyTrips: MyTrips,
-  Payments: Payments,
-  ParticipantDashboard: ParticipantDashboard,
-  Help: Help,
-  Feedback: Feedback,
-  CancelTrip: CancelTrip,
-  Policies: Policies,
-  PoliciesAgreement: PoliciesAgreement,
-  ExpediaTeaser: ExpediaTeaser,
-  ParticipantsManagment: ParticipantsManagment,
+  // TripCreation: TripCreation,
+  Home,
+  Dashboard,
+  JoinTrip,
+  Itinerary,
+  Expenses,
+  Participants,
+  Profile,
+  Chat,
+  ManageTrip,
+  MyTrips,
+  Payments,
+  ParticipantDashboard,
+  Help,
+  Feedback,
+  CancelTrip,
+  Policies,
+  PoliciesAgreement,
+  ExpediaTeaser,
+  ParticipantsManagment,
+  TripCreation,
 };
 
+// Get current page for Layout
 function _getCurrentPage(url) {
-  if (url.endsWith("/")) {
-    url = url.slice(0, -1);
-  }
+  if (url.endsWith("/")) url = url.slice(0, -1);
   let urlLastPart = url.split("/").pop();
-  if (urlLastPart.includes("?")) {
-    urlLastPart = urlLastPart.split("?")[0];
-  }
-
+  if (urlLastPart.includes("?")) urlLastPart = urlLastPart.split("?")[0];
   const pageName = Object.keys(PAGES).find(
     (page) => page.toLowerCase() === urlLastPart.toLowerCase()
   );
   return pageName || Object.keys(PAGES)[0];
 }
 
+// PrivateRoute wrapper
+function PrivateRoute({ children }) {
+  const user = useSelector((state) => state.user.user);
+  const location = useLocation();
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return children;
+}
+
+// Main content
 function PagesContent() {
   const location = useLocation();
   const currentPage = _getCurrentPage(location.pathname);
-  const user = useSelector((state) => state.user.user);
-  const navigate = useNavigate();
-  console.log("User from Route", user);
-  let userRole = user?.role;
-  console.log('userRole',userRole)
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/");
-    }
-  }, [user]);
 
   return (
     <Layout currentPageName={currentPage}>
       <Routes>
-        {user ? (
-          <>
-            {" "}
-            <Route path="/TripCreation" element={<TripCreation />} />
-            <Route path="/Dashboard" element={<Dashboard />} />
-            <Route path="/JoinTrip" element={<JoinTrip />} />
-            <Route path="/Itinerary" element={<Itinerary />} />
-            <Route
-              path="/ParticipantsManagment"
-              element={<ParticipantsManagment />}
-            />
-            <Route path="/Expenses" element={<Expenses />} />
-            <Route path="/Participants" element={<Participants />} />
-            <Route path="/Profile" element={<Profile />} />
-            <Route path="/Chat" element={<Chat />} />
-            <Route path="/ManageTrip" element={<ManageTrip />} />
-            <Route path="/MyTrips" element={<MyTrips />} />
-            <Route path="/Payments" element={<Payments />} />
-            <Route
-              path="/ParticipantDashboard"
-              element={<ParticipantDashboard />}
-            />
-            <Route path="/Help" element={<Help />} />
-            <Route path="/Feedback" element={<Feedback />} />
-            <Route path="/CancelTrip" element={<CancelTrip />} />
-            <Route path="/Policies" element={<Policies />} />
-            <Route path="/PoliciesAgreement" element={<PoliciesAgreement />} />
-            <Route path="/ExpediaTeaser" element={<ExpediaTeaser />} />
-          </>
-        ) : (
-          <>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/forgotPassword" element={<ForgotPassword />} />{" "}
-            <Route path="/verify-otp" element={<VerifyOtp />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
-            <Route path="/changePassword" element={<ChangePassword />} />
-          </>
-        )}
+        {/* Public routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgotPassword" element={<ForgotPassword />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
+        <Route path="/changePassword" element={<ChangePassword />} />
+        <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
+
+        {/* Protected routes */}
+        <Route
+          path="/tripSelection"
+          element={
+            <PrivateRoute>
+              <TripSelection />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/TripCreation"
+          element={
+            <PrivateRoute>
+              <TripCreation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/JoinTrip"
+          element={
+            <PrivateRoute>
+              <JoinTrip />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Itinerary"
+          element={
+            <PrivateRoute>
+              <Itinerary />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ParticipantsManagment"
+          element={
+            <PrivateRoute>
+              <ParticipantsManagment />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Expenses"
+          element={
+            <PrivateRoute>
+              <Expenses />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Participants"
+          element={
+            <PrivateRoute>
+              <Participants />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Profile"
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Chat"
+          element={
+            <PrivateRoute>
+              <Chat />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ManageTrip"
+          element={
+            <PrivateRoute>
+              <ManageTrip />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/MyTrips"
+          element={
+            <PrivateRoute>
+              <MyTrips />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Payments"
+          element={
+            <PrivateRoute>
+              <Payments />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ParticipantDashboard"
+          element={
+            <PrivateRoute>
+              <ParticipantDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Help"
+          element={
+            <PrivateRoute>
+              <Help />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Feedback"
+          element={
+            <PrivateRoute>
+              <Feedback />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/CancelTrip"
+          element={
+            <PrivateRoute>
+              <CancelTrip />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Policies"
+          element={
+            <PrivateRoute>
+              <Policies />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/PoliciesAgreement"
+          element={
+            <PrivateRoute>
+              <PoliciesAgreement />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ExpediaTeaser"
+          element={
+            <PrivateRoute>
+              <ExpediaTeaser />
+            </PrivateRoute>
+          }
+        />
       </Routes>
     </Layout>
   );

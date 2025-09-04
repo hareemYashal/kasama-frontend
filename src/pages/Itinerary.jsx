@@ -347,7 +347,7 @@ import {
   getItinerariesService,
   deleteItineraryService,
 } from "@/services/itinerary";
-import { getActiveTripService } from "@/services/trip";
+import { getActiveTripService, getTripService } from "@/services/trip";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 
@@ -361,14 +361,20 @@ export default function Itinerary() {
   const token = useSelector((state) => state.user.token);
   const authUser = useSelector((state) => state.user.user);
   // ✅ Active Trip
+  // const { data: activeTripData, isLoading: isLoadingTrip } = useQuery({
+  //   queryKey: ["getActiveTripData"],
+  //   queryFn: () => getActiveTripService(token),
+  //   enabled: !!token,
+  // });
+
   const { data: activeTripData, isLoading: isLoadingTrip } = useQuery({
-    queryKey: ["getActiveTripData"],
-    queryFn: () => getActiveTripService(token),
-    enabled: !!token,
-  });
+      queryKey: ["getTripService", tripId],
+      queryFn: () => getTripService(token, tripId),
+      enabled: !!token,
+    });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  const isAdmin = authUser?.role === "admin";
+  const isAdmin = authUser?.trip_role === "creator";
 
   // ✅ Get Itineraries
   const {

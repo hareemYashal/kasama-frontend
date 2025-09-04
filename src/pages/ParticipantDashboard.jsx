@@ -33,7 +33,7 @@ import {
   getParticipantsWithContributions,
   totalParticipantsService,
 } from "@/services/participant";
-import { getActiveTripService } from "@/services/trip";
+import { getActiveTripService, getTripService } from "@/services/trip";
 import { getPaymentRemainingsService } from "@/services/paynent";
 import { setActiveTripId } from "@/store/tripSlice";
 
@@ -160,7 +160,7 @@ export default function ParticipantDashboard() {
   const token = useSelector((state) => state.user.token);
   const authUser = useSelector((state) => state.user.user);
   const authUerId = authUser?.id;
- const dispatch = useDispatch();
+  const dispatch = useDispatch();
   const { data: expenseDataList, isSuccess: expenseListSuccess } = useQuery({
     queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
@@ -173,22 +173,26 @@ export default function ParticipantDashboard() {
     enabled: !!token && !!tripId,
   });
 
+  // const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
+  //   queryKey: ["getActiveTripData"],
+  //   queryFn: () => getActiveTripService(token),
+  //   enabled: !!token,
+  // });
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
-    queryKey: ["getActiveTripData"],
-    queryFn: () => getActiveTripService(token),
-    enabled: !!token,
-  });
+      queryKey: ["getTripService", tripId],
+      queryFn: () => getTripService(token, tripId),
+      enabled: !!token,
+    });
 
-  const { data: paymentData,  isSuccess: activeTripSuccess  } = useQuery({
+  const { data: paymentData, isSuccess: activeTripSuccess } = useQuery({
     queryKey: ["getPaymentRemainingsQuery", tripId, authUerId],
     queryFn: () => getPaymentRemainingsService(token, tripId, authUerId),
     enabled: !!token && !!tripId && !!authUerId,
   });
 
- 
   useEffect(() => {
     if (activeTripSuccess && activeTripData?.data?.activeTrip?.id) {
-      dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
+      // dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
       localStorage.setItem(
         "activeTripId",
         JSON.stringify(activeTripData.data.activeTrip.id)
@@ -334,7 +338,6 @@ export default function ParticipantDashboard() {
     participants: mockParticipants,
   };
 
-  const isAdmin = user?.trip_role === "admin";
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -344,7 +347,7 @@ export default function ParticipantDashboard() {
             {trip?.image ? (
               <>
                 <img
-                  src={trip?.image}
+                  src={`${import.meta.env.VITE_API_URL}${trip.image}`}
                   alt={trip.trip_occasion}
                   className="w-full h-full object-cover"
                 />

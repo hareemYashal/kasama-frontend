@@ -24,6 +24,7 @@ export default function Participants() {
   const [loading, setLoading] = useState(true);
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
+  const user = useSelector((state) => state.user.user);
 
   const { data: participantsData } = useQuery({
     queryKey: ["totalParticipantsService"],
@@ -246,8 +247,10 @@ export default function Participants() {
     );
   }
 
-  const isAdmin = currentUser?.trip_role === "admin";
-  const adminCount = participants.filter((p) => p.trip_role === "admin").length;
+  console.log('currentUser0-0-0',currentUser)
+
+  const isAdmin = user?.trip_role === "creator";
+  const adminCount = participants.filter((p) => p.trip_role === "creator").length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">

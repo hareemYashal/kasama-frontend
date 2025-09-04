@@ -20,7 +20,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setToken, setUserRed } from "@/store/userSlice";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getActiveTripService } from "@/services/trip";
+import { getActiveTripService, getTripService } from "@/services/trip";
 import { setActiveTripId } from "@/store/tripSlice";
 import { useQueryClient } from "@tanstack/react-query";
 export default function LoginPage({ onNavigate }) {
@@ -79,14 +79,21 @@ export default function LoginPage({ onNavigate }) {
     },
   });
 
-  const { data: activeTripData, isSuccess: activeTripSuccess } = useQuery({
-    queryKey: ["getActiveTripData"],
-    queryFn: () => getActiveTripService(token),
+  // const { data: activeTripData, isSuccess: activeTripSuccess } = useQuery({
+  //   queryKey: ["getActiveTripData"],
+  //   queryFn: () => getActiveTripService(token),
+  //   enabled: !!token,
+  // });
+  const tripId = useSelector((state) => state?.trips?.activeTripId);
+
+  const { data: activeTripData, isLoading: activeTripSuccess } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(token, tripId),
     enabled: !!token,
   });
   useEffect(() => {
     if (activeTripSuccess && activeTripData?.data?.activeTrip?.id) {
-      dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
+      // dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
       localStorage.setItem(
         "activeTripId",
         JSON.stringify(activeTripData.data.activeTrip.id)
@@ -107,14 +114,11 @@ export default function LoginPage({ onNavigate }) {
   };
 
   useEffect(() => {
-    if (user?.role === "admin") {
-      navigate("/dashboard");
-    } else if (user?.role === "user") {
-      navigate("/ParticipantDashboard");
-    } else {
-      navigate("/login");
+    if (user) {
+      navigate("/mytrips");
     }
-  }, [user]);
+  }, [user, navigate]);
+
   // --------------------------------
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">

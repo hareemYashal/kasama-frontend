@@ -2,9 +2,14 @@ import axiosInstance from "@/utils/axiosInstance";
 
 const createTripService = async (data, token) => {
   try {
-    const response = await axiosInstance.post(`/trip/createTrip`, data, {
+    const formData = new FormData();
+    for (const key in data) {
+      formData.append(key, data[key]);
+    }
+
+    const response = await axiosInstance.post(`/trip/createTrip`, formData, {
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "multipart/form-data",
         Authorization: `Bearer ${token}`,
       },
     });
@@ -27,9 +32,35 @@ const getAllTripsService = async (token) => {
   }
 };
 
+const getAllTripsWithRole = async (token) => {
+  try {
+    const response = await axiosInstance.get(`/trip/getAllTripsWithRole`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const getActiveTripService = async (token) => {
   try {
     const response = await axiosInstance.get(`/trip/getActiveTrip`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getTripService = async (token, tripId) => {
+  try {
+    const response = await axiosInstance.get(`/trip/getTrip/${tripId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -73,6 +104,7 @@ const deleteTripService = async (token, tripId) => {
 export {
   createTripService,
   getAllTripsService,
+  getAllTripsWithRole,
   getActiveTripService,
   updateTripService,
   deleteTripService,

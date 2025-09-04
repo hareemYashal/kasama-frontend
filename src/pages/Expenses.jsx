@@ -466,7 +466,7 @@ export default function Expenses() {
     return true;
   };
 
-  const isAdmin = user?.trip_role === "admin";
+  const isAdmin = user?.trip_role === "creator";
   const totalContributed = getTotalContributed();
   const myContribution = getMyContribution();
 

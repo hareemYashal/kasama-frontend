@@ -391,7 +391,7 @@ export default function MyTrips() {
                                     "user",
                                     JSON.stringify(updatedUser)
                                   );
-                                  dispatch(setActiveTripId(trip.id));
+                                //   dispatch(setActiveTripId(trip.id));
                                   localStorage.setItem(
                                     "activeTripId",
                                     JSON.stringify(trip.id)
@@ -408,7 +408,7 @@ export default function MyTrips() {
                                     "user",
                                     JSON.stringify(updatedUser)
                                   );
-                                  dispatch(setActiveTripId(trip.id));
+                                //   dispatch(setActiveTripId(trip.id));
                                   localStorage.setItem(
                                     "activeTripId",
                                     JSON.stringify(trip.id)

@@ -153,36 +153,68 @@ export default function TripCreation() {
                 <div>
                   <Label
                     htmlFor="trip_occasion"
-                    className="text-sm md:text-base font-semibold text-slate-700"
+                    className="text-sm font-semibold text-slate-700"
                   >
                     What's the occasion for this trip?
                   </Label>
                   <Input
                     id="trip_occasion"
-                    placeholder="e.g., Bachelor Party, Family Reunion, Friends' Weekend"
+                    placeholder="e.g., Bachelor Party"
                     value={formData.trip_occasion}
                     onChange={(e) =>
                       updateFormData("trip_occasion", e.target.value)
                     }
-                    className="mt-2 text-base md:text-lg py-4 md:py-6 border-slate-200 focus:border-blue-500"
+                    className="mt-2"
                   />
                 </div>
+
                 <div>
                   <Label
                     htmlFor="destination"
-                    className="text-sm md:text-base font-semibold text-slate-700"
+                    className="text-sm font-semibold text-slate-700"
                   >
                     Where are you going?
                   </Label>
                   <Input
                     id="destination"
-                    placeholder="e.g., Miami, FL or Tokyo, Japan"
+                    placeholder="e.g., Miami, FL"
                     value={formData.destination}
                     onChange={(e) =>
                       updateFormData("destination", e.target.value)
                     }
-                    className="mt-2 text-base md:text-lg py-4 md:py-6 border-slate-200 focus:border-blue-500"
+                    className="mt-2"
                   />
+                </div>
+
+                {/* 👇 Image Upload Field */}
+                <div>
+                  <Label
+                    htmlFor="image"
+                    className="text-sm font-semibold text-slate-700"
+                  >
+                    Trip Image
+                  </Label>
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        updateFormData("image", file);
+                      }
+                    }}
+                    className="mt-2"
+                  />
+
+                  {/* Preview */}
+                  {formData.image && (
+                    <img
+                      src={URL.createObjectURL(formData.image)}
+                      alt="Trip Preview"
+                      className="mt-3 w-full h-48 object-cover rounded-lg border"
+                    />
+                  )}
                 </div>
               </div>
             )}

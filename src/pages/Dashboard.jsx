@@ -29,7 +29,7 @@ import {
 } from "@/services/expense";
 import { useSelector, useDispatch } from "react-redux";
 import { getParticipantsWithContributions } from "@/services/participant";
-import { getActiveTripService } from "@/services/trip";
+import { getActiveTripService, getTripService } from "@/services/trip";
 import { setActiveTripId } from "@/store/tripSlice";
 
 export default function Dashboard() {
@@ -55,12 +55,17 @@ export default function Dashboard() {
     });
 
   // Query for active trip
+  // const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
+  //   queryKey: ["getActiveTripData"],
+  //   queryFn: () => getActiveTripService(token),
+  //   enabled: !!token,
+  // });
+
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
-    queryKey: ["getActiveTripData"],
-    queryFn: () => getActiveTripService(token),
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(token, tripId),
     enabled: !!token,
   });
-
   // Query for trip expense details
   const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
     useQuery({
@@ -90,7 +95,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (activeTripData?.data?.activeTrip) {
       setActiveTripDataState(activeTripData.data.activeTrip);
-      dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
+      // dispatch(setActiveTripId(activeTripData.data.activeTrip.id));
       localStorage.setItem(
         "activeTripId",
         JSON.stringify(activeTripData.data.activeTrip.id)

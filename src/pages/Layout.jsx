@@ -108,7 +108,7 @@ export default function Layout({ children, currentPageName }) {
   //   setLoading(false);
   // };
 
-  // const isAdmin = user?.trip_role === "admin";
+  // const isCreator = user?.trip_role === "admin";
 
   // const adminNavItems = [
   //   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin },
@@ -143,7 +143,7 @@ export default function Layout({ children, currentPageName }) {
   //   { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
   // ];
 
-  // const navigationItems = isAdmin ? adminNavItems : participantNavItems;
+  // const navigationItems = isCreator ? adminNavItems : participantNavItems;
 
   // if (loading) {
   //   return (
@@ -165,7 +165,8 @@ export default function Layout({ children, currentPageName }) {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
-
+  const tripId = useSelector((state) => state.trips.activeTripId);
+  console.log("tripId-=-=-=->", tripId);
   useEffect(() => {
     // Skip authentication check for public pages
     const publicPages = ["Home", "JoinTrip", "ExpediaTeaser"];
@@ -213,13 +214,12 @@ export default function Layout({ children, currentPageName }) {
 
     setLoading(false);
   };
-
-  const isAdmin = user?.role === "admin";
+  console.log("user", user);
+  const isCreator = user?.trip_role === "creator";
 
   const adminNavItems = [
     { title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin },
     { title: "Manage Trip", url: createPageUrl("ManageTrip"), icon: Settings },
-
     { title: "Participants", url: createPageUrl("Participants"), icon: Users },
     {
       title: "Participants Invitation",
@@ -228,7 +228,7 @@ export default function Layout({ children, currentPageName }) {
     },
     { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
     { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
-    { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
+    // { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 
   const participantNavItems = [
@@ -239,7 +239,7 @@ export default function Layout({ children, currentPageName }) {
     },
     { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
     { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
-    { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
+    // { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 
   const commonNavItems = [
@@ -247,7 +247,8 @@ export default function Layout({ children, currentPageName }) {
     { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
   ];
 
-  const navigationItems = isAdmin ? adminNavItems : participantNavItems;
+  // Only check creator, else everything falls under participant menu
+  const navigationItems = isCreator ? adminNavItems : participantNavItems;
 
   if (loading) {
     return (
@@ -308,11 +309,11 @@ export default function Layout({ children, currentPageName }) {
                 <div className="flex items-center gap-1 mt-1">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      isAdmin ? "bg-coral-500" : "bg-blue-500"
+                      isCreator ? "bg-coral-500" : "bg-blue-500"
                     }`}
                   ></div>
                   <span className="text-xs text-slate-500">
-                    {isAdmin ? "Admin" : "Participant"}
+                    {isCreator ? "Admin" : "Participant"}
                   </span>
                 </div>
               </div>
@@ -321,61 +322,61 @@ export default function Layout({ children, currentPageName }) {
 
           <SidebarContent className="p-3">
             {/* My Trips - Top of Sidebar - Admin Only */}
-            {isAdmin && (
-              <SidebarGroup className="mb-4">
+            {/* {isCreator && ( */}
+            <SidebarGroup className="mb-4">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      className="hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 rounded-xl mb-1 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200"
+                    >
+                      <Link
+                        to={createPageUrl("MyTrips")}
+                        className="flex items-center gap-3 px-4 py-3"
+                      >
+                        <Archive className="w-4 h-4 text-purple-600" />
+                        <span className="font-semibold text-purple-700">
+                          My Trips
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            {/* // )} */}
+            {tripId && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">
+                  Trip Menu
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        asChild
-                        className="hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 rounded-xl mb-1 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200"
-                      >
-                        <Link
-                          to={createPageUrl("MyTrips")}
-                          className="flex items-center gap-3 px-4 py-3"
+                    {navigationItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
+                            location.pathname === item.url
+                              ? "bg-blue-50 text-blue-700 shadow-sm"
+                              : ""
+                          }`}
                         >
-                          <Archive className="w-4 h-4 text-purple-600" />
-                          <span className="font-semibold text-purple-700">
-                            My Trips
-                          </span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                          <Link
+                            to={item.url}
+                            className="flex items-center gap-3 px-4 py-3"
+                          >
+                            <item.icon className="w-4 h-4" />
+                            <span className="font-medium">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
             )}
-
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">
-                Trip Menu
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navigationItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
-                          location.pathname === item.url
-                            ? "bg-blue-50 text-blue-700 shadow-sm"
-                            : ""
-                        }`}
-                      >
-                        <Link
-                          to={item.url}
-                          className="flex items-center gap-3 px-4 py-3"
-                        >
-                          <item.icon className="w-4 h-4" />
-                          <span className="font-medium">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
             <SidebarGroup>
               <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">
                 Support
@@ -501,7 +502,7 @@ export default function Layout({ children, currentPageName }) {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {isAdmin && (
+            {isCreator && (
               <SidebarGroup>
                 <SidebarGroupLabel className="text-xs font-semibold text-red-500 uppercase tracking-wider px-3 py-2">
                   Danger Zone
@@ -533,49 +534,48 @@ export default function Layout({ children, currentPageName }) {
               to={createPageUrl("Profile")}
               className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-all duration-200"
             >
-              <div className="w-10 h-10 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
+              {/* Avatar */}
+              <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
                 {user?.profile_photo_url ? (
                   <img
                     src={user.profile_photo_url}
-                    alt={user.full_name || "User"}
+                    alt={user.name || "User"}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-slate-600 font-semibold text-sm">
-                    {user?.full_name?.charAt(0) || "U"}
+                  <span className="text-slate-600 font-semibold text-sm leading-none">
+                    {user?.name?.charAt(0) || "U"}
                   </span>
                 )}
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 text-sm truncate">
-                      {user?.full_name || "User"}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">
-                      My Profile
-                    </p>
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel
-                    className="cursor-pointer"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </DropdownMenuLabel>
-                </DropdownMenuContent>
-              </DropdownMenu>
+
+              {/* Name & label */}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm truncate">
+                  {user?.name || "User"}
+                </p>
+                <p className="text-xs text-slate-500 truncate">My Profile</p>
+              </div>
             </Link>
           </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-h-screen">
-          <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 md:hidden">
+          <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200" />
+              {/* Sidebar toggle for mobile */}
+              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200 md:hidden" />
               <h1 className="text-xl font-bold text-slate-800">Kasama</h1>
             </div>
+
+            {/* Logout Button for both desktop & mobile */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Logout
+            </button>
           </header>
 
           <div className="flex-1 overflow-auto">{children}</div>
