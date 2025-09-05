@@ -347,7 +347,7 @@ export default function ParticipantDashboard() {
             {trip?.image ? (
               <>
                 <img
-                  src={`${import.meta.env.VITE_API_URL}${trip.image}`}
+                  src={trip.image}
                   alt={trip.trip_occasion}
                   className="w-full h-full object-cover"
                 />
@@ -402,18 +402,18 @@ export default function ParticipantDashboard() {
         )}
 
         {/* Invite Link */}
-        <div className="bg-blue-50 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-center shadow-lg border border-blue-100">
+        <div className="bg-blue-600 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg text-white w-full">
           <div>
-            <h3 className="text-lg font-semibold text-slate-800 mb-1">
-              Invite Your Friends!
+            <h3 className="text-xl md:text-2xl font-bold mb-1">
+              Invite Your Crew!
             </h3>
-            <p className="text-sm text-slate-600">
+            {/* <p className="text-sm text-slate-600">
               Share this link to invite others to the trip.
-            </p>
+            </p> */}
           </div>
           <Button
             onClick={handleShareInvite}
-            className="mt-4 sm:mt-0 w-full sm:w-auto bg-coral-500 hover:bg-coral-600 text-white shadow-lg"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-full md:w-auto bg-white hover:bg-slate-100 text-blue-600 font-bold shadow-lg text-base px-8 py-3 rounded-full transition-all hover:shadow-xl"
           >
             {copied ? (
               <>

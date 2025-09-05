@@ -77,6 +77,7 @@ const handleInlineSubmit = async (e) => {
     setShowInlineForm(false);
   };
 
+
   const getTotalAmount = () => {
     return expenses.reduce((sum, expense) => sum + expense.amount, 0);
   };

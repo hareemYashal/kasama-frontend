@@ -36,18 +36,34 @@ export default function Help() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    User.me().then(setUser).catch(() => setUser(null));
-  }, []);
+useEffect(() => {
+  // Mock user for now
+  const fetchUser = async () => {
+    try {
+      // Replace this with your actual API call if available
+      const currentUser = {
+        id: "123",
+        name: "John Doe",
+        trip_role: "participant", // or 'admin'
+      };
+      setUser(currentUser);
+    } catch (err) {
+      setUser(null);
+    }
+  };
+  fetchUser();
+}, []);
+
 
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
+
     setIsLoading(true);
     setError(null);
     setResponse("");
 
     try {
-      const userRole = user?.trip_role || 'participant'; // Default to participant if not in a trip
+      const userRole = user?.trip_role || "participant"; // Default role
       const prompt = `
         ${KASAMA_KNOWLEDGE_BASE}
         ---
@@ -60,20 +76,19 @@ export default function Help() {
 
       const aiResponse = await InvokeLLM({ prompt });
       setResponse(aiResponse);
-    } catch (e) {
+    } catch (err) {
+      console.error("Error invoking LLM:", err);
       setError("Sorry, the AI assistant is currently unavailable. Please try again later.");
-      console.error("Error invoking LLM:", e);
     }
+
     setIsLoading(false);
   };
-  
+
   const handleLinkClick = (e) => {
-    if (e.target.tagName === 'A') {
+    if (e.target.tagName === "A") {
       e.preventDefault();
-      const pageName = e.target.getAttribute('href');
-      if (pageName) {
-        navigate(createPageUrl(pageName));
-      }
+      const pageName = e.target.getAttribute("href");
+      if (pageName) navigate(createPageUrl(pageName));
     }
   };
 
@@ -92,11 +107,15 @@ export default function Help() {
             placeholder="Ask a question about using Kasama..."
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAskQuestion()}
+            onKeyDown={(e) => e.key === "Enter" && handleAskQuestion()}
             className="text-lg py-6"
             disabled={isLoading}
           />
-          <Button onClick={handleAskQuestion} disabled={isLoading || !question.trim()} className="py-6 px-6">
+          <Button
+            onClick={handleAskQuestion}
+            disabled={isLoading || !question.trim()}
+            className="py-6 px-6"
+          >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </Button>
         </div>
@@ -116,41 +135,41 @@ export default function Help() {
                 Error
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-red-600">
-              {error}
-            </CardContent>
-          </Card>
-        )}
-        
-        {response && (
-            <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader>
-                <CardTitle>Answer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="prose max-w-none" onClick={handleLinkClick}>
-                  <ReactMarkdown
-                    components={{
-                      a: ({node, ...props}) => <span className="text-blue-600 hover:underline cursor-pointer" {...props} />
-                    }}
-                  >
-                    {response}
-                  </ReactMarkdown>
-                </div>
-              </CardContent>
-            </Card>
-        )}
-        
-        {!response && !isLoading && !error && (
-          <Card className="bg-white/80 backdrop-blur-sm text-center py-12">
-             <CardContent>
-                <p className="text-slate-500">
-                    Ask a question to get started. For example: "How do I pay for my trip?" or "How do I add an expense?"
-                </p>
-             </CardContent>
+            <CardContent className="text-red-600">{error}</CardContent>
           </Card>
         )}
 
+        {response && (
+          <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
+            <CardHeader>
+              <CardTitle>Answer</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose max-w-none" onClick={handleLinkClick}>
+                <ReactMarkdown
+                  components={{
+                    a: ({ node, ...props }) => (
+                      <span className="text-blue-600 hover:underline cursor-pointer" {...props} />
+                    ),
+                  }}
+                >
+                  {response}
+                </ReactMarkdown>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!response && !isLoading && !error && (
+          <Card className="bg-white/80 backdrop-blur-sm text-center py-12">
+            <CardContent>
+              <p className="text-slate-500">
+                Ask a question to get started. For example: "How do I pay for my trip?" or "How do I
+                add an expense?"
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

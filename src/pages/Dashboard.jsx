@@ -167,9 +167,7 @@ export default function Dashboard() {
         <div className="relative h-64 rounded-3xl overflow-hidden shadow-lg">
           {activeTripDataState?.image ? (
             <img
-              src={`${import.meta.env.VITE_API_URL}${
-                activeTripDataState.image
-              }`}
+              src={activeTripDataState.image}
               alt={activeTripDataState.destination || "Trip Image"}
               className="object-cover w-full h-full"
             />

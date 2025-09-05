@@ -171,13 +171,13 @@ export default function MyTrips() {
     switch (role) {
       case "creator":
         return {
-          text: "Manage Trip",
-          color: "bg-indigo-600 hover:bg-indigo-700",
+          text: "Manage Dashboard",
+          color: "bg-green-600 hover:bg-green-700",
           icon: <Settings className="w-4 h-4 mr-1" />,
         };
       case "participant":
         return {
-          text: "View Trip",
+          text: "View Dashboard",
           color: "bg-blue-600 hover:bg-blue-700",
           icon: <Eye className="w-4 h-4 mr-1" />,
         };
@@ -190,7 +190,7 @@ export default function MyTrips() {
       case "INVITED":
         return {
           text: "Accept Invitation",
-          color: "bg-green-600 hover:bg-green-700",
+          color: "bg-teal-600 hover:bg-teal-700",
           icon: <Plus className="w-4 h-4 mr-1" />,
         };
       case "REJECTED":
@@ -202,7 +202,7 @@ export default function MyTrips() {
       case "notInvited":
         return {
           text: "Request to Join",
-          color: "bg-green-600 hover:bg-green-700",
+          color: "bg-purple-600 hover:bg-purple-700", // ✅ unique, no clash
           icon: <Plus className="w-4 h-4 mr-1" />,
         };
       default:
@@ -290,41 +290,74 @@ export default function MyTrips() {
                   >
                     <CardHeader className="pb-4">
                       <div className="flex justify-between items-start mb-2">
-                        <div className="flex gap-2">
-                          {isCurrentTrip && (
+                        <div className="flex flex-wrap gap-2">
+                          <Badge
+                            className={
+                              trip.status === "upcoming"
+                                ? "bg-[#dcfce7] text-[#166534]"
+                                : trip.status === "ongoing"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-200 text-gray-700"
+                            }
+                          >
+                            {trip.status}
+                          </Badge>
+
+                          {trip.id === isCurrentTrip && (
                             <Badge className="bg-blue-100 text-blue-800">
                               Current
                             </Badge>
                           )}
+                          {trip.role == "creator" && (
+                            <Badge className="border border-[#e5e7eb] bg-transparent text-black">
+                              <span>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="24"
+                                  height="24"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  stroke-width="2"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  class="lucide lucide-crown w-3 h-3 mr-1.5"
+                                  data-filename="pages/MyTrips"
+                                  data-linenumber="336"
+                                  data-visual-selector-id="pages/MyTrips336"
+                                  data-source-location="pages/MyTrips:336:37"
+                                  data-dynamic-content="false"
+                                >
+                                  <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path>
+                                  <path d="M5 21h14"></path>
+                                </svg>
+                              </span>{" "}
+                              Admin
+                            </Badge>
+                          )}
                         </div>
 
-                        {/* Delete Button */}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={`h-8 w-8  
+                        {trip.role == "creator" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8  
                             
                             `}
-                              // disabled={!isDeletable}
-                              // title={
-                              //   isDeletable
-                              //     ? "Delete trip"
-                              //     : "Cannot delete trip - funds have been contributed"
-                              // }
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Trip</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "
-                                {trip.trip_occasion}"? This action cannot be
-                                undone.
-                                {/* {!isDeletable && (
+                              >
+                                <Trash2 color="red" className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Trip</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "
+                                  {trip.trip_occasion}"? This action cannot be
+                                  undone.
+                                  {/* {!isDeletable && (
                                 <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                                   <p className="text-red-800 font-medium">
                                     ⚠️ This trip cannot be deleted because funds
@@ -332,25 +365,27 @@ export default function MyTrips() {
                                   </p>
                                 </div>
                               )} */}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteTrip(trip.id)}
-                                // disabled={
-                                //   !isDeletable || deletingTripId === trip.id
-                                // }
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                {/* {deletingTripId === trip.id ? (
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteTrip(trip.id)}
+                                  // disabled={
+                                  //   !isDeletable || deletingTripId === trip.id
+                                  // }
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  {/* {deletingTripId === trip.id ? (
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                 ) : null} */}
-                                Delete Trip
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                  Delete Trip
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        {/* Delete Button */}
                       </div>
 
                       <CardTitle className="text-xl font-bold text-slate-800 mb-2">
@@ -368,6 +403,18 @@ export default function MyTrips() {
                         <Calendar className="w-4 h-4" />
                         {format(new Date(trip.start_date), "MMM d")} -{" "}
                         {format(new Date(trip.end_date), "MMM d, yyyy")}
+                      </div>
+
+                      <div className="bg-[#F8FaFC] p-2 text-[#16A34A] text-sm font-samibold">
+                        💰 {trip?.totalContributed} contributed
+                      </div>
+
+                      <div className="text-center bg-blue-50 rounded-lg p-3 text-blue-600 text-sm">
+                        <span className="text-blue-600 font-bold text-2xl">
+                          {trip?.daysUntilTrip}
+                        </span>
+                        <br />
+                        days until trip
                       </div>
 
                       {/* Action Button */}

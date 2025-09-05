@@ -255,8 +255,10 @@ export default function Expenses() {
   // const myContribution = getMyContribution();
 
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [trip, setTrip] = useState(null);
+  // const [user, setUser] = useState(null);
+  const trip = useSelector((state) => state.trips.myTrips || []);
+
+  // const [trip, setTrip] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [contributions, setContributions] = useState([]);
   const [participants, setParticipants] = useState([]);
@@ -264,6 +266,7 @@ export default function Expenses() {
   const [copied, setCopied] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const user = useSelector((state) => state.user.user);
 
   const dispatch = useDispatch();
   const tripId = useSelector((state) => state.trips.activeTripId);
@@ -308,105 +311,6 @@ export default function Expenses() {
     0
   );
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      let currentUser;
-      try {
-        currentUser = await User.me();
-      } catch {
-        currentUser = {
-          id: 1,
-          name: "John Doe",
-          email: "john@example.com",
-          current_trip_id: 1,
-          trip_role: "admin",
-        };
-      }
-      setUser(currentUser);
-
-      if (!currentUser.current_trip_id) {
-        navigate(createPageUrl("MyTrips"));
-        return;
-      }
-
-      let currentTrip;
-      try {
-        currentTrip = await Trip.get(currentUser.current_trip_id);
-      } catch {
-        currentTrip = {
-          id: 1,
-          occasion: "Beach Vacation",
-          destination: "Maldives",
-          invite_code: "XYZ123",
-        };
-      }
-      setTrip(currentTrip);
-
-      let tripExpenses, tripContributions, allUsers;
-      try {
-        [tripExpenses, tripContributions, allUsers] = await Promise.all([
-          Expense.filter({ trip_id: currentTrip.id }),
-          Contribution.filter({ trip_id: currentTrip.id }),
-          User.filter({ current_trip_id: currentTrip.id }),
-        ]);
-      } catch {
-        tripExpenses = [
-          { id: 1, description: "Hotel", amount: 200 },
-          { id: 2, description: "Food", amount: 150 },
-        ];
-        tripContributions = [
-          { id: 1, user_id: 1, amount_paid: 250 },
-          { id: 2, user_id: 2, amount_paid: 100 },
-        ];
-        allUsers = [
-          { id: 1, name: "John Doe" },
-          { id: 2, name: "Jane Smith" },
-        ];
-      }
-
-      setExpenses(tripExpenses);
-      setContributions(tripContributions);
-      setParticipants(allUsers);
-    } catch (error) {
-      console.error("Error loading dashboard:", error);
-      navigate(createPageUrl("Home"));
-    }
-    setLoading(false);
-  };
-
-  const handleShareInvite = async () => {
-    if (!trip) return;
-
-    const inviteUrl = `${window.location.origin}/functions/tripInvitePreview?trip_id=${trip.id}&code=${trip.invite_code}`;
-
-    const fallbackShare = async (urlToCopy) => {
-      await navigator.clipboard.writeText(urlToCopy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Join ${trip.occasion}`,
-          text: `You're invited to join our trip to ${trip.destination}!`,
-          url: inviteUrl,
-        });
-        setCopied(false);
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          fallbackShare(inviteUrl);
-        }
-      }
-    } else {
-      fallbackShare(inviteUrl);
-    }
-  };
 
   const getTotalContributed = () => {
     return contributions.reduce((sum, contrib) => sum + contrib.amount_paid, 0);
@@ -465,18 +369,20 @@ export default function Expenses() {
     // ✅ Also return success so ExpenseList knows to reset/close form
     return true;
   };
+  console.log("user?.trip_role", user?.trip_role);
 
   const isAdmin = user?.trip_role === "creator";
   const totalContributed = getTotalContributed();
   const myContribution = getMyContribution();
+  console.log("EpenrIsAdmin", isAdmin);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  //     </div>
+  //   );
+  // }
 
   if (!trip) {
     return (

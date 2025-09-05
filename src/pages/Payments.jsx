@@ -782,29 +782,37 @@ export default function Payments() {
                         <SelectValue placeholder="Select a friend" />
                       </SelectTrigger>
                       <SelectContent>
-                        {totalParticipant
-                          // ✅ Filter out logged-in user
-                          .filter((p) => p.userId !== authUerId)
-                          .map((p) => {
-                            const isFullyPaid =
-                              (p.paymentInfo?.remainings ?? 0) <= 0; // ✅ use remainings
-                            return (
-                              <SelectItem
-                                key={p.id}
-                                value={p.userId}
-                                disabled={isFullyPaid} // ✅ disable fully paid
-                              >
-                                <div className="flex justify-between items-center w-full">
-                                  <span>{p.user?.name}</span>
-                                  <span className="text-xs text-slate-500 ml-4">
-                                    Paid: $
-                                    {p.paymentInfo?.amountPaid?.toFixed(2) || 0}{" "}
-                                    / ${p.paymentInfo?.your_goal?.toFixed(2)}
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
+                        {totalParticipant &&
+                        totalParticipant.filter((p) => p.userId !== authUerId)
+                          .length > 0 ? (
+                          totalParticipant
+                            .filter((p) => p.userId !== authUerId)
+                            .map((p) => {
+                              const isFullyPaid =
+                                (p.paymentInfo?.remainings ?? 0) <= 0; // ✅ use remainings
+                              return (
+                                <SelectItem
+                                  key={p.id}
+                                  value={p.userId}
+                                  disabled={isFullyPaid} // ✅ disable fully paid
+                                >
+                                  <div className="flex justify-between items-center w-full">
+                                    <span>{p.user?.name}</span>
+                                    <span className="text-xs text-slate-500 ml-4">
+                                      Paid: $
+                                      {p.paymentInfo?.amountPaid?.toFixed(2) ||
+                                        0}{" "}
+                                      / ${p.paymentInfo?.your_goal?.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })
+                        ) : (
+                          <div className="text-slate-500 text-sm px-2 py-1">
+                            No participants found
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

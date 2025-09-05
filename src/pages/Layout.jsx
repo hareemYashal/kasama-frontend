@@ -54,111 +54,11 @@ import {
 import { useDispatch } from "react-redux";
 import { setUserRed } from "./../store/userSlice";
 import { useSelector } from "react-redux";
+import { setActiveTripId } from "@/store/tripSlice";
+import { getTripService } from "@/services/trip";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 export default function Layout({ children, currentPageName }) {
-  // const [user, setUser] = useState(null);
-  // const [trip, setTrip] = useState(null);
-  // const [loading, setLoading] = useState(true);
-  // const location = useLocation();
-  // const navigate = useNavigate();
-
-  // useEffect(() => {
-  //   // Skip authentication check for public pages
-  //   const publicPages = ["Home", "JoinTrip", "ExpediaTeaser"];
-  //   if (publicPages.includes(currentPageName)) {
-  //     setLoading(false);
-  //     return;
-  //   }
-
-  //   loadUserAndTrip();
-  // }, [currentPageName]);
-
-  // const loadUserAndTrip = async () => {
-  //   try {
-  //     const currentUser =  {}
-  //     setUser(currentUser);
-  //     console.log(currentUser);
-
-  //     if (currentUser.current_trip_id) {
-  //       const currentTrip = await Trip.get(currentUser.current_trip_id);
-  //       setTrip(currentTrip);
-
-  //       // Enhanced dashboard routing logic
-  //       if (currentPageName === "Home") {
-  //         if (currentUser.trip_role === "admin") {
-  //           navigate(createPageUrl("Dashboard"));
-  //         } else {
-  //           navigate(createPageUrl("ParticipantDashboard"));
-  //         }
-  //       }
-  //     } else {
-  //       // User has no active trip
-  //       if (
-  //         currentPageName === "Dashboard" ||
-  //         currentPageName === "ParticipantDashboard"
-  //       ) {
-  //         navigate(createPageUrl("MyTrips"));
-  //       }
-  //     }
-  //   } catch (error) {
-  //     // User not authenticated - allow access to public pages
-  //     if (currentPageName !== "Home" && currentPageName !== "JoinTrip") {
-  //       navigate(createPageUrl("Home"));
-  //     }
-  //   }
-  //   setLoading(false);
-  // };
-
-  // const isCreator = user?.trip_role === "admin";
-
-  // const adminNavItems = [
-  //   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin },
-  //   { title: "Manage Trip", url: createPageUrl("ManageTrip"), icon: Settings },
-  //   {
-  //     title: "Manage Participants",
-  //     url: createPageUrl("Participants"),
-  //     icon: Users,
-  //   },
-  //   { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
-  //   { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
-  //   { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
-  //   { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
-  // ];
-
-  // const participantNavItems = [
-  //   {
-  //     title: "Dashboard",
-  //     url: createPageUrl("ParticipantDashboard"),
-  //     icon: MapPin,
-  //   },
-  //   { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
-  //   { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
-  //   { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
-  //   { title: "Participants", url: createPageUrl("Participants"), icon: Users },
-  //   { title: "Chat", url: createPageUrl("Chat"), icon: MessageCircle },
-  //   { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
-  // ];
-
-  // const commonNavItems = [
-  //   { title: "Help", url: createPageUrl("Help"), icon: HelpCircle },
-  //   { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
-  // ];
-
-  // const navigationItems = isCreator ? adminNavItems : participantNavItems;
-
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  //     </div>
-  //   );
-  // }
-
-  // // Don't show sidebar for certain pages
-  // const hideSidebarPages = ["Home", "JoinTrip", "ExpediaTeaser"];
-  // if (hideSidebarPages.includes(currentPageName)) {
-  //   return <div className="min-h-screen">{children}</div>;
-  // }
-  // const [user, setUser] = useState(null);
   const user = useSelector((state) => state.user.user);
   console.log("hey I am the user from  layout", user);
   const [trip, setTrip] = useState(null);
@@ -166,6 +66,16 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
   const tripId = useSelector((state) => state.trips.activeTripId);
+  const token = useSelector((state) => state.user.token);
+
+  const { data: tripData, isLoading: isLoadingTripData } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(token, tripId),
+    enabled: !!token,
+  });
+
+  const tdata = tripData?.data?.activeTrip;
+  console.log("tripDatagetTripService", tripData);
   console.log("tripId-=-=-=->", tripId);
   useEffect(() => {
     // Skip authentication check for public pages
@@ -270,6 +180,7 @@ export default function Layout({ children, currentPageName }) {
     localStorage.removeItem("token");
     localStorage.removeItem("activeTripId");
     dispatch(setUserRed(null));
+    dispatch(setActiveTripId(null));
     navigate("/");
   };
   return (
@@ -300,21 +211,60 @@ export default function Layout({ children, currentPageName }) {
                 <p className="text-sm text-slate-500">Group Travel Planning</p>
               </div>
             </div>
-            {trip && (
+            {tdata && tripId && (
               <div className="mt-4 p-3 bg-slate-50 rounded-lg">
                 <p className="text-sm font-medium text-slate-700">
-                  {trip.occasion}
+                  {tdata.trip_occasion}
                 </p>
-                <p className="text-xs text-slate-500">{trip.destination}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      isCreator ? "bg-coral-500" : "bg-blue-500"
+                <p className="text-xs text-slate-500">{tdata.destination}</p>
+                <div className="flex items-center gap-1 mt-3">
+                  <Badge
+                    className={`inline-flex items-center rounded-full border px-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 font-medium text-xs py-0.5 ${
+                      isCreator
+                        ? "bg-amber-100 text-amber-800 border-amber-200"
+                        : "bg-blue-500 text-white border-blue-600"
                     }`}
-                  ></div>
-                  <span className="text-xs text-slate-500">
+                  >
+                    <span className="mr-1.5">
+                      {isCreator ? (
+                        // Crown SVG for Admin
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-crown w-3 h-3"
+                        >
+                          <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path>
+                          <path d="M5 21h14"></path>
+                        </svg>
+                      ) : (
+                        // User SVG for Participant
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-user w-3 h-3"
+                        >
+                          <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
+                          <path d="M4 21v-2a4 4 0 0 1 3-3.87"></path>
+                          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"></path>
+                        </svg>
+                      )}
+                    </span>
                     {isCreator ? "Admin" : "Participant"}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             )}

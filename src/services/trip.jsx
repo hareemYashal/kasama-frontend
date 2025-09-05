@@ -89,6 +89,18 @@ const updateTripService = async (data, tripId, token) => {
   }
 };
 
+export const getTripByIdService = async (tripId, token) => {
+  try {
+    const response = await axiosInstance.get(`/trip/getTrip/${tripId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return response.data.data.activeTrip; // ✅ directly return trip
+  } catch (error) {
+    throw error.response?.data || { message: "Something went wrong" };
+  }
+};
+
 const deleteTripService = async (token, tripId) => {
   try {
     const respponse = await axiosInstance.delete(`/trip/deleteTrip/${tripId}`, {

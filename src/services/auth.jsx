@@ -46,9 +46,16 @@ const changePasswordService = async (data) => {
   }
 };
 
-const getAllRegisteredUsers = async () => {
+const getAllRegisteredUsers = async (tripId, token) => {
   try {
-    const response = await axiosInstance.get(`/user/getAllRegisteredUsers`);
+    const response = await axiosInstance.get(`/user/getAllRegisteredUsers`, {
+      params: { tripId },
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return response.data;
   } catch (error) {
     throw error;

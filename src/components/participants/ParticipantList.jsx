@@ -37,8 +37,8 @@ export default function ParticipantList({ participants, onRemove }) {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-slate-100">
-            {participants.map((participant) => {
-              return (
+            {participants && participants.length > 0 ? (
+              participants.map((participant) => (
                 <div
                   key={participant.id}
                   className="px-4 md:px-6 py-4 md:py-5 hover:bg-slate-50/50 transition-colors duration-200"
@@ -54,45 +54,44 @@ export default function ParticipantList({ participants, onRemove }) {
                         />
                       ) : (
                         <span className="text-slate-600 font-semibold text-sm md:text-lg">
-                          {participant?.user.name.charAt(0) || "U"}
+                          {participant?.user?.name?.charAt(0) || "U"}
                         </span>
                       )}
                     </div>
 
                     {/* Main Content */}
                     <div className="flex-1 min-w-0">
-                      {/* Name and badges - Stack on mobile */}
+                      {/* Name and badges */}
                       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-slate-800 text-base md:text-lg">
-                            {participant?.user.name}
+                            {participant?.user?.name || "Unnamed User"}
                           </h3>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {
-                            <Badge
-                              variant="outline"
-                              className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs px-2 py-1"
-                            >
-                              {participant?.user?.role}
-                            </Badge>
-                          }
+                          <Badge
+                            variant="outline"
+                            className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs px-2 py-1"
+                          >
+                            {participant?.user?.role || "N/A"}
+                          </Badge>
                         </div>
                       </div>
 
-                      {/* Emergency contact - Always visible, wrapping text */}
+                      {/* Emergency contact */}
                       <div className="flex items-start gap-2 text-sm text-slate-600">
                         <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                         <span className="break-words">
-                          Emergency Contact: {participant.user.phoneNumber}
+                          Emergency Contact:{" "}
+                          {participant?.user?.phoneNumber || "Not Provided"}
                         </span>
                       </div>
                     </div>
 
-                    {/* Role Badge and Actions - Stack on mobile */}
+                    {/* Role Badge */}
                     <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-3 shrink-0">
                       <div className="order-2 md:order-1">
-                        {participant.user.role === "admin" ? (
+                        {participant?.user?.role === "admin" ? (
                           <Badge className="bg-coral-100 text-coral-800 border-coral-200 font-medium text-xs">
                             <ShieldCheck className="w-3 h-3 mr-1" />
                             Admin
@@ -110,8 +109,12 @@ export default function ParticipantList({ participants, onRemove }) {
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              ))
+            ) : (
+              <p className="text-slate-500 text-sm px-4 pb-5 text-center">
+                No participants available.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

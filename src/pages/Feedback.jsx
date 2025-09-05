@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Feedback } from "@/api/entities";
-import { User } from "@/api/entities";
-import { SendEmail } from "@/api/integrations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +20,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Loader2, MessageSquare, CheckCircle, AlertCircle } from "lucide-react";
-import StarRating from "../components/feedback/StarRating"; // Import the new component
+import StarRating from "../components/feedback/StarRating";
 
 export default function FeedbackPage() {
   const navigate = useNavigate();
@@ -34,22 +31,25 @@ export default function FeedbackPage() {
     feedback_type: "",
     message: "",
   });
-  const [rating, setRating] = useState(0); // Add state for rating
+  const [rating, setRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
+  // Dummy user
   useEffect(() => {
-    User.me()
-      .then((currentUser) => {
-        setUser(currentUser);
-        setFormData((prev) => ({
-          ...prev,
-          name: currentUser.full_name || "",
-          email: currentUser.email || "",
-        }));
-      })
-      .catch(() => setUser(null));
+    const currentUser = {
+      id: "123",
+      full_name: "John Doe",
+      email: "johndoe@example.com",
+      current_trip_id: "trip_001",
+    };
+    setUser(currentUser);
+    setFormData((prev) => ({
+      ...prev,
+      name: currentUser.full_name,
+      email: currentUser.email,
+    }));
   }, []);
 
   const handleInputChange = (e) => {
@@ -72,41 +72,26 @@ export default function FeedbackPage() {
     setError(null);
 
     try {
-      const feedbackData = {
+      // MOCK: simulate saving feedback
+      console.log("Feedback saved:", {
         ...formData,
-        rating: rating > 0 ? rating : null, // Add rating to feedback data, or null if not rated
-        user_id: user?.id || null,
-        trip_id: user?.current_trip_id || null,
-      };
-
-      // 1. Save feedback to the entity
-      await Feedback.create(feedbackData);
-
-      // 2. Send email notification
-      await SendEmail({
-        to: "support@kasama.com", // This should be a configurable admin email
-        from_name: "Kasama Feedback Bot",
-        subject: `New Feedback Received: ${formData.feedback_type}`,
-        body: `
-          <h1>New Feedback from Kasama App</h1>
-          <p><strong>From:</strong> ${formData.name || "Anonymous"}</p>
-          <p><strong>Email:</strong> ${formData.email || "Not provided"}</p>
-          <p><strong>User ID:</strong> ${user?.id || "N/A"}</p>
-          <p><strong>Trip ID:</strong> ${user?.current_trip_id || "N/A"}</p>
-          ${
-            rating > 0
-              ? `<p><strong>Rating:</strong> ${rating} / 5 stars</p>`
-              : ""
-          }
-          <hr>
-          <h2>${formData.feedback_type}</h2>
-          <p>${formData.message.replace(/\n/g, "<br>")}</p>
-        `,
+        rating,
+        user_id: user?.id,
+        trip_id: user?.current_trip_id,
       });
+
+      // MOCK: simulate sending email
+      console.log("Email sent to support@kasama.com", {
+        ...formData,
+        rating,
+      });
+
+      // Simulate delay
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       setSubmitted(true);
     } catch (err) {
-      console.error("Failed to submit feedback:", err);
+      console.error(err);
       setError("Sorry, something went wrong. Please try again later.");
     }
 
@@ -120,11 +105,10 @@ export default function FeedbackPage() {
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-slate-800">Thank you!</h1>
           <p className="text-slate-600 mt-2 mb-8">
-            Your feedback has been submitted successfully. Our team will review
-            it shortly.
+            Your feedback has been submitted successfully. Our team will review it shortly.
           </p>
-          <Button onClick={() => navigate(createPageUrl("Dashboard"))}>
-            Back to Dashboard
+          <Button onClick={() => navigate(createPageUrl("mytrips"))}>
+            Back to Trips
           </Button>
         </Card>
       </div>
@@ -141,8 +125,7 @@ export default function FeedbackPage() {
               Submit Feedback
             </CardTitle>
             <CardDescription>
-              Have a bug to report or a feature to request? We'd love to hear
-              from you.
+              Have a bug to report or a feature to request? We'd love to hear from you.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -178,16 +161,10 @@ export default function FeedbackPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Bug Report">Bug Report</SelectItem>
-                    <SelectItem value="Feature Request">
-                      Feature Request
-                    </SelectItem>
+                    <SelectItem value="Feature Request">Feature Request</SelectItem>
                     <SelectItem value="Payment Issue">Payment Issue</SelectItem>
-                    <SelectItem value="General Feedback">
-                      General Feedback
-                    </SelectItem>
-                    <SelectItem value="Account/Login Problem">
-                      Account/Login Problem
-                    </SelectItem>
+                    <SelectItem value="General Feedback">General Feedback</SelectItem>
+                    <SelectItem value="Account/Login Problem">Account/Login Problem</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -236,9 +213,7 @@ export default function FeedbackPage() {
                   disabled={isSubmitting}
                   className="px-8 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : null}
+                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Submit Feedback
                 </Button>
               </div>

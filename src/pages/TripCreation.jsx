@@ -38,7 +38,9 @@ export default function TripCreation() {
     end_date: "",
     booking_deadline: "",
     welcome_message: "",
+    image: null,
   });
+  const [previewUrl, setPreviewUrl] = useState(""); // preview image
   console.log("Hey I am the Create Trip form Data", formData);
 
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,31 @@ export default function TripCreation() {
   const updateFormData = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
 
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Please select a valid image file (JPG, PNG, or WebP)");
+        e.target.value = "";
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image file size must be less than 5MB");
+        e.target.value = "";
+        return;
+      }
+
+      updateFormData("image", file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
   const generateInviteCode = () => {
     return (
       Math.random().toString(36).substring(2, 15) +
@@ -57,12 +83,13 @@ export default function TripCreation() {
   const { mutate, isLoading } = useMutation({
     mutationFn: (formData) => createTripService(formData, token),
     onSuccess: (data) => {
-      console.log(" Trip Created Successfully:", data);
+      console.log("Trip Created Successfully:", data);
       toast.success(data.message);
       navigate("/mytrips");
     },
     onError: (error) => {
-      console.error(" Failed to Create Trip:", error);
+      console.error("Failed to Create Trip:", error);
+      toast.error("Failed to create trip. Please try again.");
     },
   });
 
@@ -197,20 +224,15 @@ export default function TripCreation() {
                   <Input
                     id="image"
                     type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        updateFormData("image", file);
-                      }
-                    }}
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageChange}
                     className="mt-2"
                   />
 
-                  {/* Preview */}
-                  {formData.image && (
+                  {/* ✅ Preview */}
+                  {previewUrl && (
                     <img
-                      src={URL.createObjectURL(formData.image)}
+                      src={previewUrl}
                       alt="Trip Preview"
                       className="mt-3 w-full h-48 object-cover rounded-lg border"
                     />
