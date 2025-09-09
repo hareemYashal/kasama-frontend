@@ -35,6 +35,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
+import KasamaTips from "./KasamaTips.jsx";
 
 // Pages mapping (for Layout)
 const PAGES = {
@@ -51,6 +52,7 @@ const PAGES = {
   MyTrips,
   Payments,
   ParticipantDashboard,
+  Tips: KasamaTips,
   Help,
   Feedback,
   CancelTrip,
@@ -217,6 +219,14 @@ function PagesContent() {
           element={
             <PrivateRoute>
               <Help />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/Tips"
+          element={
+            <PrivateRoute>
+              <KasamaTips />
             </PrivateRoute>
           }
         />

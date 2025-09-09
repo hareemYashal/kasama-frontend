@@ -38,6 +38,7 @@ import {
   Check,
   Plus,
   AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getPaymentRemainingsService } from "@/services/paynent";
@@ -49,6 +50,7 @@ import {
   totalParticipantsService,
 } from "@/services/participant";
 import { toast } from "sonner";
+import { getTripService } from "@/services/trip";
 
 export default function Payments() {
   const authToken = useSelector((state) => state.user.token);
@@ -228,6 +230,7 @@ export default function Payments() {
             baseAmount: parsedAmount,
             totalCharge,
             paymentType: "self",
+            isCreator: isCreator,
           }),
         }
       );
@@ -343,6 +346,14 @@ export default function Payments() {
     return { amount, stripeFee, totalCharge };
   }, [friendPaymentAmount]);
 
+  const { data: tripData, isLoading: isLoadingTripData } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(token, tripId),
+    enabled: !!token,
+  });
+
+  const trip = tripData?.data?.activeTrip;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -360,12 +371,24 @@ export default function Payments() {
   // const tripId = useSelector((state) => state.trips.activeTripId);
   // const userData = useSelector((state) => state.user.user);
   // let userId = userData?.id;
+
+  const noExpensesAdded =
+    paymentDetailData?.amountPaid === 0 &&
+    paymentDetailData?.overpaid === 0 &&
+    paymentDetailData?.remainings === 0 &&
+    paymentDetailData?.your_goal === 0;
+
+  console.log("noExpensesAdded", noExpensesAdded);
+  const user = useSelector((state) => state.user.user);
+
+  const isCreator = user?.trip_role === "creator";
+
   return (
     <>
       {!isInvited ? (
         <div className="flex justify-center items-center min-h-[60vh] bg-gray-50">
           <div className="max-w-md w-full bg-white shadow-lg rounded-2xl p-8 text-center">
-            <h2 className="text-xl font-semibold text-gray-800">
+            <h2 className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
               You are not added to this Trip
             </h2>
             <p className="mt-3 text-gray-600">
@@ -391,7 +414,13 @@ export default function Payments() {
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
-                onClick={() => navigate(createPageUrl("Dashboard"))}
+                onClick={() =>
+                  navigate(
+                    createPageUrl(
+                      isCreator ? "Dashboard" : "participantDashboard"
+                    )
+                  )
+                }
                 className="bg-white/80"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -408,8 +437,7 @@ export default function Payments() {
                     Payments
                   </h1>
                   <p className="text-slate-600">
-                    Manage your contributions for
-                    {/* {trip?.destination} */}
+                    Manage your contributions for {trip?.destination}
                   </p>
                 </div>
               </div>
@@ -432,7 +460,7 @@ export default function Payments() {
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">Remaining</p>
-                      <p className="text-2xl font-bold text-coral-600">
+                      <p className="text-2xl font-bold text-red-600">
                         ${paymentDetailData?.remainings}
                       </p>
                     </div>
@@ -441,104 +469,125 @@ export default function Payments() {
               )}
             </div>
 
-            {/* 1. Manage Payment Method */}
-            <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-blue-600" />
-                  Manage Payment Method
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {paymentDetailData?.remainings <= 0 ? (
-                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
-                    <Check className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="font-semibold text-green-700">
-                        Payment Complete
+            {!noExpensesAdded && (
+              <>
+                {paymentDetailData?.remainings <= 0 && (
+                  <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                        <ShieldCheck className="w-6 h-6 text-green-600" />
+                        Payment Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center py-8">
+                      <h3 className="text-2xl font-semibold text-slate-700 mb-2">
+                        You've fully contributed to this trip!
+                      </h3>
+                      <p className="text-slate-600">
+                        Your balance for this trip is $0.00. You're all set!
                       </p>
-                      <p className="text-sm text-green-600">
-                        You have fully paid your share for this trip.
-                      </p>
-                    </div>
-                  </div>
-                ) : !paymentMethod ? (
-                  <div className="space-y-6">
-                    <p className="text-slate-600">
-                      Add a secure payment method for this trip
-                    </p>
-                    <Dialog
-                      open={showPaymentModal}
-                      onOpenChange={setShowPaymentModal}
-                    >
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Payment Method
-                        </Button>
-                      </DialogTrigger>
-
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Add Payment Method</DialogTitle>
-                          <DialogDescription>
-                            Add a secure credit/debit card for this trip
-                          </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="space-y-4">
-                          <div
-                            className="p-4 border-2 rounded-xl cursor-pointer border-blue-500 bg-blue-50"
-                            onClick={() => setMethodType("card")}
+                    </CardContent>
+                  </Card>
+                )}
+                {paymentDetailData?.remainings > 0 && (
+                  <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-blue-600" />
+                        Manage Payment Method
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {paymentDetailData?.remainings <= 0 ? (
+                        <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <div>
+                            <p className="font-semibold text-green-700">
+                              Payment Complete
+                            </p>
+                            <p className="text-sm text-green-600">
+                              You have fully paid your share for this trip.
+                            </p>
+                          </div>
+                        </div>
+                      ) : !paymentMethod ? (
+                        <div className="space-y-6">
+                          <p className="text-slate-600">
+                            Add a secure payment method for this trip
+                          </p>
+                          <Dialog
+                            open={showPaymentModal}
+                            onOpenChange={setShowPaymentModal}
                           >
+                            <DialogTrigger asChild>
+                              <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Payment Method
+                              </Button>
+                            </DialogTrigger>
+
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Add Payment Method</DialogTitle>
+                                <DialogDescription>
+                                  Add a secure credit/debit card for this trip
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="space-y-4">
+                                <div
+                                  className="p-4 border-2 rounded-xl cursor-pointer border-blue-500 bg-blue-50"
+                                  onClick={() => setMethodType("card")}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <CreditCard className="w-5 h-5 text-slate-600" />
+                                    <div>
+                                      <h4 className="font-semibold">
+                                        Credit/Debit Card
+                                      </h4>
+                                      <p className="text-sm text-slate-500">
+                                        2.9% + 30¢ per transaction
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setShowPaymentModal(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  onClick={handleAddPaymentMethod}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                  Add Card
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                             <div className="flex items-center gap-3">
-                              <CreditCard className="w-5 h-5 text-slate-600" />
+                              <Check className="w-5 h-5 text-green-600" />
                               <div>
-                                <h4 className="font-semibold">
-                                  Credit/Debit Card
-                                </h4>
+                                <p className="font-medium">
+                                  {paymentMethod.brand} ****{" "}
+                                  {paymentMethod.last4}
+                                </p>
                                 <p className="text-sm text-slate-500">
-                                  2.9% + 30¢ per transaction
+                                  {paymentMethod.type === "ach"
+                                    ? "Bank Account"
+                                    : "Credit/Debit Card"}
                                 </p>
                               </div>
                             </div>
-                          </div>
-                        </div>
-
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => setShowPaymentModal(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleAddPaymentMethod}
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            Add Card
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <Check className="w-5 h-5 text-green-600" />
-                        <div>
-                          <p className="font-medium">
-                            {paymentMethod.brand} **** {paymentMethod.last4}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {paymentMethod.type === "ach"
-                              ? "Bank Account"
-                              : "Credit/Debit Card"}
-                          </p>
-                        </div>
-                      </div>
-                      {/* <Button
+                            {/* <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -550,139 +599,147 @@ export default function Payments() {
                       >
                         Change
                       </Button> */}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 2. One-Time Payment */}
-            {paymentMethod &&
-              paymentDetailData &&
-              paymentDetailData.remainings > 0 && (
-                <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-green-600" />
-                      Make a One-Time Payment
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="space-y-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        <Label>Amount to Pay</Label>
-                        <div className="relative mt-2">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
-                            value={oneTimeAmount}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              if (isNaN(val) || val < 0) {
-                                setOneTimeAmount("");
-                                return;
-                              }
-                              setOneTimeAmount(val.toString());
-                            }}
-                            className="pl-10"
-                          />
-                        </div>
-
-                        {/* Error message */}
-                        {oneTimeAmount &&
-                          (parseFloat(oneTimeAmount) <= 0 ||
-                            parseFloat(oneTimeAmount) >
-                              paymentDetailData.remainings) && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {parseFloat(oneTimeAmount) <= 0
-                                ? "Please enter a valid positive amount."
-                                : "Amount cannot exceed remaining balance."}
-                            </p>
-                          )}
-
-                        <p className="text-xs text-slate-500 mt-1">
-                          Maximum: ${paymentDetailData.remainings.toFixed(2)}
-                        </p>
-                      </div>
-
-                      {oneTimeAmount && parseFloat(oneTimeAmount) > 0 && (
-                        <div className="bg-slate-50 rounded-xl p-4">
-                          <h4 className="font-semibold text-slate-800 mb-3">
-                            Payment Breakdown
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Payment Amount:</span>
-                              <span>
-                                ${parseFloat(oneTimeAmount).toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Kasama Platform Fee:</span>
-                              <span>$1.00</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Estimated Stripe Fee:</span>
-                              <span>
-                                $
-                                {calculateOneTimePaymentBreakdown().stripeFee.toFixed(
-                                  2
-                                )}
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              (
-                              {paymentMethod.type === "ach"
-                                ? "0.8% (capped at $5)"
-                                : "2.9% + 30¢"}{" "}
-                              for{" "}
-                              {paymentMethod.type === "ach" ? "ACH" : "card"})
-                            </div>
-                            <hr className="my-2" />
-                            <div className="flex justify-between font-bold text-green-600">
-                              <span>Total You'll Be Charged Today:</span>
-                              <span>
-                                $
-                                {calculateOneTimePaymentBreakdown().totalCharge.toFixed(
-                                  2
-                                )}
-                              </span>
-                            </div>
                           </div>
                         </div>
                       )}
-                    </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                    <Button
-                      onClick={handleOneTimePayment}
-                      disabled={
-                        !oneTimeAmount ||
-                        parseFloat(oneTimeAmount) <= 0 ||
-                        parseFloat(oneTimeAmount) >
-                          paymentDetailData.remainings ||
-                        processingOneTimePayment
-                      }
-                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                      {processingOneTimePayment && (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      )}
-                      Pay $
-                      {oneTimeAmount &&
-                      parseFloat(oneTimeAmount) > 0 &&
-                      parseFloat(oneTimeAmount) <= paymentDetailData.remainings
-                        ? calculateOneTimePaymentBreakdown().totalCharge.toFixed(
-                            2
-                          )
-                        : "0.00"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+                {/* 2. One-Time Payment */}
+                {paymentMethod &&
+                  paymentDetailData &&
+                  paymentDetailData.remainings > 0 && (
+                    <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <DollarSign className="w-5 h-5 text-green-600" />
+                          Make a One-Time Payment
+                        </CardTitle>
+                      </CardHeader>
+
+                      <CardContent className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <Label>Amount to Pay</Label>
+                            <div className="relative mt-2">
+                              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                value={oneTimeAmount}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (isNaN(val) || val < 0) {
+                                    setOneTimeAmount("");
+                                    return;
+                                  }
+                                  setOneTimeAmount(val.toString());
+                                }}
+                                className="pl-10"
+                              />
+                            </div>
+
+                            {/* Error message */}
+                            {oneTimeAmount &&
+                              (parseFloat(oneTimeAmount) <= 0 ||
+                                parseFloat(oneTimeAmount) >
+                                  paymentDetailData.remainings) && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {parseFloat(oneTimeAmount) <= 0
+                                    ? "Please enter a valid positive amount."
+                                    : "Amount cannot exceed remaining balance."}
+                                </p>
+                              )}
+
+                            <p className="text-xs text-slate-500 mt-1">
+                              Maximum: $
+                              {paymentDetailData.remainings.toFixed(2)}
+                            </p>
+                          </div>
+
+                          {oneTimeAmount && parseFloat(oneTimeAmount) > 0 && (
+                            <div className="bg-slate-50 rounded-xl p-4">
+                              <h4 className="font-semibold text-slate-800 mb-3">
+                                Payment Breakdown
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span>Payment Amount:</span>
+                                  <span>
+                                    ${parseFloat(oneTimeAmount).toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Kasama Platform Fee:</span>
+                                  <span>$1.00</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Estimated Stripe Fee:</span>
+                                  <span>
+                                    $
+                                    {calculateOneTimePaymentBreakdown().stripeFee.toFixed(
+                                      2
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  (
+                                  {paymentMethod.type === "ach"
+                                    ? "0.8% (capped at $5)"
+                                    : "2.9% + 30¢"}{" "}
+                                  for{" "}
+                                  {paymentMethod.type === "ach"
+                                    ? "ACH"
+                                    : "card"}
+                                  )
+                                </div>
+                                <hr className="my-2" />
+                                <div className="flex justify-between font-bold text-green-600">
+                                  <span>Total You'll Be Charged Today:</span>
+                                  <span>
+                                    $
+                                    {calculateOneTimePaymentBreakdown().totalCharge.toFixed(
+                                      2
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <Button
+                          onClick={handleOneTimePayment}
+                          disabled={
+                            !oneTimeAmount ||
+                            parseFloat(oneTimeAmount) <= 0 ||
+                            parseFloat(oneTimeAmount) >
+                              paymentDetailData.remainings ||
+                            processingOneTimePayment
+                          }
+                          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {processingOneTimePayment && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          )}
+                          Pay $
+                          {oneTimeAmount &&
+                          parseFloat(oneTimeAmount) > 0 &&
+                          parseFloat(oneTimeAmount) <=
+                            paymentDetailData.remainings
+                            ? calculateOneTimePaymentBreakdown().totalCharge.toFixed(
+                                2
+                              )
+                            : "0.00"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+              </>
+            )}
 
             {/* 3. Auto-Pay Setup - Enhanced with recurring day selection */}
             {/* {paymentMethod &&
@@ -763,7 +820,7 @@ export default function Payments() {
               )} */}
 
             {/* 4. Pay for a Friend - Enhanced with real-time data and cost breakdown */}
-            {tripParticipantsNumber > 0 && (
+            {/* {tripParticipantsNumber > 0 && (
               <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -930,7 +987,7 @@ export default function Payments() {
                   </Button>
                 </CardContent>
               </Card>
-            )}
+            )} */}
 
             {/* Compliance Note */}
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">

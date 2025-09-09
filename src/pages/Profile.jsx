@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,10 +72,16 @@ export default function Profile() {
   }, [profileData]);
 
   // Save profile
+  const queryClient = useQueryClient();
+
   const { mutate, isLoading: saving } = useMutation({
     mutationFn: (payload) => saveProfileService(payload, token),
     onSuccess: (res) => {
       toast.success(res.message || "Profile saved successfully");
+
+      // 🔄 Invalidate cached profile so Layout refetches
+      queryClient.invalidateQueries(["profile"]);
+
       navigate(createPageUrl("profile"));
     },
     onError: () => {

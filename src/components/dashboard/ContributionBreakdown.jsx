@@ -42,9 +42,10 @@ export default function ContributionBreakdown({
   //   );
   // }
 
-  console.log("contributions----->", contributions);
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
+  console.log("contributions----->", contributions);
+  const isCreator = user?.trip_role === "creator";
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
@@ -116,14 +117,14 @@ export default function ContributionBreakdown({
             </span>
           </button>
         )}
-        {user?.trip_role !== "creator" && (
+        {/* {(contribution?.user.email === user?.email && isCreator) && (
           <Badge
             variant="outline"
             className="inline-flex items-center rounded-full !mx-0 border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-slate-50 text-slate-700 border-slate-200 ml-2 text-xs sm:text-sm flex-shrink-0"
           >
             {participantContributionData?.participants?.length}
           </Badge>
-        )}
+        )} */}
       </CardHeader>
       <CardContent className="space-y-4 pt-6">
         {contributions?.map((contribution) => (
@@ -134,8 +135,8 @@ export default function ContributionBreakdown({
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-800 flex items-center gap-2 truncate">
-                  {contribution.user.name}
-                  {contribution.user.role === "admin" && (
+                  {contribution?.user.name}
+                  {contribution?.user.email === user?.email && isCreator && (
                     <>
                       <Crown
                         className="w-4 h-4 text-amber-500"
@@ -157,7 +158,8 @@ export default function ContributionBreakdown({
 
             <Progress
               value={getProgressPercentage(contribution)}
-              className="h-2 mb-2 text-amber"
+              indicatorClassName="bg-gradient-to-r from-emerald-500 to-green-500"
+              className="h-2 mb-2"
             />
 
             <div className="flex justify-between items-center text-xs text-slate-500">

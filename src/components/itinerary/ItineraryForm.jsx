@@ -97,9 +97,9 @@ export default function ItineraryForm({
       }
     }
 
-    if (!formData.notes || formData.notes.trim() === "") {
-      newErrors.notes = "Notes are required";
-    }
+    // if (!formData.notes || formData.notes.trim() === "") {
+    //   newErrors.notes = "Notes are required";
+    // }
 
     // Notes (optional, max length)
     if (formData.notes && formData.notes.length > 500) {
@@ -125,99 +125,122 @@ export default function ItineraryForm({
   };
 
   return (
-    <Card className="bg-white/90 shadow-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-blue-600" />
-          {item ? "Edit Activity" : "Add New Activity"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Date + Title */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <Label>Date *</Label>
-              <Input
-                type="date"
-                value={formData.date}
-                onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
-                min={format(new Date(trip.start_date), "yyyy-MM-dd")}
-                max={format(new Date(trip.end_date), "yyyy-MM-dd")}
-              />
-
-              {errors.date && (
-                <p className="text-red-500 text-sm">{errors.date}</p>
-              )}
-            </div>
-            <div>
-              <Label>Activity Title *</Label>
-              <Input
-                value={formData.activity_title}
-                onChange={(e) =>
-                  setFormData({ ...formData, activity_title: e.target.value })
-                }
-              />
-              {errors.activity_title && (
-                <p className="text-red-500 text-sm">{errors.activity_title}</p>
-              )}
-            </div>
-          </div>
-          {/* Times */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <Label>Start Time *</Label>
-              <Input
-                type="time"
-                value={formData.start_time}
-                onChange={(e) =>
-                  setFormData({ ...formData, start_time: e.target.value })
-                }
-              />
-              {errors.start_time && (
-                <p className="text-red-500 text-sm">{errors.start_time}</p>
-              )}
-            </div>
-            <div>
-              <Label>End Time *</Label>
-              <Input
-                type="time"
-                value={formData.end_time}
-                onChange={(e) =>
-                  setFormData({ ...formData, end_time: e.target.value })
-                }
-              />
-              {errors.end_time && (
-                <p className="text-red-500 text-sm">{errors.end_time}</p>
-              )}
-            </div>
-          </div>
-          {/* Notes */}
+    <form id="itinerary" onSubmit={handleSubmit} className="space-y-6">
+      {/* Date + Title */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <label
+            htmlFor="date"
+            className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-base font-semibold text-slate-700 mb-2"
+          >
+            Date *
+          </label>
           <div>
-            <Label>Notes</Label>
-            <Textarea
-              value={formData.notes}
+            <Input
+              id="date"
+              type="date"
+              value={formData.date}
               onChange={(e) =>
-                setFormData({ ...formData, notes: e.target.value })
+                setFormData({ ...formData, date: e.target.value })
               }
+              min={format(new Date(trip.start_date), "yyyy-MM-dd")}
+              max={format(new Date(trip.end_date), "yyyy-MM-dd")}
             />
-            {errors.notes && (
-              <p className="text-red-500 text-sm">{errors.notes}</p>
-            )}
+            <p className="text-sm text-slate-500 mt-1">
+              Must be between {format(new Date(trip.start_date), "MMM d, yyyy")}{" "}
+              – {format(new Date(trip.end_date), "MMM d, yyyy")}
+            </p>
           </div>
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              <X className="w-4 h-4 mr-2" /> Cancel
-            </Button>
-            <Button type="submit" className="bg-blue-600">
-              <Save className="w-4 h-4 mr-2" />
-              {item ? "Update Activity" : "Add Activity"}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+
+          {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
+        </div>
+        <div>
+          <label
+            htmlFor="activity_title"
+            className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-base font-semibold text-slate-700 mb-2"
+          >
+            Activity Title *
+          </label>
+          <Input
+            id="activity_title"
+            value={formData.activity_title}
+            onChange={(e) =>
+              setFormData({ ...formData, activity_title: e.target.value })
+            }
+            placeholder="e.g., Beach Day, City Tour, Dinner"
+          />
+          {errors.activity_title && (
+            <p className="text-red-500 text-sm">{errors.activity_title}</p>
+          )}
+        </div>
+      </div>
+      {/* Times */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <label
+            htmlFor="start_time"
+            className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-base font-semibold text-slate-700 mb-2"
+          >
+            Start Time *
+          </label>
+          <Input
+            id="start_time"
+            type="time"
+            value={formData.start_time}
+            onChange={(e) =>
+              setFormData({ ...formData, start_time: e.target.value })
+            }
+          />
+          {errors.start_time && (
+            <p className="text-red-500 text-sm">{errors.start_time}</p>
+          )}
+        </div>
+        <div>
+          <label
+            htmlFor="end_time"
+            className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-base font-semibold text-slate-700 mb-2"
+          >
+            End Time *
+          </label>
+          <Input
+            id="end_time"
+            type="time"
+            value={formData.end_time}
+            onChange={(e) =>
+              setFormData({ ...formData, end_time: e.target.value })
+            }
+          />
+          {errors.end_time && (
+            <p className="text-red-500 text-sm">{errors.end_time}</p>
+          )}
+        </div>
+      </div>
+      {/* Notes */}
+      <div>
+        <label
+          htmlFor="notes"
+          className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-base font-semibold text-slate-700 mb-2"
+        >
+          Notes (Optional)
+        </label>
+        <Textarea
+          placeholder="Add any additional details, meeting points, or special instructions..."
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          className="flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2 border-slate-200 min-h-24"
+        />
+        {errors.notes && <p className="text-red-500 text-sm">{errors.notes}</p>}
+      </div>
+      <div className="flex justify-end gap-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          <X className="w-4 h-4 mr-2" /> Cancel
+        </Button>
+        <Button type="submit" className="bg-blue-600">
+          <Save className="w-4 h-4 mr-2" />
+          {item ? "Update Activity" : "Add Activity"}
+        </Button>
+      </div>
+    </form>
   );
 }

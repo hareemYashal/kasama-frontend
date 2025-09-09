@@ -1,123 +1,148 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Users,
-  ShieldCheck,
-  Shield,
-  Trash2,
-  MoreVertical,
-  User as UserIcon,
-  Crown,
-  Phone,
-} from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Users, Crown, Phone, Calendar } from "lucide-react";
+import { useSelector } from "react-redux";
 
 export default function ParticipantList({ participants, onRemove }) {
   const [participantToRemove, setParticipantToRemove] = useState(null);
-
+  const user = useSelector((state) => state.user.user);
+console.log('usercheckemail',user?.email)
   return (
-    <>
-      <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-slate-800">
-            <Users className="w-5 h-5 text-purple-600" />
-            Participant Roster
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y divide-slate-100">
-            {participants && participants.length > 0 ? (
-              participants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className="px-4 md:px-6 py-4 md:py-5 hover:bg-slate-50/50 transition-colors duration-200"
-                >
-                  <div className="flex items-start md:items-center gap-3 md:gap-4">
-                    {/* Profile Picture */}
-                    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-slate-200 to-slate-300 rounded-full flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-white shadow-md">
-                      {participant.profile_photo_url ? (
-                        <img
-                          src={participant.profile_photo_url}
-                          alt={participant.full_name || "User"}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-slate-600 font-semibold text-sm md:text-lg">
-                          {participant?.user?.name?.charAt(0) || "U"}
-                        </span>
-                      )}
+    <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-card-foreground">
+          <Users className="w-6 h-6 text-primary" />
+          Participant Roster
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent>
+        {participants?.length > 0 ? (
+          participants.map((participant) => {
+            const profile = participant?.user?.Profile;
+
+            return (
+              <div
+                key={participant.id}
+                className="px-3 md:px-6 py-4 md:py-5 hover:bg-muted/50 transition-colors duration-200 border-b last:border-b-0"
+              >
+                <div className="flex items-start gap-3">
+                  {/* Profile Image */}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-white dark:ring-slate-800 shadow-md">
+                    {participant?.user?.Profile?.profile_photo_url ? (
+                      <img
+                        src={participant?.user?.Profile?.profile_photo_url}
+                        alt={participant?.user?.name || "Participant"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Agar image load na ho to fallback letter dikhayen
+                          e.target.style.display = "none";
+                          e.target.parentNode.innerHTML = `
+          <span class='w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold'>
+            ${(participant?.user?.name?.[0] || "P").toUpperCase()}
+          </span>`;
+                        }}
+                      />
+                    ) : (
+                      <span className="w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold">
+                        {(participant?.user?.name?.[0] || "P").toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-y-2">
+                      <div className="flex items-center gap-x-3 flex-wrap">
+                        <h3 className="font-bold text-card-foreground text-base truncate">
+                          {participant?.user?.name || "Unnamed"}
+                        </h3>
+
+                        {/* Badges */}
+                        <div className="flex items-center gap-x-1.5">
+                          {participant?.user?.role === "admin" && (
+                            <div className="inline-flex items-center rounded-full border px-2.5 transition-colors bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
+                              <Crown className="w-3 h-3 mr-1" />
+                              Admin
+                            </div>
+                          )}
+                          {participant?.user?.email ===
+                            user?.email && (
+                            <div className="inline-flex items-center rounded-full border px-2.5 font-semibold text-foreground text-xs py-0.5">
+                              You
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Main Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Name and badges */}
-                      <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-slate-800 text-base md:text-lg">
-                            {participant?.user?.name || "Unnamed User"}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge
-                            variant="outline"
-                            className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs px-2 py-1"
-                          >
-                            {participant?.user?.role || "N/A"}
-                          </Badge>
-                        </div>
-                      </div>
+                    {/* Email */}
+                    <p className="text-sm text-muted-foreground truncate mt-1">
+                      {participant?.user?.email || "No email provided"}
+                    </p>
 
-                      {/* Emergency contact */}
-                      <div className="flex items-start gap-2 text-sm text-slate-600">
-                        <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                        <span className="break-words">
-                          Emergency Contact:{" "}
-                          {participant?.user?.phoneNumber || "Not Provided"}
-                        </span>
+                    {/* DOB */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1.5">
+                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="font-medium">DOB:</span>
+                      <span className="truncate">
+                        {profile?.birthday
+                          ? new Date(profile?.birthday).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )
+                          : "Not provided"}
+                      </span>
+                    </div>
+
+                    {/* Emergency Contact */}
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground mt-1">
+                      <Phone className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium">Emergency Contact:</span>
+                        <div className="break-words text-xs leading-relaxed">
+                          {profile?.emergency_contact_name ||
+                          profile?.emergency_contact_phone ||
+                          profile?.emergency_contact_relationship ? (
+                            <>
+                              {profile?.emergency_contact_name || "N/A"} •{" "}
+                              {profile?.emergency_contact_phone || "N/A"} •{" "}
+                              {profile?.emergency_contact_relationship || "N/A"}
+                            </>
+                          ) : (
+                            "Not provided"
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Role Badge */}
-                    <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-3 shrink-0">
-                      <div className="order-2 md:order-1">
-                        {participant?.user?.role === "admin" ? (
-                          <Badge className="bg-coral-100 text-coral-800 border-coral-200 font-medium text-xs">
-                            <ShieldCheck className="w-3 h-3 mr-1" />
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700 border-blue-200 font-medium text-xs"
-                          >
-                            <Shield className="w-3 h-3 mr-1" />
-                            Participant
-                          </Badge>
-                        )}
-                      </div>
+                    {/* Travel Document */}
+                    <div className="mt-3 pt-3 border-t border-border/60">
+                      <p className="text-xs text-slate-400 italic">
+                        {profile?.passport_country &&
+                        profile?.passport_expiration &&
+                        profile?.passport_number
+                          ? profile?.travelDocument ||
+                            "Travel document details available"
+                          : "No travel document submitted."}
+                      </p>
                     </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-slate-500 text-sm px-4 pb-5 text-center">
-                No participants available.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            No participants yet.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

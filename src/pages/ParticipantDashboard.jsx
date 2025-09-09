@@ -342,6 +342,8 @@ export default function ParticipantDashboard() {
     participants: mockParticipants,
   };
 
+  console.log("trip;;;;;;;;;;", trip);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -358,12 +360,40 @@ export default function ParticipantDashboard() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
                 <div className="absolute bottom-6 left-6 right-6 text-white">
                   <div className="flex items-center gap-3 mb-2">
-                    <Badge className="bg-blue-500/90 text-white backdrop-blur-sm">
-                      Participant
+                    <Badge className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-primary/80 bg-blue-600/90 text-white backdrop-blur-sm text-xs sm:text-sm">
+                      Trip Admin
                     </Badge>
-                    {/* <Badge className="bg-green-500/90 text-white backdrop-blur-sm">
-                      {trip.status}
-                    </Badge> */}
+
+                    {(() => {
+                      if (
+                        !trip?.start_date ||
+                        !trip?.end_date
+                      )
+                        return null;
+
+                      const today = new Date();
+                      const start = new Date(trip.start_date);
+                      const end = new Date(trip.end_date);
+
+                      // Normalize (remove time part, only compare dates)
+                      const todayDate = new Date(
+                        today.toISOString().split("T")[0]
+                      );
+                      const startDate = new Date(
+                        start.toISOString().split("T")[0]
+                      );
+                      const endDate = new Date(end.toISOString().split("T")[0]);
+
+                      if (startDate <= todayDate && todayDate <= endDate) {
+                        return (
+                          <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-primary/80 bg-slate-700/70 text-white backdrop-blur-sm text-xs sm:text-sm">
+                            Active
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })()}
                   </div>
                   <h1 className="text-4xl md:text-5xl font-bold mb-2">
                     {trip.trip_occasion}
@@ -711,7 +741,7 @@ export default function ParticipantDashboard() {
         </Card>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* <div className="grid grid-cols-2 gap-6">
           <Button
             onClick={() => navigate(createPageUrl("Itinerary"))}
             variant="outline"
@@ -732,7 +762,7 @@ export default function ParticipantDashboard() {
               <span className="font-semibold">Group Chat</span>
             </div>
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

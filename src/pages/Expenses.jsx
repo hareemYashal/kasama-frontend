@@ -40,6 +40,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { totalParticipantsService } from "@/services/participant";
 import { setExpensesList } from "@/store/expenseSlice";
 import { toast } from "sonner";
+import { getTripService } from "@/services/trip";
 
 export default function Expenses() {
   // const navigate = useNavigate();
@@ -305,7 +306,7 @@ export default function Expenses() {
   }, [expenseListSuccess, expenseDataList, dispatch]);
 
   console.log(tripExpensesList);
-  console.log(expenseDataList?.expenses, "Hhahahahahahahahah");
+  console.log('expenseDataList999', expenseDataList);
   const totalAmount = expenses.reduce(
     (sum, exp) => sum + (Number(exp.amount) || 0),
     0
@@ -334,6 +335,14 @@ export default function Expenses() {
     setEditingExpense(null);
     setIsEditModalOpen(false);
   };
+
+  const { data: tripDetails, isLoading: isLoadingTripData } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(token, tripId),
+    enabled: !!token,
+  });
+
+  const tdata = tripDetails?.data?.activeTrip;
 
   const handleEditExpense = async (formData) => {
     if (!editingExpense) return;
@@ -436,7 +445,7 @@ export default function Expenses() {
                 Trip Expenses
               </h1>
               <p className="text-xl text-slate-600">
-                {tripParticipantsNumber} participants
+                {tdata?.destination} • {tripParticipantsNumber} participants
               </p>
             </div>
           </div>
@@ -446,7 +455,7 @@ export default function Expenses() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-700">
+              <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-slate-700">
                 <Calculator className="w-5 h-5 text-green-600" />
                 Total Goal
               </CardTitle>
@@ -464,18 +473,17 @@ export default function Expenses() {
           {/* Contributed Card */}
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-700">
+              <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-slate-700">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
                 Contributed
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-blue-600">
+              <p className="text-3xl font-bold text-blue-600">
                 Base: ${(tripData?.baseAmountContributed ?? 0).toFixed(2)}
               </p>
-              <p className="text-2xl font-semibold text-green-600">
-                Total Paid: $
-                {(tripData?.totalChargeContributed ?? 0).toFixed(2)}
+              <p className="text-3xl font-bold text-green-600">
+                Total: ${(tripData?.totalChargeContributed ?? 0).toFixed(2)}
               </p>
               <p className="text-sm text-slate-500 mt-1">
                 {tripData?.total_goal > 0
@@ -512,7 +520,7 @@ export default function Expenses() {
 
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-700">
+              <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-slate-700">
                 <Users className="w-5 h-5 text-purple-600" />
                 Per Person
               </CardTitle>
@@ -522,14 +530,14 @@ export default function Expenses() {
                 ${tripData?.per_person}
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                Split {participants.length} ways
+                Split {tripParticipantsNumber} ways
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-700">
+              <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-slate-700">
                 <DollarSign className="w-5 h-5 text-coral-600" />
                 Remaining
               </CardTitle>
@@ -547,8 +555,8 @@ export default function Expenses() {
         {tripData?.total_goal > 0 && (
           <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <TrendingUp className="w-5 h-5 text-green-600" />
+              <CardTitle className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-slate-800">
+                <TrendingUp className="w-6 h-6 text-green-600" />
                 Group Progress
               </CardTitle>
             </CardHeader>
@@ -581,12 +589,12 @@ export default function Expenses() {
                     : 0}
                   % of total goal reached
                 </p>
-                {tripData?.totalChargeContributed > 0 && (
+                {/* {tripData?.totalChargeContributed > 0 && (
                   <p className="text-sm text-slate-400">
                     Including platform fees: $
                     {(tripData?.totalChargeContributed ?? 0).toFixed(2)}
                   </p>
-                )}
+                )} */}
               </div>
             </CardContent>
           </Card>
@@ -601,6 +609,7 @@ export default function Expenses() {
               onEdit={handleStartEdit}
               onDelete={handleDeleteExpense}
               onAdd={handleAddExpense}
+              totalAmount={expenseDataList?.totalAmount}
             />
           )}
         </div>

@@ -114,10 +114,10 @@ export default function LoginPage({ onNavigate }) {
   };
 
   useEffect(() => {
-    if (user) {
+    if (token) {
       navigate("/mytrips");
     }
-  }, [user, navigate]);
+  }, [token, navigate]);
 
   // --------------------------------
   return (

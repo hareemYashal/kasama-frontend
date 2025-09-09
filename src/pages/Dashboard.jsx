@@ -17,6 +17,7 @@ import {
   ImageIcon,
   MessageCircle,
   Settings,
+  PenLine,
 } from "lucide-react";
 import { format } from "date-fns";
 import CountdownTimer from "../components/dashboard/CountdownTimer";
@@ -194,31 +195,147 @@ export default function Dashboard() {
     );
   }
 
+  console.log("activeTripDataState", activeTripDataState);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Banner */}
-        <div className="relative h-64 rounded-3xl overflow-hidden shadow-lg">
-          {activeTripDataState?.image ? (
-            <img
-              src={activeTripDataState.image}
-              alt={activeTripDataState.destination || "Trip Image"}
-              className="object-cover w-full h-full"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-              <div className="text-center">
-                <ImageIcon className="w-16 h-16 text-slate-500 mx-auto mb-3" />
-                <h2 className="text-2xl font-bold text-slate-700">
-                  {activeTripDataState?.destination || "No Destination"}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Add a photo for this trip!
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        {activeTripDataState && (
+          <div className="relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl group">
+            {activeTripDataState?.image ? (
+              <>
+                {/* Trip Image */}
+                <img
+                  src={activeTripDataState.image}
+                  alt={activeTripDataState.trip_occasion || "Trip Image"}
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Dark overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <div className="absolute bottom-6 left-6 right-6 text-white">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Badge className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-primary/80 bg-blue-600/90 text-white backdrop-blur-sm text-xs sm:text-sm">
+                      Trip Admin
+                    </Badge>
+
+                    {(() => {
+                      if (
+                        !activeTripDataState?.start_date ||
+                        !activeTripDataState?.end_date
+                      )
+                        return null;
+
+                      const today = new Date();
+                      const start = new Date(activeTripDataState.start_date);
+                      const end = new Date(activeTripDataState.end_date);
+
+                      // Normalize (remove time part, only compare dates)
+                      const todayDate = new Date(
+                        today.toISOString().split("T")[0]
+                      );
+                      const startDate = new Date(
+                        start.toISOString().split("T")[0]
+                      );
+                      const endDate = new Date(end.toISOString().split("T")[0]);
+
+                      if (startDate <= todayDate && todayDate <= endDate) {
+                        return (
+                          <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-primary/80 bg-slate-700/70 text-white backdrop-blur-sm text-xs sm:text-sm">
+                            Active
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })()}
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-bold mb-2">
+                    {activeTripDataState.trip_occasion}
+                  </h1>
+                  <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-xl">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      {activeTripDataState?.destination}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      {format(
+                        new Date(activeTripDataState?.start_date),
+                        "MMM d"
+                      )}{" "}
+                      -{" "}
+                      {format(
+                        new Date(activeTripDataState?.end_date),
+                        "MMM d, yyyy"
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Edit Button (hover on group) */}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button
+                    onClick={() => navigate(createPageUrl("managetrip"))}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 rounded-md px-3 bg-white/90 hover:bg-white text-slate-800 shadow-lg backdrop-blur-sm border border-white/20"
+                  >
+                    <PenLine />
+                    Edit Trip
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Placeholder design when no image */}
+                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                  <div className="text-center text-slate-600">
+                    <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <h2 className="text-2xl font-bold mb-2">
+                      {activeTripDataState.trip_occasion}
+                    </h2>
+
+                    <div className="flex flex-col items-center gap-2 text-lg mb-4">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5" />
+                        {activeTripDataState.destination}
+                      </div>
+
+                      {activeTripDataState?.start_date &&
+                        activeTripDataState?.end_date && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5" />
+                            {format(
+                              new Date(activeTripDataState?.start_date),
+                              "MMM d"
+                            )}{" "}
+                            -{" "}
+                            {format(
+                              new Date(activeTripDataState?.end_date),
+                              "MMM d, yyyy"
+                            )}
+                          </div>
+                        )}
+
+                      <p className="text-xs sm:text-sm text-slate-500">
+                        Add a photo for this trip!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit button (hover on group) */}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button
+                    onClick={() => navigate(createPageUrl("managetrip"))}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium h-9 rounded-md px-3 bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
+                  >
+                    <PenLine />
+                    Edit Trip
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="bg-blue-600 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg text-white w-full">
           <div>
@@ -270,7 +387,7 @@ export default function Dashboard() {
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="lucide lucide-message-circle w-6 h-6 text-white"
+                    className="lucide lucide-message-circle w-6 h-6 text-white"
                     data-filename="pages/Dashboard"
                     data-linenumber="364"
                     data-visual-selector-id="pages/Dashboard364"
@@ -456,7 +573,7 @@ export default function Dashboard() {
         <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-1.5 border-b border-slate-100 p-4 sm:p-6">
             <CardTitle className="flex items-center gap-2 font-semibold tracking-tight text-green-700 text-base sm:text-lg">
-              <Receipt className="w-5 h-5 text-green-600" />
+              <Receipt className="w-6 h-6 text-green-600" />
               Expenses
               {totalAmount > 0 && (
                 <Badge
@@ -468,49 +585,49 @@ export default function Dashboard() {
               )}
             </CardTitle>
             {user.trip_role === "creator" && (
-            <button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 h-9 rounded-md flex-shrink-0 text-xs sm:text-sm px-2 sm:px-4 bg-green-600 hover:bg-green-700 text-white"
-              data-filename="pages/Dashboard"
-              data-linenumber="464"
-              data-visual-selector-id="pages/Dashboard464"
-              data-source-location="pages/Dashboard:464:18"
-              data-dynamic-content="false"
-              onClick={() => navigate(createPageUrl("expenses"))}
-            >
-              <Settings />
-              <span
+              <button
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 h-9 rounded-md flex-shrink-0 text-xs sm:text-sm px-2 sm:px-4 bg-green-600 hover:bg-green-700 text-white"
                 data-filename="pages/Dashboard"
-                data-linenumber="470"
-                data-visual-selector-id="pages/Dashboard470"
-                data-source-location="pages/Dashboard:470:20"
+                data-linenumber="464"
+                data-visual-selector-id="pages/Dashboard464"
+                data-source-location="pages/Dashboard:464:18"
                 data-dynamic-content="false"
-                className="hidden sm:inline"
+                onClick={() => navigate(createPageUrl("expenses"))}
               >
-                Manage Expense
-              </span>
-              <span
-                data-filename="pages/Dashboard"
-                data-linenumber="471"
-                data-visual-selector-id="pages/Dashboard471"
-                data-source-location="pages/Dashboard:471:20"
-                data-dynamic-content="false"
-                className="sm:hidden"
-              >
-                Manage
-              </span>
-            </button>
+                <Settings />
+                <span
+                  data-filename="pages/Dashboard"
+                  data-linenumber="470"
+                  data-visual-selector-id="pages/Dashboard470"
+                  data-source-location="pages/Dashboard:470:20"
+                  data-dynamic-content="false"
+                  className="hidden sm:inline"
+                >
+                  Manage Expense
+                </span>
+                <span
+                  data-filename="pages/Dashboard"
+                  data-linenumber="471"
+                  data-visual-selector-id="pages/Dashboard471"
+                  data-source-location="pages/Dashboard:471:20"
+                  data-dynamic-content="false"
+                  className="sm:hidden"
+                >
+                  Manage
+                </span>
+              </button>
             )}
           </CardHeader>
           <CardContent className="p-0">
             <div className="space-y-0">
-              {tripExpenses.length === 0 ? (
+              {tripExpenses?.length === 0 ? (
                 <div
                   data-filename="pages/Dashboard"
                   data-linenumber="545"
                   data-visual-selector-id="pages/Dashboard545"
                   data-source-location="pages/Dashboard:545:18"
                   data-dynamic-content="false"
-                  class="p-8 text-center"
+                  className="p-8 text-center"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -522,7 +639,7 @@ export default function Dashboard() {
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="lucide lucide-receipt w-12 h-12 text-slate-300 mx-auto mb-3"
+                    className="lucide lucide-receipt w-12 h-12 text-slate-300 mx-auto mb-3"
                     data-filename="pages/Dashboard"
                     data-linenumber="546"
                     data-visual-selector-id="pages/Dashboard546"
@@ -539,7 +656,7 @@ export default function Dashboard() {
                     data-visual-selector-id="pages/Dashboard547"
                     data-source-location="pages/Dashboard:547:20"
                     data-dynamic-content="false"
-                    class="text-slate-600 text-lg"
+                    className="text-slate-600 text-lg"
                   >
                     No expenses yet.
                   </p>
@@ -549,7 +666,7 @@ export default function Dashboard() {
                     data-visual-selector-id="pages/Dashboard548"
                     data-source-location="pages/Dashboard:548:20"
                     data-dynamic-content="false"
-                    class="text-slate-500 text-sm mt-1"
+                    className="text-slate-500 text-sm mt-1"
                   >
                     Go to the Manage Expenses page to add the first one!
                   </p>
@@ -560,7 +677,7 @@ export default function Dashboard() {
                     <div
                       key={expense.id}
                       className={`p-4 border-l-4 border-l-green-400 ${
-                        index < tripExpenses.length - 1 && index < 4
+                        index < tripExpenses?.length - 1 && index < 4
                           ? "border-b border-slate-100"
                           : ""
                       }`}
@@ -586,14 +703,14 @@ export default function Dashboard() {
                     </div>
                   ))}
 
-                  {tripExpenses.length > 5 && (
+                  {tripExpenses?.length > 5 && (
                     <div className="p-4 text-center border-t border-slate-100">
                       <Button
                         variant="outline"
                         onClick={() => navigate(createPageUrl("Expenses"))}
                         size="sm"
                       >
-                        View All {tripExpenses.length} Expenses
+                        View All {tripExpenses?.length} Expenses
                       </Button>
                     </div>
                   )}

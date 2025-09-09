@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { User } from "@/api/entities";
 import { Button } from "@/components/ui/button";
-import {
-  ChevronLeft,
-  ChevronRight,
-  MapPin,
-  Users,
-  Calendar,
-  CreditCard,
-  ArrowRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Users, CreditCard, ArrowRight } from "lucide-react";
+import { useSelector } from "react-redux";
 
 export default function Home() {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  const token = useSelector((state) => state.user.token);
+  const user = useSelector((state) => state.user.user);
+
+  // ✅ Auto redirect if logged in
+  useEffect(() => {
+    if (token) {
+      navigate("/mytrips");
+    }
+  }, [token, navigate]);
 
   const slides = [
     {
@@ -42,42 +43,22 @@ export default function Home() {
     },
   ];
 
+  const handleGetStarted = () => {
+    navigate("/register"); // Always go to register
+  };
+
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  const goToSlide = (index) => setCurrentSlide(index);
+
+  // Auto slide change every 5s
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      nextSlide();
     }, 5000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleGetStarted = async () => {
-    setLoading(true);
-    try {
-      // Check if user is logged in. This will throw an error if not.
-      await User.me();
-      // If logged in, go directly to create a trip.
-      navigate(createPageUrl("TripCreation"));
-    } catch (error) {
-      // If not logged in, start the login flow.
-      // After login, redirect the user to the TripCreation page.
-      const creationUrl =
-        window.location.origin + createPageUrl("TripCreation");
-      await User.loginWithRedirect(creationUrl);
-    }
-    // setLoading(false) might not be reached due to navigation/redirect, which is fine.
-  };
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  const goToSlide = (index) => {
-    setCurrentSlide(index);
-  };
-  //Hey bg-gradient-to-br
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       {/* Background Effects */}
@@ -90,7 +71,8 @@ export default function Home() {
       ></div>
 
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-6xl mx-auto w-full ">
+        <div className="max-w-6xl mx-auto w-full">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex-[2]"></div>
             <div className="text-center mb-8 md:mb-12 flex-[6]">
@@ -101,9 +83,7 @@ export default function Home() {
                   className="w-20 h-20 rounded-full"
                 />
               </div>
-              <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
-                Kasama
-              </h1>
+              <h1 className="text-xl md:text-2xl font-bold text-white mb-2">Kasama</h1>
               <p className="text-base md:text-lg text-blue-200">
                 Group Travel Planning Made Simple
               </p>
@@ -122,73 +102,48 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Carousel Container */}
+          {/* Carousel */}
           <div className="relative bg-white/10 backdrop-blur-md rounded-3xl p-6 md:p-12 shadow-2xl border border-white/20">
             <div
               className="relative overflow-hidden"
               onTouchStart={(e) => {
                 const touchStart = e.touches[0].clientX;
-                e.currentTarget.setAttribute(
-                  "data-touch-start",
-                  touchStart.toString()
-                ); // Convert to string
+                e.currentTarget.setAttribute("data-touch-start", touchStart.toString());
               }}
               onTouchEnd={(e) => {
-                const touchStart = parseFloat(
-                  e.currentTarget.getAttribute("data-touch-start") || "0"
-                ); // Handle potential null/empty string
+                const touchStart = parseFloat(e.currentTarget.getAttribute("data-touch-start") || "0");
                 if (isNaN(touchStart)) return;
                 const touchEnd = e.changedTouches[0].clientX;
                 const diff = touchStart - touchEnd;
-
                 if (Math.abs(diff) > 50) {
-                  if (diff > 0) {
-                    nextSlide();
-                  } else {
-                    prevSlide();
-                  }
+                  if (diff > 0) nextSlide();
+                  else prevSlide();
                 }
               }}
             >
-              <div
-                className="flex transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-              >
+              <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
                 {slides.map((slide, index) => (
-                  <div
-                    key={index}
-                    className="w-full flex-shrink-0 text-center px-2"
-                  >
+                  <div key={index} className="w-full flex-shrink-0 text-center px-2">
                     <div className="flex justify-center mb-6">
                       <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-xl">
                         <slide.icon className="w-8 h-8 text-white" />
                       </div>
                     </div>
-
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
-                      {slide.headline}
-                    </h2>
-
-                    <p className="text-lg sm:text-xl md:text-2xl text-blue-200 mb-6 font-medium">
-                      {slide.subheadline}
-                    </p>
-
-                    <p className="text-base sm:text-lg text-blue-100 max-w-3xl mx-auto leading-relaxed">
-                      {slide.description}
-                    </p>
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">{slide.headline}</h2>
+                    <p className="text-lg sm:text-xl md:text-2xl text-blue-200 mb-6 font-medium">{slide.subheadline}</p>
+                    <p className="text-base sm:text-lg text-blue-100 max-w-3xl mx-auto leading-relaxed">{slide.description}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Navigation Arrows - Hidden on mobile */}
+            {/* Arrows */}
             <button
               onClick={prevSlide}
               className="absolute left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full items-center justify-center transition-all duration-200 backdrop-blur-sm hidden md:flex"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
-
             <button
               onClick={nextSlide}
               className="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full items-center justify-center transition-all duration-200 backdrop-blur-sm hidden md:flex"
@@ -202,16 +157,12 @@ export default function Home() {
                 <button
                   key={index}
                   onClick={() => goToSlide(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                    index === currentSlide
-                      ? "bg-coral-500 scale-125"
-                      : "bg-white/40 hover:bg-white/60"
-                  }`}
+                  className={`w-3 h-3 rounded-full transition-all duration-200 ${index === currentSlide ? "bg-coral-500 scale-125" : "bg-white/40 hover:bg-white/60"}`}
                 />
               ))}
             </div>
 
-            {/* CTA Button */}
+            {/* CTA */}
             <div className="mt-10 md:mt-12 text-center">
               <Button
                 size="lg"
@@ -228,10 +179,7 @@ export default function Home() {
                   </>
                 )}
               </Button>
-
-              <p className="text-sm text-blue-200 mt-4">
-                Join thousands planning their next adventure together
-              </p>
+              <p className="text-sm text-blue-200 mt-4">Join thousands planning their next adventure together</p>
             </div>
           </div>
         </div>

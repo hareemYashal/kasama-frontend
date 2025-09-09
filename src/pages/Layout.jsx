@@ -41,7 +41,8 @@ import {
   Archive,
   Info,
   Shield, // Added Shield icon
-  Briefcase, // Added Briefcase icon
+  Briefcase,
+  Lightbulb, // Added Briefcase icon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -58,6 +59,7 @@ import { setActiveTripId } from "@/store/tripSlice";
 import { getTripService } from "@/services/trip";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { getProfileService } from "@/services/profile";
 export default function Layout({ children, currentPageName }) {
   const user = useSelector((state) => state.user.user);
   console.log("hey I am the user from  layout", user);
@@ -87,6 +89,26 @@ export default function Layout({ children, currentPageName }) {
 
     loadDummyUserAndTrip();
   }, [currentPageName]);
+
+  const { data: profileData, isLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => getProfileService(token),
+    enabled: !!token, // only fetch if token exists
+  });
+  const [userProfileData, setUerProfileData] = useState({
+    username: "",
+    profile_photo_url: "",
+  });
+  // Update form when data arrives
+  useEffect(() => {
+    if (profileData?.profile) {
+      const profile = profileData.profile;
+      setUerProfileData({
+        username: profile.username || "",
+        profile_photo_url: profile.profile_photo_url || "",
+      });
+    }
+  }, [profileData]);
 
   const loadDummyUserAndTrip = () => {
     const dummyUser = {
@@ -124,12 +146,16 @@ export default function Layout({ children, currentPageName }) {
 
     setLoading(false);
   };
-  console.log("user", user);
+  console.log("userProfileData", userProfileData);
   const isCreator = user?.trip_role === "creator";
 
   const adminNavItems = [
     { title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin },
-    { title: "Manage Trip", url: createPageUrl("ManageTrip"), icon: Settings },
+    {
+      title: "Trip Settings",
+      url: createPageUrl("ManageTrip"),
+      icon: Settings,
+    },
     { title: "Participants", url: createPageUrl("Participants"), icon: Users },
     {
       title: "Participants Invitation",
@@ -138,6 +164,7 @@ export default function Layout({ children, currentPageName }) {
     },
     { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
     { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
+    { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
     // { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 
@@ -153,6 +180,11 @@ export default function Layout({ children, currentPageName }) {
   ];
 
   const commonNavItems = [
+    {
+      title: "Tips for Using Kasama",
+      url: createPageUrl("Tips"),
+      icon: Lightbulb,
+    },
     { title: "Help", url: createPageUrl("Help"), icon: HelpCircle },
     { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
   ];
@@ -359,7 +391,11 @@ export default function Layout({ children, currentPageName }) {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
-                        className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl mb-1"
+                        className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
+                          location.pathname === item.url
+                            ? "bg-blue-50 text-blue-700 shadow-sm"
+                            : ""
+                        }`}
                       >
                         <Link
                           to={item.url}
@@ -376,7 +412,11 @@ export default function Layout({ children, currentPageName }) {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl mb-1"
+                      className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
+                        location.pathname === createPageUrl("Policies")
+                          ? "bg-blue-50 text-blue-700 shadow-sm"
+                          : ""
+                      }`}
                     >
                       <Link
                         to={createPageUrl("Policies")}
@@ -486,15 +526,17 @@ export default function Layout({ children, currentPageName }) {
             >
               {/* Avatar */}
               <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
-                {user?.profile_photo_url ? (
+                {userProfileData?.profile_photo_url ? (
                   <img
-                    src={user.profile_photo_url}
-                    alt={user.name || "User"}
+                    src={userProfileData.profile_photo_url}
+                    alt={userProfileData.username || user?.name || "User"}
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <span className="text-slate-600 font-semibold text-sm leading-none">
-                    {user?.name?.charAt(0) || "U"}
+                    {userProfileData?.username?.charAt(0) ||
+                      user?.name?.charAt(0) ||
+                      "U"}
                   </span>
                 )}
               </div>
@@ -502,7 +544,9 @@ export default function Layout({ children, currentPageName }) {
               {/* Name & label */}
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 text-sm truncate">
-                  {user?.name || "User"}
+                  {userProfileData.username
+                    ? userProfileData.username
+                    : user?.name}
                 </p>
                 <p className="text-xs text-slate-500 truncate">My Profile</p>
               </div>

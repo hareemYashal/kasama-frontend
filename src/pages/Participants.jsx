@@ -9,11 +9,21 @@ import { TripActivity } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, ShieldCheck, Shield, Loader2, ArrowLeft } from "lucide-react";
+import {
+  Users,
+  ShieldCheck,
+  Shield,
+  Loader2,
+  ArrowLeft,
+  Crown,
+  Calendar,
+  Phone,
+} from "lucide-react";
 import ParticipantList from "../components/participants/ParticipantList";
 import { useQuery } from "@tanstack/react-query";
 import { totalParticipantsService } from "@/services/participant";
 import { useSelector } from "react-redux";
+import { getTripService } from "@/services/trip";
 
 export default function Participants() {
   const navigate = useNavigate();
@@ -239,6 +249,14 @@ export default function Participants() {
     }
   };
 
+     const { data: tripData, isLoading: isLoadingTripData } = useQuery({
+        queryKey: ["getTripService", tripId],
+        queryFn: () => getTripService(token, tripId),
+        enabled: !!token,
+      });
+    
+      const tripDetails = tripData?.data?.activeTrip;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -247,10 +265,12 @@ export default function Participants() {
     );
   }
 
-  console.log('currentUser0-0-0',currentUser)
+  console.log("trip-0-0", tripDetails);
 
   const isAdmin = user?.trip_role === "creator";
-  const adminCount = participants.filter((p) => p.trip_role === "creator").length;
+  const adminCount = participants.filter(
+    (p) => p.trip_role === "creator"
+  ).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
@@ -272,38 +292,30 @@ export default function Participants() {
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-xl border border-slate-200/60">
-          <div className="flex flex-col gap-4 md:gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <Users className="w-6 h-6 md:w-8 md:h-8 text-purple-600" />
-                {isAdmin && (
-                  <Badge className="bg-coral-100 text-coral-800">
-                    Admin View
-                  </Badge>
-                )}
-              </div>
-              <h1 className="text-2xl md:text-4xl font-bold text-slate-800 mb-2">
-                Trip Participants
-              </h1>
+            <div className="flex flex-col mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+                  <h1 className="tracking-tight flex items-center gap-3 text-2xl font-bold text-slate-800">
+                    Trip Participants
+                  </h1>
+                </div>
               <p className="text-lg md:text-xl text-slate-600">
-                {trip.destination} • {tripParticipantsNumber} total participants
+                {tripDetails?.trip_occasion} • {tripParticipantsNumber} People
               </p>
             </div>
-          </div>
+          {totalParticipant && (
+            <ParticipantList
+              participants={totalParticipant}
+              contributions={contributions}
+              currentUser={currentUser}
+              tripCreatorId={trip.admin_id}
+              adminCount={adminCount}
+              onRoleChange={handleRoleChange}
+              onRemove={handleRemoveParticipant}
+              isAdmin={isAdmin}
+            />
+          )}
         </div>
-
-        {totalParticipant && (
-          <ParticipantList
-            participants={totalParticipant}
-            contributions={contributions}
-            currentUser={currentUser}
-            tripCreatorId={trip.admin_id}
-            adminCount={adminCount}
-            onRoleChange={handleRoleChange}
-            onRemove={handleRemoveParticipant}
-            isAdmin={isAdmin}
-          />
-        )}
       </div>
     </div>
   );

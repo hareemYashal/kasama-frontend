@@ -167,49 +167,73 @@ export default function MyTrips() {
     updateMutation({ authToken, authUerId, tripId, status });
   };
 
-  const getButtonConfig = (role) => {
-    switch (role) {
+  const getButtonConfig = (trip) => {
+    // 🔒 If trip is ended and user is not creator
+    if (trip.status === "ended" && trip.role !== "creator") {
+      return {
+        text: "Trip Ended",
+        color: "bg-gray-400 cursor-not-allowed",
+        icon: <Archive className="w-4 h-4 mr-1" />,
+        disabled: true,
+      };
+    }
+
+    // ⏳ Check booking deadline
+    const isBookingClosed = trip.daysUntilTrip <= trip.booking_deadline;
+
+    switch (trip.role) {
       case "creator":
         return {
           text: "Manage Dashboard",
           color: "bg-green-600 hover:bg-green-700",
           icon: <Settings className="w-4 h-4 mr-1" />,
+          disabled: false,
         };
       case "participant":
         return {
           text: "View Dashboard",
           color: "bg-blue-600 hover:bg-blue-700",
           icon: <Eye className="w-4 h-4 mr-1" />,
+          disabled: false,
         };
       case "REQUESTED":
         return {
           text: "Requested (Waiting for Approval)",
           color: "bg-yellow-600 hover:bg-yellow-700",
           icon: <Clock className="w-4 h-4 mr-1" />,
+          disabled: false,
         };
       case "INVITED":
         return {
-          text: "Accept Invitation",
-          color: "bg-teal-600 hover:bg-teal-700",
+          text: isBookingClosed ? "Booking Closed" : "Accept Invitation",
+          color: isBookingClosed
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-teal-600 hover:bg-teal-700",
           icon: <Plus className="w-4 h-4 mr-1" />,
+          disabled: isBookingClosed,
         };
       case "REJECTED":
         return {
           text: "Rejected",
           color: "bg-red-600 hover:bg-red-700",
           icon: <X className="w-4 h-4 mr-1" />,
+          disabled: true,
         };
       case "notInvited":
         return {
-          text: "Request to Join",
-          color: "bg-purple-600 hover:bg-purple-700", // ✅ unique, no clash
+          text: isBookingClosed ? "Booking Closed" : "Request to Join",
+          color: isBookingClosed
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-purple-600 hover:bg-purple-700",
           icon: <Plus className="w-4 h-4 mr-1" />,
+          disabled: isBookingClosed,
         };
       default:
         return {
           text: "Unknown",
           color: "bg-gray-600 hover:bg-gray-700",
           icon: null,
+          disabled: true,
         };
     }
   };
@@ -420,15 +444,14 @@ export default function MyTrips() {
                       {/* Action Button */}
                       <div className="flex gap-2">
                         {(() => {
-                          const { text, color, icon } = getButtonConfig(
-                            trip.role
-                          );
+                          const { text, color, icon, disabled } =
+                            getButtonConfig(trip);
 
                           return (
                             <Button
+                              disabled={disabled}
                               onClick={() => {
                                 if (trip.role === "creator") {
-                                  // go to dashboard
                                   const updatedUser = {
                                     ...authUser,
                                     trip_role: "creator",
@@ -445,7 +468,6 @@ export default function MyTrips() {
                                   );
                                   navigate(`/dashboard`);
                                 } else if (trip.role === "participant") {
-                                  // go to participant dashboard
                                   const updatedUser = {
                                     ...authUser,
                                     trip_role: "participant",
@@ -464,7 +486,6 @@ export default function MyTrips() {
                                 } else if (trip.role === "notInvited") {
                                   handleRequest(trip.id);
                                 } else if (trip.role === "INVITED") {
-                                  // Accept invitation flow
                                   updateMutation({
                                     authToken,
                                     authUerId,

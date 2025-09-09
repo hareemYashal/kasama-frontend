@@ -16,6 +16,7 @@ export default function ExpenseList({
   onEdit,
   onDelete,
   onAdd,
+  totalAmount,
 }) {
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,10 +25,10 @@ export default function ExpenseList({
     description: "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const totalAmount = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
   const queryClient = useQueryClient();
   let expenseMain = useSelector((state) => state.expenses.expensesList);
+  console.log("totalAmount....", totalAmount);
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
 
@@ -44,39 +45,37 @@ export default function ExpenseList({
     },
   });
 
-const handleInlineSubmit = async (e) => {
-  e.preventDefault();
-  setSubmitting(true);
-  try {
-    const newExpense = {
-      expense_name: formData.name,
-      expense_amount: parseFloat(formData.amount),
-      description: formData.description,  // ✅ required
-      tripId,
-    };
+  const handleInlineSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const newExpense = {
+        expense_name: formData.name,
+        expense_amount: parseFloat(formData.amount),
+        description: formData.description, // ✅ required
+        tripId,
+      };
 
-    const res = await createExpenseService(token, newExpense);
+      const res = await createExpenseService(token, newExpense);
 
-    const success = onAdd(res.data);   // ✅ handleAddExpense runs
-    if (success) {
-      // ✅ Reset form
-      setFormData({ name: "", amount: "", description: "" });
-      // ✅ Close inline form
-      setShowInlineForm(false);
+      const success = onAdd(res.data); // ✅ handleAddExpense runs
+      if (success) {
+        // ✅ Reset form
+        setFormData({ name: "", amount: "", description: "" });
+        // ✅ Close inline form
+        setShowInlineForm(false);
+      }
+    } catch (error) {
+      console.error("Error creating expense:", error);
+    } finally {
+      setSubmitting(false);
     }
-  } catch (error) {
-    console.error("Error creating expense:", error);
-  } finally {
-    setSubmitting(false);
-  }
-};
-
+  };
 
   const handleInlineCancel = () => {
     setFormData({ name: "", amount: "", description: "" });
     setShowInlineForm(false);
   };
-
 
   const getTotalAmount = () => {
     return expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -106,10 +105,18 @@ const handleInlineSubmit = async (e) => {
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
       <CardHeader className="border-b border-slate-100">
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2 text-slate-800">
-            <Receipt className="w-5 h-5 text-green-600" />
+          <CardTitle className="justify-between text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 text-slate-800">
+            <Receipt className="w-6 h-6 text-green-600" />
             Trip Expenses
           </CardTitle>
+          {totalAmount > 0 && (
+            <Badge
+              variant="outline"
+              className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-green-50 text-green-700 border-green-200 ml-2 text-xs sm:text-sm flex-shrink-0"
+            >
+              ${totalAmount} total
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -254,7 +261,7 @@ const handleInlineSubmit = async (e) => {
                           !formData.name.trim() ||
                           !formData.amount ||
                           parseFloat(formData.amount) <= 0 ||
-                          !formData.description?.trim() || 
+                          !formData.description?.trim() ||
                           submitting
                         }
                         size="sm"
