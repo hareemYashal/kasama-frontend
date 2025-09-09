@@ -38,7 +38,7 @@ export default function CountdownTimer({ targetDate }) {
 
   if (timeLeft.days <= 0 && timeLeft.hours <= 0 && timeLeft.minutes <= 0 && timeLeft.seconds <= 0) {
     return (
-      <div className="text-center bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl p-6 shadow-lg">
+      <div className="text-center w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl p-6 shadow-lg">
         <div className="text-2xl font-bold">Trip Started!</div>
         <div className="text-sm opacity-90">Have an amazing time!</div>
       </div>
@@ -46,7 +46,7 @@ export default function CountdownTimer({ targetDate }) {
   }
 
   return (
-    <div className="text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-6 shadow-lg">
+    <div className="text-center w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-6 shadow-lg">
       <div className="text-xs opacity-90 mb-2">COUNTDOWN TO TRIP</div>
       <div className="flex justify-center items-center gap-2 mb-2">
         <div className="text-center">

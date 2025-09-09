@@ -13,7 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Settings, Save, Image as ImageIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Settings,
+  Save,
+  Image as ImageIcon,
+  SaveIcon,
+} from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import { updateTripService, getTripByIdService } from "@/services/trip";
@@ -214,6 +220,7 @@ export default function ManageTrip() {
                 <Label htmlFor="occasion">Trip Occasion</Label>
                 <Input
                   id="occasion"
+                  className="mt-2"
                   value={formData.occasion}
                   onChange={(e) => updateFormData("occasion", e.target.value)}
                 />
@@ -223,6 +230,7 @@ export default function ManageTrip() {
                 <Label htmlFor="destination">Destination</Label>
                 <Input
                   id="destination"
+                  className="mt-2"
                   value={formData.destination}
                   onChange={(e) =>
                     updateFormData("destination", e.target.value)
@@ -236,6 +244,7 @@ export default function ManageTrip() {
                 <Label htmlFor="start_date">Start Date</Label>
                 <Input
                   id="start_date"
+                  className="mt-2"
                   type="date"
                   value={formData.start_date}
                   onChange={(e) => updateFormData("start_date", e.target.value)}
@@ -246,6 +255,7 @@ export default function ManageTrip() {
                 <Label htmlFor="end_date">End Date</Label>
                 <Input
                   id="end_date"
+                  className="mt-2"
                   type="date"
                   value={formData.end_date}
                   onChange={(e) => updateFormData("end_date", e.target.value)}
@@ -255,7 +265,12 @@ export default function ManageTrip() {
             </div>
 
             <div>
-              <Label>Booking Deadline</Label>
+              <div className="mb-4">
+                <Label>Booking Deadline</Label>
+                <p className="text-xs text-slate-500">
+                  How many weeks before the trip starts should everyone book by?
+                </p>
+              </div>
               <Select
                 value={formData.booking_deadline_weeks}
                 onValueChange={(value) =>
@@ -277,7 +292,12 @@ export default function ManageTrip() {
             </div>
 
             <div>
-              <Label htmlFor="welcome_message">Welcome Message</Label>
+              <div className="mb-4">
+                <Label htmlFor="welcome_message">Welcome Message</Label>
+                <p className="text-xs text-slate-500">
+                  This message will be shown to participants when they join
+                </p>
+              </div>
               <Textarea
                 id="welcome_message"
                 value={formData.welcome_message}
@@ -292,9 +312,9 @@ export default function ManageTrip() {
               <Button
                 onClick={handleSubmit}
                 disabled={saving || isMutating}
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground h-10 px-8 py-3 bg-blue-600 hover:bg-blue-700"
               >
-                {saving || isMutating ? "Saving..." : "Save Changes"}
+                <SaveIcon /> {saving || isMutating ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

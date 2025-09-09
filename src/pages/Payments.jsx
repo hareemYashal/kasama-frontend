@@ -48,6 +48,7 @@ import {
   participantTripCheck,
   totalParticipantsService,
 } from "@/services/participant";
+import { toast } from "sonner";
 
 export default function Payments() {
   const authToken = useSelector((state) => state.user.token);
@@ -239,7 +240,7 @@ export default function Payments() {
       }
     } catch (error) {
       console.error("Error creating one-time payment session:", error);
-      alert("Something went wrong while starting payment");
+      toast.error("Something went wrong while starting payment");
     }
 
     setProcessingOneTimePayment(false);

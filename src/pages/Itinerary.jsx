@@ -368,10 +368,10 @@ export default function Itinerary() {
   // });
 
   const { data: activeTripData, isLoading: isLoadingTrip } = useQuery({
-      queryKey: ["getTripService", tripId],
-      queryFn: () => getTripService(token, tripId),
-      enabled: !!token,
-    });
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(token, tripId),
+    enabled: !!token,
+  });
 
   const activeTrip = activeTripData?.data?.activeTrip;
   const isAdmin = authUser?.trip_role === "creator";
@@ -481,7 +481,7 @@ export default function Itinerary() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <Calendar className="w-8 h-8 text-blue-600" />
-                <Badge
+                {/* <Badge
                   className={`${
                     isAdmin
                       ? "bg-coral-100 text-coral-800"
@@ -489,7 +489,7 @@ export default function Itinerary() {
                   }`}
                 >
                   {isAdmin ? "Admin - Can Edit" : "Participant - View Only"}
-                </Badge>
+                </Badge> */}
               </div>
               <h1 className="text-4xl font-bold mb-2">Trip Itinerary</h1>
               <div className="flex items-center gap-2 text-xl text-slate-600">
@@ -498,11 +498,11 @@ export default function Itinerary() {
                 {format(new Date(activeTrip.start_date), "MMM d")} -{" "}
                 {format(new Date(activeTrip.end_date), "MMM d, yyyy")}
               </div>
-              {activeTrip.welcome_message && (
+              {/* {activeTrip.welcome_message && (
                 <p className="mt-2 text-slate-500">
                   {activeTrip.welcome_message}
                 </p>
-              )}
+              )} */}
             </div>
 
             {isAdmin && (
@@ -537,6 +537,9 @@ export default function Itinerary() {
                 <h3 className="text-xl font-semibold mb-2">
                   No itinerary has been added yet
                 </h3>
+                <p className="text-slate-500 mb-6">
+                  Start planning your trip by adding your first activity
+                </p>
                 {isAdmin && (
                   <Button onClick={handleAddItem} className="bg-blue-600">
                     <Plus className="w-4 h-4 mr-2" />
