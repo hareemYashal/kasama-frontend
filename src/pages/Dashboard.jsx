@@ -110,7 +110,7 @@ export default function Dashboard() {
     }
   }, [getContributionsData]);
 
-  console.log("getContributionsData", getContributionsData);
+  console.log("activeTripDataState", activeTripDataState);
   const participants = getContributionsData?.data?.participants?.map((p) => ({
     id: p.user.id,
     name: p.user.name,
@@ -155,7 +155,7 @@ export default function Dashboard() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${activeTripDataState?.occasion || "Trip"}`,
+          title: `Join ${activeTripDataState?.trip_occasion || "Trip"}`,
           text: `You're invited to join our trip to ${
             activeTripDataState?.destination || "Destination"
           }!`,

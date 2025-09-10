@@ -14,10 +14,10 @@ export default function Home() {
 
   // ✅ Auto redirect if logged in
   useEffect(() => {
-    if (token) {
+    if (user) {
       navigate("/mytrips");
     }
-  }, [token, navigate]);
+  }, [user, navigate]);
 
   const slides = [
     {

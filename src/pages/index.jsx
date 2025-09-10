@@ -36,6 +36,7 @@ import {
 } from "react-router-dom";
 import { useSelector } from "react-redux";
 import KasamaTips from "./KasamaTips.jsx";
+import TripInvitePage from "./TripInvitePage.jsx";
 
 // Pages mapping (for Layout)
 const PAGES = {
@@ -100,7 +101,7 @@ function PagesContent() {
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/changePassword" element={<ChangePassword />} />
         <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
-
+        <Route path="/tripInvitePreview" element={<TripInvitePage />} />
         {/* Protected routes */}
         <Route
           path="/tripSelection"

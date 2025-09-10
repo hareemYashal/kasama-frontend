@@ -17,6 +17,7 @@ import { useMutation } from "@tanstack/react-query";
 import { registerService } from "@/services/auth";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
+import axiosInstance from "@/utils/axiosInstance";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -78,12 +79,37 @@ export default function RegisterPage() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: registerService,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(data.message || "Registration successful!");
-      navigate("/login");
+      console.log("REGISTERUSERdata--->", data);
+
+      const tripId = new URLSearchParams(window.location.search).get("trip_id");
+      const code = new URLSearchParams(window.location.search).get("code");
+
+      if (tripId && code) {
+        console.log("YESSS--->");
+
+        try {
+          // ✅ use axiosInstance only
+          await axiosInstance.post(
+            `/participant/joinViaInvite`,
+            { tripId, inviteCode: code },
+            { headers: { Authorization: `Bearer ${data.data.token}` } }
+          );
+
+          navigate("/login"); // go to My Trips after joining
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to join trip");
+        }
+      } else {
+        navigate("/login"); // normal registration flow
+      }
     },
     onError: (error) => {
-      console.log(error);
+      console.log("No--->");
+
+      console.log("error", error);
       toast.error(error?.response?.data?.message || "Error in registration");
     },
   });
@@ -92,6 +118,28 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!validateForm()) return;
     mutate(formData);
+
+    // mutate(formData, {
+    //   onSuccess: async (data) => {
+    //     toast.success(data.message || "Registration successful!");
+    //     const tripId = new URLSearchParams(window.location.search).get(
+    //       "trip_id"
+    //     );
+    //     const code = new URLSearchParams(window.location.search).get("code");
+
+    //     if (tripId && code) {
+    //       // Auto join trip after registration
+    //       await axios.post(
+    //         `${process.env.VITE_API_URL}/participant/joinViaInvite`,
+    //         { tripId, userId: data.data.user?.id, inviteCode: code },
+    //         { headers: { Authorization: `Bearer ${data.data.token}` } }
+    //       );
+    //       navigate(`/trip/${tripId}`);
+    //     } else {
+    //       navigate("/login");
+    //     }
+    //   },
+    // });
   };
 
   const handleInputChange = (field, value) => {

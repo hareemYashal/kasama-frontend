@@ -157,11 +157,11 @@ export default function Layout({ children, currentPageName }) {
       icon: Settings,
     },
     { title: "Participants", url: createPageUrl("Participants"), icon: Users },
-    {
-      title: "Participants Invitation",
-      url: createPageUrl("ParticipantsManagment"),
-      icon: Users,
-    },
+    // {
+    //   title: "Participants Invitation",
+    //   url: createPageUrl("ParticipantsManagment"),
+    //   icon: Users,
+    // },
     { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
     { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
     { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },

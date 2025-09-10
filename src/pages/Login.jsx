@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getActiveTripService, getTripService } from "@/services/trip";
 import { setActiveTripId } from "@/store/tripSlice";
 import { useQueryClient } from "@tanstack/react-query";
+import axiosInstance from "@/utils/axiosInstance";
 export default function LoginPage({ onNavigate }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -60,17 +61,46 @@ export default function LoginPage({ onNavigate }) {
 
   const { mutate, isPending } = useMutation({
     mutationFn: loginService,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log("Login success:", data);
-      // onNavigate?.("verify", formData.email);
       toast.success(data.message);
-      console.log(data.data.user);
-      console.log(data.data.token);
+
+      // ✅ save user/token in Redux + localStorage
       dispatch(setToken(data.data.token));
       dispatch(setUserRed(data.data.user));
       localStorage.setItem("user", JSON.stringify(data.data.user));
       localStorage.setItem("token", JSON.stringify(data.data.token));
+
       queryClient.invalidateQueries(["getActiveTripData"]);
+
+      // ✅ Check if invite exists
+      const inviteData = JSON.parse(localStorage.getItem("inviteData"));
+      if (inviteData?.tripId && inviteData?.code) {
+        try {
+          const res = await axiosInstance.post(
+            `/participant/joinViaInvite`,
+            {
+              tripId: inviteData.tripId,
+              inviteCode: inviteData.code,
+            },
+            {
+              headers: { Authorization: `Bearer ${data.data.token}` },
+            }
+          );
+          toast.success(
+            res.data.message || "You’ve successfully joined the trip!"
+          );
+        } catch (err) {
+          console.error(err);
+          toast.error(err?.response?.data?.message || "Failed to join trip");
+        } finally {
+          localStorage.removeItem("inviteData"); // clear invite after use
+          navigate("/mytrips");
+        }
+      } else {
+        // normal flow
+        navigate("/mytrips");
+      }
     },
     onError: (error) => {
       console.error("Login failed:", error);
@@ -114,10 +144,10 @@ export default function LoginPage({ onNavigate }) {
   };
 
   useEffect(() => {
-    if (token) {
+    if (user) {
       navigate("/mytrips");
     }
-  }, [token, navigate]);
+  }, [user, navigate]);
 
   // --------------------------------
   return (

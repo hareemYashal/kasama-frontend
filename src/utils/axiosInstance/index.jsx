@@ -3,7 +3,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 5000,
+  timeout: 20000,
 });
 
 export default axiosInstance;

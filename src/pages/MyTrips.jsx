@@ -169,14 +169,14 @@ export default function MyTrips() {
 
   const getButtonConfig = (trip) => {
     // 🔒 If trip is ended and user is not creator
-    if (trip.status === "ended" && trip.role !== "creator") {
-      return {
-        text: "Trip Ended",
-        color: "bg-gray-400 cursor-not-allowed",
-        icon: <Archive className="w-4 h-4 mr-1" />,
-        disabled: true,
-      };
-    }
+    // if (trip.status === "ended" && trip.role !== "creator") {
+    //   return {
+    //     text: "Trip Ended",
+    //     color: "bg-gray-400 cursor-not-allowed",
+    //     icon: <Archive className="w-4 h-4 mr-1" />,
+    //     disabled: true,
+    //   };
+    // }
 
     // ⏳ Check booking deadline
     const isBookingClosed = trip.daysUntilTrip <= trip.booking_deadline;
@@ -196,38 +196,38 @@ export default function MyTrips() {
           icon: <Eye className="w-4 h-4 mr-1" />,
           disabled: false,
         };
-      case "REQUESTED":
-        return {
-          text: "Requested (Waiting for Approval)",
-          color: "bg-yellow-600 hover:bg-yellow-700",
-          icon: <Clock className="w-4 h-4 mr-1" />,
-          disabled: false,
-        };
-      case "INVITED":
-        return {
-          text: isBookingClosed ? "Booking Closed" : "Accept Invitation",
-          color: isBookingClosed
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-teal-600 hover:bg-teal-700",
-          icon: <Plus className="w-4 h-4 mr-1" />,
-          disabled: isBookingClosed,
-        };
-      case "REJECTED":
-        return {
-          text: "Rejected",
-          color: "bg-red-600 hover:bg-red-700",
-          icon: <X className="w-4 h-4 mr-1" />,
-          disabled: true,
-        };
-      case "notInvited":
-        return {
-          text: isBookingClosed ? "Booking Closed" : "Request to Join",
-          color: isBookingClosed
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-purple-600 hover:bg-purple-700",
-          icon: <Plus className="w-4 h-4 mr-1" />,
-          disabled: isBookingClosed,
-        };
+      // case "REQUESTED":
+      //   return {
+      //     text: "Requested (Waiting for Approval)",
+      //     color: "bg-yellow-600 hover:bg-yellow-700",
+      //     icon: <Clock className="w-4 h-4 mr-1" />,
+      //     disabled: false,
+      //   };
+      // case "INVITED":
+      //   return {
+      //     text: isBookingClosed ? "Booking Closed" : "Accept Invitation",
+      //     color: isBookingClosed
+      //       ? "bg-gray-400 cursor-not-allowed"
+      //       : "bg-teal-600 hover:bg-teal-700",
+      //     icon: <Plus className="w-4 h-4 mr-1" />,
+      //     disabled: isBookingClosed,
+      //   };
+      // case "REJECTED":
+      //   return {
+      //     text: "Rejected",
+      //     color: "bg-red-600 hover:bg-red-700",
+      //     icon: <X className="w-4 h-4 mr-1" />,
+      //     disabled: true,
+      //   };
+      // case "notInvited":
+      //   return {
+      //     text: isBookingClosed ? "Booking Closed" : "Request to Join",
+      //     color: isBookingClosed
+      //       ? "bg-gray-400 cursor-not-allowed"
+      //       : "bg-purple-600 hover:bg-purple-700",
+      //     icon: <Plus className="w-4 h-4 mr-1" />,
+      //     disabled: isBookingClosed,
+      //   };
       default:
         return {
           text: "Unknown",
@@ -238,13 +238,13 @@ export default function MyTrips() {
     }
   };
 
-  //   if (loading) {
-  //     return (
-  //       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  //       </div>
-  //     );
-  //   }
+    // if (loading) {
+    //   return (
+    //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+    //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    //     </div>
+    //   );
+    // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
