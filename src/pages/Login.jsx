@@ -168,7 +168,7 @@ export default function LoginPage({ onNavigate }) {
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.general && (
-              <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border border-destructive/20 rounded-md">
+              <div className="p-3 text-sm text-black bg-destructive/10 border border-destructive/20 rounded-md">
                 {errors.general}
               </div>
             )}
