@@ -148,31 +148,31 @@ export default function Dashboard() {
     isLoadingExpenseDetails;
 
   // Share invite handler
-  const handleShareInvite = async () => {
-    const inviteUrl = `${window.location.origin}/tripInvitePreview?trip_id=${
-      activeTripDataState?.id || "101"
-    }&code=${activeTripDataState?.invite_code || "ABC123"}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Join ${activeTripDataState?.trip_occasion || "Trip"}`,
-          text: `You're invited to join our trip to ${
-            activeTripDataState?.destination || "Destination"
-          }!`,
-          url: inviteUrl,
-        });
-        setCopied(false);
-      } catch {
-        await navigator.clipboard.writeText(inviteUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    } else {
+const handleShareInvite = async () => {
+  const inviteUrl = `${window.location.origin}/tripInvitePreview?trip_id=${
+    activeTripDataState?.id || "101"
+  }&code=${activeTripDataState?.invite_code || "ABC123"}`;
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(inviteUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    } else {
+      // Fallback for non-HTTPS or unsupported browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = inviteUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
     }
-  };
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  } catch (err) {
+    console.error("Failed to copy text: ", err);
+  }
+};
+
 
   // Calculate totals (using real data instead of dummy)
   const getTotalContributed = () =>

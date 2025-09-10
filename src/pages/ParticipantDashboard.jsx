@@ -232,7 +232,7 @@ export default function ParticipantDashboard() {
 
   const tripExpensesList = expenseDataList?.expenses;
   const totalAmount = expenseDataList?.totalAmount;
-  console.log("tripExpensesList", tripExpensesList);
+  console.log("trip>>>>", trip);
   console.log("totalAmount", totalAmount);
   useEffect(() => {
     if (activeTripData?.data?.activeTrip) {
@@ -241,34 +241,31 @@ export default function ParticipantDashboard() {
     }
   }, [activeTripData]);
 
-  const handleShareInvite = async () => {
-    if (!trip) return;
+const handleShareInvite = async () => {
+  const inviteUrl = `${window.location.origin}/tripInvitePreview?trip_id=${
+    trip?.id || "101"
+  }&code=${trip?.invite_code || "ABC123"}`;
 
-    const inviteUrl = `${window.location.origin}/functions/tripInvitePreview?trip_id=${trip.id}&code=${trip.invite_code}`;
-
-    const fallbackShare = async (urlToCopy) => {
-      await navigator.clipboard.writeText(urlToCopy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Join ${trip.occasion}`,
-          text: `You're invited to join our trip to ${trip.destination}!`,
-          url: inviteUrl,
-        });
-        setCopied(false);
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          fallbackShare(inviteUrl);
-        }
-      }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(inviteUrl);
     } else {
-      fallbackShare(inviteUrl);
+      // Fallback for non-HTTPS or unsupported browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = inviteUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
     }
-  };
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  } catch (err) {
+    console.error("Failed to copy text: ", err);
+  }
+};
+
 
   const getTotalContributed = () => {
     return contributions?.reduce(
