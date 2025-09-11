@@ -99,8 +99,7 @@ export default function MyTrips() {
   //   });
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
   console.log(activeTripData);
   console.log(data?.data?.trips, "Hey  I am the All Trips");

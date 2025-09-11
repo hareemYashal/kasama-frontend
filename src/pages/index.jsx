@@ -101,7 +101,7 @@ function PagesContent() {
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/changePassword" element={<ChangePassword />} />
         <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
-        <Route path="/tripInvitePreview" element={<TripInvitePage />} />
+        <Route path="/JoinTrip" element={<JoinTrip />} />
         {/* Protected routes */}
         <Route
           path="/tripSelection"
@@ -127,14 +127,7 @@ function PagesContent() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/JoinTrip"
-          element={
-            <PrivateRoute>
-              <JoinTrip />
-            </PrivateRoute>
-          }
-        />
+
         <Route
           path="/Itinerary"
           element={

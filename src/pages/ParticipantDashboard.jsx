@@ -28,7 +28,10 @@ import BookingDeadlineTimer from "../components/dashboard/BookingDeadlineTimer";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import ContributionBreakdown from "../components/dashboard/ContributionBreakdown";
 import { useQuery } from "@tanstack/react-query";
-import { getExpenseListService } from "@/services/expense";
+import {
+  getExpenseByTripIdService,
+  getExpenseListService,
+} from "@/services/expense";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getParticipantsWithContributions,
@@ -39,116 +42,6 @@ import { getPaymentRemainingsService } from "@/services/paynent";
 import { setActiveTripId } from "@/store/tripSlice";
 
 export default function ParticipantDashboard() {
-  // const navigate = useNavigate();
-  // const [user, setUser] = useState(null);
-  // const [trip, setTrip] = useState(null);
-  // const [expenses, setExpenses] = useState([]);
-  // const [contributions, setContributions] = useState([]);
-  // const [participants, setParticipants] = useState([]);
-  // const [loading, setLoading] = useState(true);
-  // const [copied, setCopied] = useState(false);
-
-  // useEffect(() => {
-  //   loadDashboardData();
-  // }, []);
-
-  // const loadDashboardData = async () => {
-  //   try {
-  //     const currentUser = await User.me();
-  //     setUser(currentUser);
-
-  //     if (!currentUser.current_trip_id) {
-  //       navigate(createPageUrl("MyTrips"));
-  //       return;
-  //     }
-
-  //     const currentTrip = await Trip.get(currentUser.current_trip_id);
-  //     setTrip(currentTrip);
-
-  //     const [tripExpenses, tripContributions, allUsers] = await Promise.all([
-  //       Expense.filter({ trip_id: currentTrip.id }),
-  //       Contribution.filter({ trip_id: currentTrip.id }),
-  //       User.filter({ current_trip_id: currentTrip.id })
-  //     ]);
-
-  //     setExpenses(tripExpenses);
-  //     setContributions(tripContributions);
-  //     setParticipants(allUsers);
-
-  //   } catch (error) {
-  //     console.error("Error loading dashboard:", error);
-  //     navigate(createPageUrl("Home"));
-  //   }
-  //   setLoading(false);
-  // };
-
-  // const handleShareInvite = async () => {
-  //   if (!trip) return;
-
-  //   // CORRECTED: Now points to the backend function for public preview
-  //   const inviteUrl = `${window.location.origin}/functions/tripInvitePreview?trip_id=${trip.id}&code=${trip.invite_code}`;
-
-  //   const fallbackShare = async (urlToCopy) => {
-  //     await navigator.clipboard.writeText(urlToCopy);
-  //     setCopied(true);
-  //     setTimeout(() => setCopied(false), 2000);
-  //   };
-
-  //   if (navigator.share) {
-  //     try {
-  //       await navigator.share({
-  //         title: `Join ${trip.occasion}`,
-  //         text: `You're invited to join our trip to ${trip.destination}!`,
-  //         url: inviteUrl,
-  //       });
-  //       setCopied(false);
-  //     } catch (error) {
-  //       if (error.name !== 'AbortError') {
-  //         fallbackShare(inviteUrl);
-  //       }
-  //     }
-  //   } else {
-  //     fallbackShare(inviteUrl);
-  //   }
-  // };
-
-  // const getTotalContributed = () => {
-  //   return contributions.reduce((sum, contrib) => sum + contrib.amount_paid, 0);
-  // };
-
-  // const getMyContribution = () => {
-  //   return contributions.find(c => c.user_id === user?.id);
-  // };
-
-  // const getTotalExpenses = () => {
-  //   return expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  // };
-
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  //     </div>
-  //   );
-  // }
-
-  // if (!trip) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-  //       <div className="text-center">
-  //         <h2 className="text-2xl font-bold text-slate-800 mb-4">No Active Trip</h2>
-  //         <Button onClick={() => navigate(createPageUrl("Home"))}>
-  //           Go Home
-  //         </Button>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
-  // const isAdmin = user?.trip_role === 'admin';
-  // const totalContributed = getTotalContributed();
-  // const myContribution = getMyContribution();
-  // const totalExpenses = getTotalExpenses();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [trip, setTrip] = useState(null);
@@ -179,10 +72,17 @@ export default function ParticipantDashboard() {
   //   queryFn: () => getActiveTripService(token),
   //   enabled: !!token,
   // });
+  const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
+    useQuery({
+      queryKey: ["getExpenseByTripIdService", tripId],
+      queryFn: () => getExpenseByTripIdService(token, tripId),
+      enabled: !!token && !!tripId,
+    });
+  const tripDataList = tripExpenseDetails?.data?.data;
+
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
   console.log(
     "activeTripData?.data?.activeTrip.booking_deadline=====>",
@@ -241,31 +141,30 @@ export default function ParticipantDashboard() {
     }
   }, [activeTripData]);
 
-const handleShareInvite = async () => {
-  const inviteUrl = `${window.location.origin}/tripInvitePreview?trip_id=${
-    trip?.id || "101"
-  }&code=${trip?.invite_code || "ABC123"}`;
+  const handleShareInvite = async () => {
+    const inviteUrl = `${window.location.origin}/JoinTrip?trip_id=${
+      trip?.id || "101"
+    }&code=${trip?.invite_code || "ABC123"}`;
 
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(inviteUrl);
-    } else {
-      // Fallback for non-HTTPS or unsupported browsers
-      const textArea = document.createElement("textarea");
-      textArea.value = inviteUrl;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(inviteUrl);
+      } else {
+        // Fallback for non-HTTPS or unsupported browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = inviteUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
     }
-
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  } catch (err) {
-    console.error("Failed to copy text: ", err);
-  }
-};
-
+  };
 
   const getTotalContributed = () => {
     return contributions?.reduce(
@@ -358,15 +257,11 @@ const handleShareInvite = async () => {
                 <div className="absolute bottom-6 left-6 right-6 text-white">
                   <div className="flex items-center gap-3 mb-2">
                     <Badge className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-primary/80 bg-blue-600/90 text-white backdrop-blur-sm text-xs sm:text-sm">
-                      Trip Admin
+                      Participant
                     </Badge>
 
                     {(() => {
-                      if (
-                        !trip?.start_date ||
-                        !trip?.end_date
-                      )
-                        return null;
+                      if (!trip?.start_date || !trip?.end_date) return null;
 
                       const today = new Date();
                       const start = new Date(trip.start_date);
@@ -438,9 +333,9 @@ const handleShareInvite = async () => {
             <h3 className="text-xl md:text-2xl font-bold mb-1">
               Invite Your Crew!
             </h3>
-            {/* <p className="text-sm text-slate-600">
-              Share this link to invite others to the trip.
-            </p> */}
+            <p className="text-blue-200 text-sm">
+              Share this link with friends to let them join the trip
+            </p>
           </div>
           <Button
             onClick={handleShareInvite}
@@ -534,7 +429,7 @@ const handleShareInvite = async () => {
         </div>
 
         {/* My Contribution Card */}
-        {myContribution && (
+        {/* {myContribution && (
           <div className="rounded-lg bg-card text-card-foreground bg-gradient-to-br from-white via-emerald-50/30 to-green-50/20 shadow-xl border-2 border-emerald-200/40 w-full relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 animate-pulse opacity-30"></div>
 
@@ -607,6 +502,137 @@ const handleShareInvite = async () => {
                 </div>
               </div>
             </CardContent>
+          </div>
+        )} */}
+
+        {tripDataList && (
+          <div className="rounded-lg bg-card text-card-foreground bg-gradient-to-br from-white via-emerald-50/30 to-green-50/20 shadow-xl border-2 border-emerald-200/40 w-full relative overflow-hidden">
+            {/* Animated Shine Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 animate-pulse opacity-30"></div>
+
+            {/* Header */}
+            <div className="flex flex-col space-y-1.5 p-4 sm:p-6 relative z-10">
+              <h3 className="tracking-tight flex items-center gap-3 text-emerald-700 text-xl sm:text-2xl font-bold">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full flex items-center justify-center shadow-lg">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="lucide lucide-dollar-sign w-5 h-5 sm:w-6 sm:h-6 text-white"
+                  >
+                    <line x1="12" x2="12" y1="2" y2="22"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                </div>
+                Group Progress
+              </h3>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-6 p-4 sm:p-6 pt-0 relative z-10">
+              {/* Total Contributed */}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600 text-base sm:text-lg font-medium">
+                  Total Contributed
+                </span>
+                <span className="text-3xl sm:text-4xl font-black text-emerald-600 drop-shadow-sm">
+                  ${tripDataList.baseAmountContributed?.toFixed(2) || "0.00"}
+                </span>
+              </div>
+
+              {/* Goal Amount */}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600 text-base sm:text-lg font-medium">
+                  Goal Amount
+                </span>
+                <span className="text-xl sm:text-2xl font-bold text-slate-700">
+                  ${tripDataList.total_goal?.toFixed(2) || "0.00"}
+                </span>
+              </div>
+
+              {/* Remaining */}
+              {/* <div className="flex justify-between items-center">
+                <span className="text-slate-600 text-base sm:text-lg font-medium">
+                  Remaining
+                </span>
+                <span className="text-xl sm:text-2xl font-bold text-red-600">
+                  ${tripDataList.remaining?.toFixed(2) || "0.00"}
+                </span>
+              </div> */}
+
+              {/* Overpaid */}
+              {/* {tripDataList.overpaid > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600 text-base sm:text-lg font-medium">
+                    Overpaid
+                  </span>
+                  <span className="text-xl sm:text-2xl font-bold text-orange-500">
+                    ${tripDataList.overpaid?.toFixed(2)}
+                  </span>
+                </div>
+              )} */}
+
+              {/* Progress Bar */}
+              <div className="space-y-3">
+                <div className="relative w-full overflow-hidden rounded-full bg-slate-200 h-5">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-600 transition-all"
+                    style={{
+                      width: `${
+                        tripDataList?.total_goal
+                          ? (tripDataList.baseAmountContributed /
+                              tripDataList.total_goal) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <p className="text-sm sm:text-base text-slate-600 font-medium">
+                    {tripDataList?.total_goal
+                      ? `${(
+                          (tripDataList.baseAmountContributed /
+                            tripDataList.total_goal) *
+                          100
+                        ).toFixed(1)}% of goal reached`
+                      : "No expenses set yet"}
+                  </p>
+                  {/* Motivational text */}
+                  <p className="text-slate-600 font-semibold text-sm">
+                    Let’s get this trip funded! 💰
+                  </p>
+                </div>
+              </div>
+
+              {/* Per Person */}
+              {/* <div className="flex justify-between items-center text-sm sm:text-base text-slate-600">
+                <span>Per Person Goal</span>
+                <span className="font-semibold">
+                  ${tripDataList.per_person?.toFixed(2) || "0.00"}
+                </span>
+              </div> */}
+
+              {/* Bottom "Only $xxx left" box */}
+              {/* {tripDataList.remaining > 0 && ( */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mt-4">
+                <p className="text-emerald-800 font-medium text-center">
+                  Only{" "}
+                  <span className="font-bold text-lg">
+                    ${tripDataList.remaining?.toFixed(2)}
+                  </span>{" "}
+                  left to reach your goal!
+                </p>
+              </div>
+              {/* )} */}
+            </div>
           </div>
         )}
 

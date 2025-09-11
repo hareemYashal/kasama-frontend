@@ -1,323 +1,143 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { User } from "@/api/entities";
-import { Trip } from "@/api/entities";
-import { Expense } from "@/api/entities";
-import { Contribution } from "@/api/entities";
-import { TripActivity } from "@/api/entities";
-import {
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  MapPin,
-  Calendar,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { getTripService } from "@/services/trip";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { CalendarIcon, MapPinIcon, Users } from "lucide-react";
+import axiosInstance from "@/utils/axiosInstance";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
-export default function JoinTrip() {
-  const navigate = useNavigate();
+const TripInvitePage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = useSelector((state) => state.user.token);
+  const user = useSelector((state) => state.user.user);
 
-  const [status, setStatus] = useState("processing"); // processing, success, error
-  const [message, setMessage] = useState("Processing your invitation...");
-  const [errorDetails, setErrorDetails] = useState("");
-  const [trip, setTrip] = useState(null);
-  const [user, setUser] = useState(null); // New state for current authenticated user
-  const [joining, setJoining] = useState(false); // New state to track if join process is active
-
-  const handleJoinTrip = useCallback(async () => {
-    if (!trip || !user || joining) {
-      // Prevent re-running if trip/user not loaded or if already joining
-      return;
-    }
-
-    setJoining(true); // Indicate that the join process has started
-    setStatus("processing"); // Ensure status is processing when starting join
-    setMessage(`Welcome, ${user.full_name.split(" ")[0]}! Joining the trip...`);
-
-    try {
-      // Check if user is already part of this trip
-      if (user.current_trip_id === trip.id) {
-        setStatus("success");
-        setMessage(
-          "You are already part of this trip! Redirecting to dashboard..."
-        );
-        setTimeout(() => {
-          navigate(
-            createPageUrl(
-              user.trip_role === "admin" ? "Dashboard" : "ParticipantDashboard"
-            )
-          );
-        }, 1500);
-        return; // Exit if user is already in the trip
-      }
-
-      // Update user to join the trip as participant
-      await User.updateMyUserData({
-        current_trip_id: trip.id,
-        trip_role: "participant",
-      });
-
-      // Get all current participants (including the newly joined user) and expenses for contribution calculation
-      const [allParticipants, tripExpenses] = await Promise.all([
-        User.filter({ current_trip_id: trip.id }),
-        Expense.filter({ trip_id: trip.id }),
-      ]);
-
-      const totalExpenses = tripExpenses.reduce(
-        (sum, expense) => sum + expense.amount,
-        0
-      );
-      const perPersonAmount =
-        allParticipants.length > 0 ? totalExpenses / allParticipants.length : 0;
-
-      // Create or update contribution record for the new participant
-      // Check if a contribution record already exists for this user in this trip to ensure idempotency
-      const existingUserContribution = await Contribution.filter({
-        trip_id: trip.id,
-        user_id: user.id,
-      });
-
-      if (existingUserContribution.length === 0) {
-        await Contribution.create({
-          trip_id: trip.id,
-          user_id: user.id,
-          goal_amount: perPersonAmount,
-          amount_paid: 0,
-          amount_remaining: perPersonAmount,
-        });
-      } else {
-        // If it exists, update it with the new recalculated amount
-        await Contribution.update(existingUserContribution[0].id, {
-          goal_amount: perPersonAmount,
-          amount_remaining: Math.max(
-            0,
-            perPersonAmount - existingUserContribution[0].amount_paid
-          ),
-        });
-      }
-
-      // Update contributions for all participants (recalculate split)
-      const allContributions = await Contribution.filter({ trip_id: trip.id });
-      for (const contribution of allContributions) {
-        // Update all contributions based on the new perPersonAmount, including the newly created/updated one
-        await Contribution.update(contribution.id, {
-          goal_amount: perPersonAmount,
-          amount_remaining: Math.max(
-            0,
-            perPersonAmount - contribution.amount_paid
-          ),
-        });
-      }
-
-      // Log activity
-      const firstName = user.full_name.split(" ")[0];
-      await TripActivity.create({
-        trip_id: trip.id,
-        user_id: user.id,
-        user_first_name: firstName,
-        action_type: "JOINED_TRIP",
-        description: `${firstName} joined the trip.`,
-        metadata: {}, // Changed metadata to an empty object as per outline
-      });
-
-      setStatus("success");
-      setMessage(
-        "Successfully joined the trip! Redirecting to your dashboard..."
-      );
-
-      // Redirect to participant dashboard
-      setTimeout(() => {
-        navigate(createPageUrl("ParticipantDashboard"));
-      }, 2000);
-    } catch (error) {
-      console.error("Error processing invitation:", error);
-      setStatus("error");
-      setMessage("Unable to Join Trip");
-      setErrorDetails(
-        error.message ||
-          "An unexpected error occurred. Please try again or contact support."
-      );
-    } finally {
-      setJoining(false); // Reset joining state
-    }
-  }, [navigate, trip, user, joining]); // Dependencies for useCallback
-
-  // Effect to initialize the invitation process and fetch user/trip data
+  const tripId = searchParams.get("trip_id");
+  const code = searchParams.get("code");
   useEffect(() => {
-    const tripId = searchParams.get("trip_id");
-    const inviteCode = searchParams.get("code");
-
-    if (!tripId || !inviteCode) {
-      setStatus("error");
-      setMessage("Invalid Invitation Link");
-      setErrorDetails(
-        "The link is missing necessary information. Please ask for a new invite."
-      );
-      return;
+    if (!tripId || !code) {
+      toast.error("Invalid link");
+      navigate("/mytrips", { replace: true });
     }
+  }, [tripId, code, navigate]);
+  const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(tripId),
+    enabled: !!tripId,
+  });
 
-    const initializeInvitation = async () => {
+  const invitedTripData = activeTripData?.data?.activeTrip;
+
+  const handleJoinTrip = async () => {
+    if (!tripId || !code) return;
+
+    if (token && user) {
       try {
-        // First, verify the invitation exists and get trip details
-        const trips = await Trip.filter({
-          id: tripId,
-          invite_code: inviteCode,
-        });
-        if (trips.length === 0) {
-          throw new Error(
-            "Invitation not found. This invite link is either invalid or has expired."
-          );
-        }
-
-        const tripToJoin = trips[0];
-        setTrip(tripToJoin); // Set trip state
-
-        if (tripToJoin.status === "cancelled") {
-          throw new Error(
-            "This trip has been cancelled and is no longer accepting new members."
-          );
-        }
-
-        // Now authenticate the user
-        let currentUser;
-        try {
-          currentUser = await User.me();
-          setUser(currentUser); // Set user state
-        } catch (authError) {
-          // User is not authenticated, redirect to login with callback
-          setMessage("Redirecting to login...");
-          await User.loginWithRedirect(window.location.href);
-          return; // Stop execution if redirecting
-        }
-
-        // If both user and trip are available, the subsequent useEffect will trigger handleJoinTrip
-        setStatus("processing"); // Keep processing status while waiting for handleJoinTrip
-        setMessage("Verifying your details...");
-      } catch (error) {
-        console.error("Error initializing invitation:", error);
-        setStatus("error");
-        setMessage("Unable to Join Trip");
-        setErrorDetails(
-          error.message ||
-            "An unexpected error occurred. Please try again or contact support."
+        const res = await axiosInstance.post(
+          `/participant/joinViaInvite`,
+          { tripId, inviteCode: code },
+          { headers: { Authorization: `Bearer ${token}` } }
         );
+        toast.success(res.data.message);
+        console.log('res?.data?.data?.id',res)
+        localStorage.setItem("selectedTripId", res?.data?.data?.trip?.id); // save in localStorage
+        navigate("/mytrips");
+      } catch (err) {
+        const msg = err.response?.data?.message || "Failed to join trip";
+        toast.error(msg);
+        navigate("/mytrips");
       }
-    };
-
-    initializeInvitation();
-  }, [searchParams]); // Dependencies for initial setup: only searchParams
-
-  // Effect to trigger handleJoinTrip once user and trip states are loaded and not already joining
-  useEffect(() => {
-    if (user && trip && status === "processing" && !joining) {
-      handleJoinTrip();
-    }
-  }, [user, trip, status, joining, handleJoinTrip]); // Dependencies for triggering join logic
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case "processing":
-        return <Loader2 className="w-8 h-8 animate-spin text-blue-600" />;
-      case "success":
-        return <CheckCircle className="w-8 h-8 text-green-600" />;
-      case "error":
-        return <AlertTriangle className="w-8 h-8 text-red-600" />;
-      default:
-        return <Loader2 className="w-8 h-8 animate-spin text-blue-600" />;
+    } else {
+      // Not logged in → redirect to register
+      localStorage.setItem("inviteData", JSON.stringify({ tripId, code }));
+      navigate(`/register?trip_id=${tripId}&code=${code}`);
     }
   };
 
-  const getStatusColor = () => {
-    switch (status) {
-      case "processing":
-        return "text-blue-600";
-      case "success":
-        return "text-green-600";
-      case "error":
-        return "text-red-600";
-      default:
-        return "text-blue-600";
-    }
-  };
+  if (isLoadingActiveTrip) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!invitedTripData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-600">Trip not found.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full space-y-6">
-        {/* Trip Details Card (if available) */}
-        {trip && (
-          <Card className="bg-white/90 backdrop-blur-sm border-slate-200/60 shadow-xl">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-slate-800 mb-2">
-                You're invited to join
-              </CardTitle>
-              <h2 className="text-3xl font-bold text-blue-600 mb-4">
-                {trip.occasion}
-              </h2>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-slate-600">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  <span className="font-medium">{trip.destination}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  <span className="font-medium">
-                    {format(new Date(trip.start_date), "MMM d")} -{" "}
-                    {format(new Date(trip.end_date), "MMM d, yyyy")}
-                  </span>
+    <div className="min-h-screen w-full relative app-preview">
+      <div className="flex flex-col w-full h-full" id="app-demo">
+        <div className="bg-white w-full min-h-full overflow-auto">
+          <div id="component-preview-container">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-2xl w-full">
+                <div className="p-8">
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-slate-800 mb-2">
+                      You're Invited!
+                    </h1>
+                    <p className="text-lg text-slate-600">
+                      Join the trip to {invitedTripData.destination}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-6 mb-8">
+                    <h2 className="text-xl font-bold text-slate-800 mb-3">
+                      {invitedTripData.trip_occasion}
+                    </h2>
+                    <div className="flex items-center gap-4 text-slate-600 mb-4">
+                      <div className="flex items-center gap-2">
+                        <MapPinIcon className="w-4 h-4" />
+                        <span>{invitedTripData.destination}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>
+                          {format(
+                            new Date(invitedTripData.start_date),
+                            "MMM d"
+                          )}{" "}
+                          -{" "}
+                          {format(
+                            new Date(invitedTripData.end_date),
+                            "MMM d, yyyy"
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="font-semibold text-slate-800 mb-2">
+                        Welcome Message:
+                      </h3>
+                      <p className="text-slate-600 italic">
+                        "{invitedTripData.welcome_message}"
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <button
+                      onClick={handleJoinTrip}
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary hover:bg-primary/90 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 text-lg font-semibold"
+                    >
+                      <Users className="w-4 h-4" />
+                      Sign Up & Join Trip
+                    </button>
+                  </div>
                 </div>
               </div>
-            </CardHeader>
-            {trip.welcome_message && (
-              <CardContent className="pt-0">
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h3 className="font-semibold text-slate-800 mb-2">
-                    Welcome Message
-                  </h3>
-                  <p className="text-slate-700 leading-relaxed">
-                    {trip.welcome_message}
-                  </p>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        )}
-
-        {/* Status Card */}
-        <Card className="bg-white/90 backdrop-blur-sm border-slate-200/60 shadow-xl">
-          <CardContent className="p-8">
-            <div className="text-center">
-              <div className="mb-6">{getStatusIcon()}</div>
-              <h3 className={`text-xl font-semibold mb-2 ${getStatusColor()}`}>
-                {message}
-              </h3>
-              {errorDetails && (
-                <p className="text-red-600 text-sm mt-4 bg-red-50 p-3 rounded-lg border border-red-200">
-                  {errorDetails}
-                </p>
-              )}
-              {status === "processing" && (
-                <p className="text-slate-500 text-sm mt-4">
-                  Please wait while we process your invitation...
-                </p>
-              )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-2 text-slate-400 mb-2">
-            <MapPin className="w-4 h-4" />
-            <span className="font-medium">Kasama</span>
           </div>
-          <p className="text-slate-500 text-sm">
-            Group Travel Planning Made Simple
-          </p>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default TripInvitePage;

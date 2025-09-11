@@ -17,6 +17,7 @@ import {
   Archive,
   Trash2,
   Clock,
+  UserCheck,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -53,6 +54,7 @@ export default function MyTrips() {
   const [loading, setLoading] = useState(true);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [requestText, setRequestText] = useState("Request");
+  const [selectedTripId, setSelectedTripId] = useState(null);
 
   const token = useSelector((state) => state.user.token);
   const dispatch = useDispatch();
@@ -76,6 +78,7 @@ export default function MyTrips() {
     }
   };
   console.log("requestText", requestText);
+
   const handleCreateNewTrip = () => {
     navigate("/TripCreation");
   };
@@ -99,8 +102,7 @@ export default function MyTrips() {
   //   });
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
   console.log(activeTripData);
   console.log(data?.data?.trips, "Hey  I am the All Trips");
@@ -237,14 +239,24 @@ export default function MyTrips() {
         };
     }
   };
-
-    // if (loading) {
-    //   return (
-    //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-    //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    //     </div>
-    //   );
-    // }
+  useEffect(() => {
+    // Check localStorage first
+    const storedTripId = localStorage.getItem("selectedTripId");
+    if (storedTripId) {
+      setSelectedTripId(Number(storedTripId)); // ya string, depending on your trip.id type
+    } else if (myTrips.length > 0) {
+      // If no stored trip, set first trip as default
+      setSelectedTripId(myTrips[0].id);
+      localStorage.setItem("selectedTripId", myTrips[0].id);
+    }
+  }, [myTrips]);
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
@@ -304,13 +316,13 @@ export default function MyTrips() {
                 return (
                   <Card
                     key={trip.id}
+                    onClick={() => {
+                      setSelectedTripId(trip.id);
+                      localStorage.setItem("selectedTripId", trip.id); // save in localStorage
+                    }} // ✅ sirf local highlight
                     className={`bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 
-                       ${
-                         trip.id === isCurrentTrip
-                           ? "ring-2 ring-blue-500 border-blue-300"
-                           : ""
-                       }
-                  `}
+     ${trip.id === selectedTripId ? "ring-2 ring-blue-500 border-blue-300" : ""}
+  `}
                   >
                     <CardHeader className="pb-4">
                       <div className="flex justify-between items-start mb-2">
@@ -327,13 +339,13 @@ export default function MyTrips() {
                             {trip.status}
                           </Badge>
 
-                          {trip.id === isCurrentTrip && (
+                          {trip.id === selectedTripId && (
                             <Badge className="bg-blue-100 text-blue-800">
                               Current
                             </Badge>
                           )}
-                          {trip.role == "creator" && (
-                            <Badge className="border border-[#e5e7eb] bg-transparent text-black">
+                          {trip.role == "creator" ? (
+                            <Badge className="border rounded-full border-[#e5e7eb] bg-transparent text-black">
                               <span>
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -357,6 +369,13 @@ export default function MyTrips() {
                                 </svg>
                               </span>{" "}
                               Admin
+                            </Badge>
+                          ) : (
+                            <Badge className="border rounded-full border-[#e5e7eb] bg-transparent text-black">
+                              <span>
+                               <UserCheck className="w-3 h-3 mr-1.5" />
+                              </span>{" "}
+                              Participant
                             </Badge>
                           )}
                         </div>
@@ -442,66 +461,68 @@ export default function MyTrips() {
                       </div>
 
                       {/* Action Button */}
-                      <div className="flex gap-2">
-                        {(() => {
-                          const { text, color, icon, disabled } =
-                            getButtonConfig(trip);
 
-                          return (
-                            <Button
-                              disabled={disabled}
-                              onClick={() => {
-                                if (trip.role === "creator") {
-                                  const updatedUser = {
-                                    ...authUser,
-                                    trip_role: "creator",
-                                  };
-                                  dispatch(setUserRed(updatedUser));
-                                  localStorage.setItem(
-                                    "user",
-                                    JSON.stringify(updatedUser)
-                                  );
-                                  dispatch(setActiveTripId(trip.id));
-                                  localStorage.setItem(
-                                    "activeTripId",
-                                    JSON.stringify(trip.id)
-                                  );
-                                  navigate(`/dashboard`);
-                                } else if (trip.role === "participant") {
-                                  const updatedUser = {
-                                    ...authUser,
-                                    trip_role: "participant",
-                                  };
-                                  dispatch(setUserRed(updatedUser));
-                                  localStorage.setItem(
-                                    "user",
-                                    JSON.stringify(updatedUser)
-                                  );
-                                  dispatch(setActiveTripId(trip.id));
-                                  localStorage.setItem(
-                                    "activeTripId",
-                                    JSON.stringify(trip.id)
-                                  );
-                                  navigate(`/participantdashboard`);
-                                } else if (trip.role === "notInvited") {
-                                  handleRequest(trip.id);
-                                } else if (trip.role === "INVITED") {
-                                  updateMutation({
-                                    authToken,
-                                    authUerId,
-                                    tripId: trip.id,
-                                    status: "ACCEPTED",
-                                  });
-                                }
-                              }}
-                              size="sm"
-                              className={`flex-1 ${color}`}
-                            >
-                              {icon}
-                              {text}
-                            </Button>
-                          );
-                        })()}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTripId(trip.id); // highlight clicked trip
+                            localStorage.setItem("selectedTripId", trip.id); // save in localStorage
+
+                            if (trip.role === "creator") {
+                              const updatedUser = {
+                                ...authUser,
+                                trip_role: "creator",
+                              };
+                              dispatch(setUserRed(updatedUser));
+                              localStorage.setItem(
+                                "user",
+                                JSON.stringify(updatedUser)
+                              );
+                              dispatch(setActiveTripId(trip.id));
+                              localStorage.setItem(
+                                "activeTripId",
+                                JSON.stringify(trip.id)
+                              );
+                              navigate(`/dashboard`);
+                            } else if (trip.role === "participant") {
+                              const updatedUser = {
+                                ...authUser,
+                                trip_role: "participant",
+                              };
+                              dispatch(setUserRed(updatedUser));
+                              localStorage.setItem(
+                                "user",
+                                JSON.stringify(updatedUser)
+                              );
+                              dispatch(setActiveTripId(trip.id));
+                              localStorage.setItem(
+                                "activeTripId",
+                                JSON.stringify(trip.id)
+                              );
+                              navigate(`/participantdashboard`);
+                            } else if (trip.role === "notInvited") {
+                              handleRequest(trip.id);
+                            } else if (trip.role === "INVITED") {
+                              updateMutation({
+                                authToken,
+                                authUerId,
+                                tripId: trip.id,
+                                status: "ACCEPTED",
+                              });
+                            }
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-1 ${
+                            trip.id === selectedTripId
+                              ? "bg-green-600 hover:bg-green-700"
+                              : "bg-blue-600 hover:bg-blue-700"
+                          }`}
+                        >
+                          <Eye className="w-4 h-4" />
+                          {trip.id === selectedTripId
+                            ? "View Dashboard"
+                            : "Switch To"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

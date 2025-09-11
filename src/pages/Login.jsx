@@ -90,6 +90,9 @@ export default function LoginPage({ onNavigate }) {
           toast.success(
             res.data.message || "You’ve successfully joined the trip!"
           );
+          console.log("ssssssssssssssssssssss", res?.data);
+
+          localStorage.setItem("selectedTripId", res?.data?.data?.trip?.id); // save in localStorage
         } catch (err) {
           console.error(err);
           toast.error(err?.response?.data?.message || "Failed to join trip");
@@ -118,8 +121,7 @@ export default function LoginPage({ onNavigate }) {
 
   const { data: activeTripData, isLoading: activeTripSuccess } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
   useEffect(() => {
     if (activeTripSuccess && activeTripData?.data?.activeTrip?.id) {

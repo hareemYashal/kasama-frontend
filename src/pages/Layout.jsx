@@ -72,8 +72,7 @@ export default function Layout({ children, currentPageName }) {
 
   const { data: tripData, isLoading: isLoadingTripData } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
 
   const tdata = tripData?.data?.activeTrip;
@@ -254,7 +253,7 @@ export default function Layout({ children, currentPageName }) {
                     className={`inline-flex items-center rounded-full border px-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 font-medium text-xs py-0.5 ${
                       isCreator
                         ? "bg-amber-100 text-amber-800 border-amber-200"
-                        : "bg-blue-500 text-white border-blue-600"
+                        : "bg-blue-200 hover:bg-blue-50 text-blue-700 transition-all"
                     }`}
                   >
                     <span className="mr-1.5">
@@ -277,22 +276,7 @@ export default function Layout({ children, currentPageName }) {
                         </svg>
                       ) : (
                         // User SVG for Participant
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="lucide lucide-user w-3 h-3"
-                        >
-                          <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
-                          <path d="M4 21v-2a4 4 0 0 1 3-3.87"></path>
-                          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"></path>
-                        </svg>
+                      <Shield className="w-3 h-3" />
                       )}
                     </span>
                     {isCreator ? "Admin" : "Participant"}

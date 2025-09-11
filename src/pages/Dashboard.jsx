@@ -78,8 +78,7 @@ export default function Dashboard() {
 
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
 
   console.log("activeTripData----000998>>>", activeTripData);
@@ -148,31 +147,30 @@ export default function Dashboard() {
     isLoadingExpenseDetails;
 
   // Share invite handler
-const handleShareInvite = async () => {
-  const inviteUrl = `${window.location.origin}/tripInvitePreview?trip_id=${
-    activeTripDataState?.id || "101"
-  }&code=${activeTripDataState?.invite_code || "ABC123"}`;
+  const handleShareInvite = async () => {
+    const inviteUrl = `${window.location.origin}/JoinTrip?trip_id=${
+      activeTripDataState?.id || "101"
+    }&code=${activeTripDataState?.invite_code || "TEMP1255"}`;
 
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(inviteUrl);
-    } else {
-      // Fallback for non-HTTPS or unsupported browsers
-      const textArea = document.createElement("textarea");
-      textArea.value = inviteUrl;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(inviteUrl);
+      } else {
+        // Fallback for non-HTTPS or unsupported browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = inviteUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
     }
-
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  } catch (err) {
-    console.error("Failed to copy text: ", err);
-  }
-};
-
+  };
 
   // Calculate totals (using real data instead of dummy)
   const getTotalContributed = () =>
@@ -342,9 +340,9 @@ const handleShareInvite = async () => {
             <h3 className="text-xl md:text-2xl font-bold mb-1">
               Invite Your Crew!
             </h3>
-            {/* <p className="text-sm text-slate-600">
-                      Share this link to invite others to the trip.
-                    </p> */}
+            <p className="text-blue-200 text-sm">
+              Share this link with friends to let them join the trip
+            </p>
           </div>
           <Button
             onClick={handleShareInvite}
@@ -353,12 +351,12 @@ const handleShareInvite = async () => {
             {copied ? (
               <>
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Copied!
+                Link Copied!
               </>
             ) : (
               <>
                 <Share2 className="w-4 h-4 mr-2" />
-                Share Invite
+                Get Invite Link
               </>
             )}
           </Button>

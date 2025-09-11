@@ -84,6 +84,8 @@ export default function TripCreation() {
     mutationFn: (formData) => createTripService(formData, token),
     onSuccess: (data) => {
       console.log("Trip Created Successfully:", data);
+      localStorage.setItem("selectedTripId", data?.data?.id); // save in localStorage
+
       toast.success(data.message);
       navigate("/mytrips");
     },

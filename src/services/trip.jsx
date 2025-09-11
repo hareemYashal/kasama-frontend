@@ -58,13 +58,9 @@ const getActiveTripService = async (token) => {
   }
 };
 
-export const getTripService = async (token, tripId) => {
+export const getTripService = async (tripId) => {
   try {
-    const response = await axiosInstance.get(`/trip/getTrip/${tripId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axiosInstance.get(`/trip/getTrip/${tripId}`);
     return response.data;
   } catch (error) {
     throw error;

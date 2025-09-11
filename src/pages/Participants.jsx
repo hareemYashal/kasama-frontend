@@ -251,8 +251,7 @@ export default function Participants() {
 
      const { data: tripData, isLoading: isLoadingTripData } = useQuery({
         queryKey: ["getTripService", tripId],
-        queryFn: () => getTripService(token, tripId),
-        enabled: !!token,
+        queryFn: () => getTripService(tripId),
       });
     
       const tripDetails = tripData?.data?.activeTrip;

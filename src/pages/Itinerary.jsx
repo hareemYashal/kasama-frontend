@@ -40,8 +40,7 @@ export default function Itinerary() {
 
   const { data: activeTripData, isLoading: isLoadingTrip } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;

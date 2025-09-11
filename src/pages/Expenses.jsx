@@ -338,8 +338,7 @@ export default function Expenses() {
 
   const { data: tripDetails, isLoading: isLoadingTripData } = useQuery({
     queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(token, tripId),
-    enabled: !!token,
+    queryFn: () => getTripService(tripId),
   });
 
   const tdata = tripDetails?.data?.activeTrip;

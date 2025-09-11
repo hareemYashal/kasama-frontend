@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function EmailVerifiedPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
       <Card className="w-full max-w-md shadow-lg border-0 bg-card/80 backdrop-blur-sm">
@@ -30,11 +32,17 @@ export default function EmailVerifiedPage() {
         </CardHeader>
 
         <CardContent className="flex flex-col items-center gap-4">
-          <Link to="/login" className="w-full">
+          <div
+            onClick={() => {
+              localStorage.removeItem("inviteData");
+              navigate("/login");
+            }}
+            className="w-full"
+          >
             <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5">
               Go to Login
             </Button>
-          </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -100,7 +100,7 @@ export default function RegisterPage() {
           navigate("/login"); // go to My Trips after joining
         } catch (err) {
           console.error(err);
-          toast.error("Failed to join trip");
+          // toast.error("Failed to join trip");
         }
       } else {
         navigate("/login"); // normal registration flow
