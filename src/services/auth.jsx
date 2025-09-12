@@ -19,6 +19,13 @@ const registerService = async (data) => {
   }
 };
 
+
+export const loginWithGoogleService = async ({ access_token }) => {
+  // backend route we'll implement: POST /auth/google
+  return axiosInstance.post("/user/google", { access_token });
+};
+
+
 const forgotPasswordService = async (data) => {
   try {
     const response = await axiosInstance.post(`/user/forgotPassword`, data);

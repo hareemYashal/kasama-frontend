@@ -11,9 +11,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { loginService } from "@/services/auth";
+import { loginService, loginWithGoogleService } from "@/services/auth";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -24,6 +24,7 @@ import { getActiveTripService, getTripService } from "@/services/trip";
 import { setActiveTripId } from "@/store/tripSlice";
 import { useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/utils/axiosInstance";
+import { useGoogleLogin } from "@react-oauth/google";
 export default function LoginPage({ onNavigate }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -112,6 +113,66 @@ export default function LoginPage({ onNavigate }) {
     },
   });
 
+  const googleLogin = useGoogleLogin({
+    // prompt: "consent", // optional
+    onSuccess: async (tokenResponse) => {
+      // tokenResponse has access_token; but better to request id_token by exchange on backend?
+      // @react-oauth/google can give you access_token. We can call Google token info endpoint
+      // on the backend to get user info. For easier flow, ask for 'id_token' using redirect-based,
+      // but this approach is widely used: send access_token to backend and backend verifies via google APIs.
+      try {
+        // send access token to backend
+        const resp = await loginWithGoogleService({
+          access_token: tokenResponse.access_token,
+        });
+
+        console.log('GOOGLEresp',resp)
+        // success flow identical to your current loginService success:
+        toast.success(resp.data.message || "Login Successful");
+        dispatch(setToken(resp.data.data.token));
+        dispatch(setUserRed(resp.data.data.user));
+        localStorage.setItem("user", JSON.stringify(resp.data.data.user));
+        localStorage.setItem("token", JSON.stringify(resp.data.data.token));
+        queryClient.invalidateQueries(["getActiveTripData"]);
+        // handle invite flow (same as existing)
+        const inviteData = JSON.parse(localStorage.getItem("inviteData"));
+        if (inviteData?.tripId && inviteData?.code) {
+          try {
+            const res = await axiosInstance.post(
+              `/participant/joinViaInvite`,
+              {
+                tripId: inviteData.tripId,
+                inviteCode: inviteData.code,
+              },
+              {
+                headers: { Authorization: `Bearer ${resp.data.data.token}` },
+              }
+            );
+            toast.success(
+              res.data.message || "You’ve successfully joined the trip!"
+            );
+            localStorage.setItem("selectedTripId", res?.data?.data?.trip?.id);
+          } catch (err) {
+            console.error(err);
+            toast.error(err?.response?.data?.message || "Failed to join trip");
+          } finally {
+            localStorage.removeItem("inviteData");
+            navigate("/mytrips");
+          }
+        } else {
+          navigate("/mytrips");
+        }
+      } catch (err) {
+        console.error("Google login failed:", err);
+        toast.error(err?.response?.data?.message || "Google login failed");
+      }
+    },
+    onError: (err) => {
+      console.error("Google login error:", err);
+      toast.error("Google sign-in was cancelled or failed");
+    },
+  });
+
   // const { data: activeTripData, isSuccess: activeTripSuccess } = useQuery({
   //   queryKey: ["getActiveTripData"],
   //   queryFn: () => getActiveTripService(token),
@@ -153,113 +214,203 @@ export default function LoginPage({ onNavigate }) {
 
   // --------------------------------
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
-      <Card className="w-full max-w-md shadow-lg border-0 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="space-y-2 text-center pb-8">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Mail className="w-6 h-6 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+      <div className="w-full max-w-md p-8 sm:p-10 md:pt-12 md:pb-10 md:px-10 text-card-foreground relative overflow-hidden border-0 shadow-2xl bg-white/95 backdrop-blur-sm rounded-2xl">
+        <div className="text-center pb-8">
+          <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-8">
+            <div className="relative group">
+              <div
+                className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 rounded-full blur-xl
+             opacity-30 group-hover:opacity-40 transition-opacity duration-300"
+              ></div>
+              <span className="flex shrink-0 overflow-hidden rounded-full relative h-20 w-20 sm:h-24 sm:w-24 shadow-lg ring-4 ring-white/50 group-hover:shadow-xl transition-all duration-300">
+                <img
+                  className="aspect-square h-full w-full object-cover"
+                  alt="Kasama (Copy) logo"
+                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/d920fbafd_fa5be6e8-a9dd-4d0c-bc53-217d1bdfa693.png"
+                />
+              </span>
+            </div>{" "}
           </div>
-          <CardTitle className="text-2xl font-serif font-black text-foreground">
-            Welcome Back
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
+          <div className="space-y-2 sm:space-y-3">
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Welcome to Kasama
+            </CardTitle>
+            <CardDescription className="text-slate-500 text-sm sm:text-base font-medium">
+              Sign in to continue
+            </CardDescription>
+          </div>
+        </div>
 
-        <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-6">
+          <div className="space-y-4">
             {errors.general && (
               <div className="p-3 text-sm text-black bg-destructive/10 border border-destructive/20 rounded-md">
                 {errors.general}
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className={
-                  errors.email
-                    ? "border-destructive focus:ring-destructive"
-                    : ""
-                }
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => googleLogin()}
+                className="w-full flex items-center justify-center gap-3 bg-white text-slate-700 px-5 py-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm transition-all duration-200 font-medium text-[16px] group"
+              >
+                <div className=" transition-transform duration-200 -ml-4">
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      fill="#4285F4"
+                    ></path>
+                    <path
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      fill="#34A853"
+                    ></path>
+                    <path
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      fill="#FBBC05"
+                    ></path>
+                    <path
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      fill="#EA4335"
+                    ></path>
+                  </svg>
+                </div>
+                <span>Continue with Google</span>
+              </button>
+              {/* <button className="w-full flex items-center justify-center gap-3 bg-white text-slate-700 px-5 py-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm transition-all duration-200 font-medium text-[16px] group">
+                <div className=" transition-transform duration-200 ">
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fill="#1877F2"
+                      d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                    ></path>
+                  </svg>
+                </div>
+                <span>Continue with Facebook</span>
+              </button> */}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    handleInputChange("password", e.target.value)
-                  }
-                  className={`pr-10 ${
-                    errors.password
-                      ? "border-destructive focus:ring-destructive"
-                      : ""
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
+            <div className="relative !my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div
+                  data-orientation="horizontal"
+                  role="none"
+                  className="shrink-0 h-[1px] w-full bg-slate-200"
+                ></div>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-slate-400 font-medium tracking-wider">
+                  or
+                </span>
+              </div>
             </div>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-3">
+                <Label
+                  className="flex justify-center items-center"
+                  htmlFor="email"
+                >
+                  Email
+                </Label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    className={
+                      errors.email
+                        ? "border-destructive focus:ring-destructive"
+                        : ""
+                    }
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
+              </div>
 
+              <div className="space-y-3">
+                <Label
+                  className="flex justify-center items-center"
+                  htmlFor="password"
+                >
+                  Password
+                </Label>
+                <div className="relative space-y-3">
+                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    className={`pr-10 ${
+                      errors.password
+                        ? "border-destructive focus:ring-destructive"
+                        : ""
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-6 !mt-0 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 !mt-4 whitespace-nowrap text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 px-4 py-2 w-full h-11 sm:h-12 bg-slate-900 hover:bg-slate-800 text-white font-medium shadow-sm rounded-xl transition-all duration-200"
+                disabled={isPending}
+              >
+                {isPending ? "Signing In..." : "Sign In"}
+              </Button>
+            </form>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between !mt-2">
             <div className="flex items-center justify-between">
               <Link to="/forgotPassword">
                 <button
                   type="button"
-                  className="text-sm text-black  transition-colors"
+                  className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
                 >
                   Forgot Password?
                 </button>
               </Link>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5"
-              disabled={isPending}
-            >
-              {isPending ? "Signing In..." : "Sign In"}
-            </Button>
-          </form>
-
-          <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              Need an account?{" "}
               <Link to="/register">
-                <button className="text-black   font-medium transition-colors">
-                  Create Account
+                <button className="text-black font-medium transition-colors">
+                  Sign up
                 </button>
               </Link>
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
