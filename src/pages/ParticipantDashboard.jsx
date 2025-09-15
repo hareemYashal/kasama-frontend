@@ -40,6 +40,7 @@ import {
 import { getActiveTripService, getTripService } from "@/services/trip";
 import { getPaymentRemainingsService } from "@/services/paynent";
 import { setActiveTripId } from "@/store/tripSlice";
+import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 
 export default function ParticipantDashboard() {
   const navigate = useNavigate();
@@ -762,6 +763,8 @@ export default function ParticipantDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <ItineraryCalander />
 
         {/* Quick Actions */}
         {/* <div className="grid grid-cols-2 gap-6">

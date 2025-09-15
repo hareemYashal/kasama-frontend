@@ -37,6 +37,7 @@ import {
 import { getActiveTripService, getTripService } from "@/services/trip";
 import { setActiveTripId } from "@/store/tripSlice";
 import { Badge } from "@/components/ui/badge";
+import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -184,7 +185,15 @@ export default function Dashboard() {
 
   const totalContributed = getTotalContributed();
   const totalExpenses = getTotalExpenses();
+ const handleAddItem = () => {
+    setEditingItem(null);
+    setShowForm(true);
+  };
 
+  const handleEditItem = (item) => {
+    setEditingItem(item);
+    setShowForm(true);
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-slate-50 to-blue-50">
@@ -720,6 +729,8 @@ export default function Dashboard() {
 
         {/* Activity Feed */}
         {/* {activeTripDataState?.id && <ActivityFeed trip={activeTripDataState} />} */}
+
+        <ItineraryCalander />
       </div>
     </div>
   );

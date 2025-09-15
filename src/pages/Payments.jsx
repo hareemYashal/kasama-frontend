@@ -96,6 +96,67 @@ export default function Payments() {
     (c) => c.userId === selectedFriend
   );
 
+  const [autoPayEnabled, setAutoPayEnabled] = useState(false);
+  const [paymentFrequency, setPaymentFrequency] = useState("");
+  const [recurringPaymentDay, setRecurringPaymentDay] = useState("");
+  const [autoPayAmount, setAutoPayAmount] = useState(0);
+
+  // Example handlers
+  const handleAutoPayToggle = (enabled) => {
+    setAutoPayEnabled(enabled);
+    setShowPaymentModal(false);
+
+    if (enabled && paymentDetailData?.remainings) {
+      const amount = calculateAutoPayAmount(
+        contribution.remainings,
+        paymentFrequency
+      );
+      setAutoPayAmount(amount);
+    } else {
+      setAutoPayAmount(0);
+    }
+  };
+
+  const handleSaveAutoPay = async () => {
+    try {
+      const payload = {
+        tripId: trip?.id, // or contributionId, depending on your schema
+        paymentMethodId: paymentMethod?.id,
+        frequency: paymentFrequency,
+        day: recurringPaymentDay,
+        amount: autoPayAmount,
+      };
+
+      const res = await axiosInstance.post("/api/autopay/setup", payload);
+
+      if (res.data.success) {
+        toast.success("Auto-Pay enabled successfully!");
+        setAutoPayEnabled(true);
+      } else {
+        toast.error("Failed to enable Auto-Pay");
+      }
+    } catch (err) {
+      toast.error("Something went wrong while setting up Auto-Pay");
+      console.error(err);
+    }
+  };
+
+  const handleFrequencyChange = (value) => {
+    setPaymentFrequency(value);
+
+    if (paymentDetailData?.remainings) {
+      const amount = calculateAutoPayAmount(
+        paymentDetailData.remainings,
+        value
+      );
+      setAutoPayAmount(amount);
+    }
+  };
+
+  const handleRecurringDayChange = (value) => {
+    setRecurringPaymentDay(value);
+  };
+
   const [processingOneTimePayment, setProcessingOneTimePayment] =
     useState(false);
   const { data: paymentData, isSuccess: isPaymentDataSuccess } = useQuery({
@@ -351,6 +412,20 @@ export default function Payments() {
     queryFn: () => getTripService(tripId),
   });
 
+  const calculateAutoPayAmount = (remaining, frequency) => {
+    if (!remaining || remaining <= 0) return 0;
+
+    // Define number of installments per frequency
+    const installments =
+      frequency === "weekly"
+        ? 4 // e.g., next 4 weeks
+        : frequency === "biweekly"
+        ? 2 // next 2 biweekly periods
+        : 1; // monthly -> 1 installment
+
+    return parseFloat((remaining / installments).toFixed(2));
+  };
+
   const trip = tripData?.data?.activeTrip;
 
   if (loading) {
@@ -529,13 +604,18 @@ export default function Payments() {
                               <DialogHeader>
                                 <DialogTitle>Add Payment Method</DialogTitle>
                                 <DialogDescription>
-                                  Add a secure credit/debit card for this trip
+                                  Choose a secure way to pay for this trip
                                 </DialogDescription>
                               </DialogHeader>
 
                               <div className="space-y-4">
+                                {/* Credit/Debit Card */}
                                 <div
-                                  className="p-4 border-2 rounded-xl cursor-pointer border-blue-500 bg-blue-50"
+                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                    methodType === "card"
+                                      ? "border-blue-500 bg-blue-50"
+                                      : "border-gray-200 hover:border-blue-300"
+                                  }`}
                                   onClick={() => setMethodType("card")}
                                 >
                                   <div className="flex items-center gap-3">
@@ -741,9 +821,9 @@ export default function Payments() {
             )}
 
             {/* 3. Auto-Pay Setup - Enhanced with recurring day selection */}
-            {/* {paymentMethod &&
-              contribution &&
-              contribution.amount_remaining > 0 && (
+            {paymentMethod &&
+              paymentDetailData &&
+              paymentDetailData.remainings > 0 && (
                 <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
@@ -767,7 +847,7 @@ export default function Payments() {
                             onValueChange={handleFrequencyChange}
                           >
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Select Frequency" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="weekly">Weekly</SelectItem>
@@ -786,7 +866,7 @@ export default function Payments() {
                             onValueChange={handleRecurringDayChange}
                           >
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Select Day" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="monday">Monday</SelectItem>
@@ -816,10 +896,10 @@ export default function Payments() {
                     </CardContent>
                   )}
                 </Card>
-              )} */}
+              )}
 
             {/* 4. Pay for a Friend - Enhanced with real-time data and cost breakdown */}
-            {/* {tripParticipantsNumber > 0 && (
+            {tripParticipantsNumber > 0 && (
               <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -986,7 +1066,7 @@ export default function Payments() {
                   </Button>
                 </CardContent>
               </Card>
-            )} */}
+            )}
 
             {/* Compliance Note */}
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">

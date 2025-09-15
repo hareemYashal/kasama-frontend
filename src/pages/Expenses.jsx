@@ -461,7 +461,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-green-600">
-                ${tripData?.total_goal}
+                ${tripData?.total_goal?.toFixed(2)}
               </p>
               <p className="text-sm text-slate-500 mt-1">
                 {expenses.length} expense{expenses.length !== 1 ? "s" : ""}
@@ -526,7 +526,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-purple-600">
-                ${tripData?.per_person}
+                ${tripData?.per_person?.toFixed(2)}
               </p>
               <p className="text-sm text-slate-500 mt-1">
                 Split {tripParticipantsNumber} ways
@@ -543,7 +543,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-coral-600">
-                ${tripData?.remaining}
+                ${tripData?.remaining?.toFixed(2)}
               </p>
               <p className="text-sm text-slate-500 mt-1">Still needed</p>
             </CardContent>

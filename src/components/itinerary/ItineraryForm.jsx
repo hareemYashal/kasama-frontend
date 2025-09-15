@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Save, X } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useSelector } from "react-redux";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -20,6 +20,7 @@ export default function ItineraryForm({
   onCancel,
   setShowForm,
   refetch,
+  selectedDate,
 }) {
   const [formData, setFormData] = useState({
     date: "",
@@ -34,6 +35,7 @@ export default function ItineraryForm({
 
   useEffect(() => {
     if (item) {
+      // Editing existing item
       setFormData({
         date: item.date ? format(new Date(item.date), "yyyy-MM-dd") : "",
         start_time: item.start_time
@@ -43,8 +45,14 @@ export default function ItineraryForm({
         activity_title: item.activity_title || "",
         notes: item.notes || "",
       });
+    } else if (selectedDate) {
+      // Adding new item → prefill with clicked calendar date
+      setFormData((prev) => ({
+        ...prev,
+        date: format(new Date(selectedDate), "yyyy-MM-dd"),
+      }));
     }
-  }, [item]);
+  }, [item, selectedDate]);
 
   const { mutate: saveItinerary } = useMutation({
     mutationFn: (data) =>
@@ -143,17 +151,26 @@ export default function ItineraryForm({
               onChange={(e) =>
                 setFormData({ ...formData, date: e.target.value })
               }
-              min={format(new Date(trip.start_date), "yyyy-MM-dd")}
-              max={format(new Date(trip.end_date), "yyyy-MM-dd")}
+              min={format(parseISO(trip.start_date), "yyyy-MM-dd")}
+              max={format(parseISO(trip.end_date), "yyyy-MM-dd")}
             />
+
+            {/* 👇 show formatted preview dynamically */}
+            {formData.date && (
+              <p className="text-sm text-blue-600 font-medium mt-1">
+                Selected: {format(parseISO(formData.date), "MM/dd/yyyy")}
+              </p>
+            )}
+
             <p className="text-sm text-slate-500 mt-1">
-              Must be between {format(new Date(trip.start_date), "MMM d, yyyy")}{" "}
-              – {format(new Date(trip.end_date), "MMM d, yyyy")}
+              Must be between {format(parseISO(trip.start_date), "MMM d, yyyy")}{" "}
+              – {format(parseISO(trip.end_date), "MMM d, yyyy")}
             </p>
           </div>
 
           {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
         </div>
+
         <div>
           <label
             htmlFor="activity_title"
