@@ -379,7 +379,7 @@ export default function Expenses() {
   };
   console.log("user?.trip_role", user?.trip_role);
 
-  const isAdmin = user?.trip_role === "creator";
+  const isAdmin = user?.trip_role === "creator" || user?.trip_role === "co-admin";
   const totalContributed = getTotalContributed();
   const myContribution = getMyContribution();
   console.log("EpenrIsAdmin", isAdmin);

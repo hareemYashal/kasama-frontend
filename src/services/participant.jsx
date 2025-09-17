@@ -16,6 +16,23 @@ const totalParticipantsService = async (token, tripId) => {
   }
 };
 
+export const makeAdminService = async (token, data) => {
+  try {
+    const response = await axiosInstance.put(
+      "/participant/makeAdmin", // endpoint
+      data, // body { userId, tripId }
+      {
+        headers: { Authorization: `Bearer ${token}` }, // config
+      }
+    );
+    return response.data;
+  } catch (err) {
+    throw err;
+  }
+};
+
+
+
 const getParticipantsWithContributions = async (token, tripId) => {
   try {
     const response = await axiosInstance.get(

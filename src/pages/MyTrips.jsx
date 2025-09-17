@@ -344,7 +344,8 @@ export default function MyTrips() {
                               Current
                             </Badge>
                           )}
-                          {trip.role == "creator" ? (
+                          {trip.role === "creator" ||
+                          trip.role === "co-admin" ? (
                             <Badge className="border rounded-full border-[#e5e7eb] bg-transparent text-black">
                               <span>
                                 <svg
@@ -368,12 +369,12 @@ export default function MyTrips() {
                                   <path d="M5 21h14"></path>
                                 </svg>
                               </span>{" "}
-                              Admin
+                              {trip.role === "creator" ? "Admin" : "Co-Admin"}
                             </Badge>
                           ) : (
                             <Badge className="border rounded-full border-[#e5e7eb] bg-transparent text-black">
                               <span>
-                               <UserCheck className="w-3 h-3 mr-1.5" />
+                                <UserCheck className="w-3 h-3 mr-1.5" />
                               </span>{" "}
                               Participant
                             </Badge>
@@ -469,10 +470,13 @@ export default function MyTrips() {
                             setSelectedTripId(trip.id); // highlight clicked trip
                             localStorage.setItem("selectedTripId", trip.id); // save in localStorage
 
-                            if (trip.role === "creator") {
+                            if (
+                              trip.role === "creator" ||
+                              trip.role === "co-admin"
+                            ) {
                               const updatedUser = {
                                 ...authUser,
-                                trip_role: "creator",
+                                trip_role: trip.role,
                               };
                               dispatch(setUserRed(updatedUser));
                               localStorage.setItem(
@@ -485,6 +489,22 @@ export default function MyTrips() {
                                 JSON.stringify(trip.id)
                               );
                               navigate(`/dashboard`);
+                            } else if (trip.role === "participant") {
+                              const updatedUser = {
+                                ...authUser,
+                                trip_role: "participant",
+                              };
+                              dispatch(setUserRed(updatedUser));
+                              localStorage.setItem(
+                                "user",
+                                JSON.stringify(updatedUser)
+                              );
+                              dispatch(setActiveTripId(trip.id));
+                              localStorage.setItem(
+                                "activeTripId",
+                                JSON.stringify(trip.id)
+                              );
+                              navigate(`/participantdashboard`);
                             } else if (trip.role === "participant") {
                               const updatedUser = {
                                 ...authUser,

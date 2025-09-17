@@ -60,6 +60,7 @@ import { getTripService } from "@/services/trip";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { getProfileService } from "@/services/profile";
+import BackButton from "@/components/ui/BackButton";
 export default function Layout({ children, currentPageName }) {
   const user = useSelector((state) => state.user.user);
   console.log("hey I am the user from  layout", user);
@@ -146,7 +147,10 @@ export default function Layout({ children, currentPageName }) {
     setLoading(false);
   };
   console.log("userProfileData", userProfileData);
-  const isCreator = user?.trip_role === "creator";
+  const hasAdminAccess =
+    user?.trip_role === "creator" || user?.trip_role === "co-admin";
+
+  // Navigation items based on role
 
   const adminNavItems = [
     { title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin },
@@ -173,7 +177,8 @@ export default function Layout({ children, currentPageName }) {
       url: createPageUrl("ParticipantDashboard"),
       icon: MapPin,
     },
-    { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
+    { title: "Participants", url: createPageUrl("Participants"), icon: Users },
+    // { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
     { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
     // { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
@@ -187,10 +192,16 @@ export default function Layout({ children, currentPageName }) {
     { title: "Help", url: createPageUrl("Help"), icon: HelpCircle },
     { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
   ];
+  let navigationItems = [];
 
-  // Only check creator, else everything falls under participant menu
-  const navigationItems = isCreator ? adminNavItems : participantNavItems;
-
+  if (hasAdminAccess) {
+    navigationItems = adminNavItems;
+  } else if (user?.trip_role === "participant") {
+    navigationItems = participantNavItems;
+  } else {
+    navigationItems = [];
+  }
+  console.log("navigationItems", navigationItems);
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -251,13 +262,15 @@ export default function Layout({ children, currentPageName }) {
                 <div className="flex items-center gap-1 mt-3">
                   <Badge
                     className={`inline-flex items-center rounded-full border px-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 font-medium text-xs py-0.5 ${
-                      isCreator
+                      user?.trip_role === "creator"
                         ? "bg-amber-100 text-amber-800 border-amber-200"
+                        : user?.trip_role === "co-admin"
+                        ? "bg-orange-100 text-orange-800 border-orange-200"
                         : "bg-blue-200 hover:bg-blue-50 text-blue-700 transition-all"
                     }`}
                   >
                     <span className="mr-1.5">
-                      {isCreator ? (
+                      {user?.trip_role === "creator" ? (
                         // Crown SVG for Admin
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -274,12 +287,32 @@ export default function Layout({ children, currentPageName }) {
                           <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path>
                           <path d="M5 21h14"></path>
                         </svg>
+                      ) : user?.trip_role === "co-admin" ? (
+                        // Smaller crown or different icon for Co-Admin
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-crown w-3 h-3"
+                        >
+                          <path d="M12 2l2 7h7l-5.5 4 2 7-5.5-4-5.5 4 2-7-5.5-4h7z"></path>
+                        </svg>
                       ) : (
                         // User SVG for Participant
-                      <Shield className="w-3 h-3" />
+                        <Shield className="w-3 h-3" />
                       )}
                     </span>
-                    {isCreator ? "Admin" : "Participant"}
+                    {user?.trip_role === "creator"
+                      ? "Admin"
+                      : user?.trip_role === "co-admin"
+                      ? "Co-Admin"
+                      : "Participant"}
                   </Badge>
                 </div>
               </div>
@@ -288,7 +321,7 @@ export default function Layout({ children, currentPageName }) {
 
           <SidebarContent className="p-3">
             {/* My Trips - Top of Sidebar - Admin Only */}
-            {/* {isCreator && ( */}
+            {/* {hasAdminAccess && ( */}
             <SidebarGroup className="mb-4">
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -476,7 +509,7 @@ export default function Layout({ children, currentPageName }) {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {isCreator && (
+            {hasAdminAccess && (
               <SidebarGroup>
                 <SidebarGroupLabel className="text-xs font-semibold text-red-500 uppercase tracking-wider px-3 py-2">
                   Danger Zone
@@ -546,14 +579,16 @@ export default function Layout({ children, currentPageName }) {
               <h1 className="text-xl font-bold text-slate-800">Kasama</h1>
             </div>
 
-            {/* Logout Button for both desktop & mobile */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              Logout
-            </button>
+            {/* Show Logout Button only on /profile */}
+            {location.pathname === createPageUrl("Profile") && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Logout
+              </button>
+            )}
           </header>
 
           <div className="flex-1 overflow-auto">{children}</div>

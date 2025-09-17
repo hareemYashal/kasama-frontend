@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Loader2, MessageSquare, CheckCircle, AlertCircle } from "lucide-react";
 import StarRating from "../components/feedback/StarRating";
+import BackButton from "@/components/ui/BackButton";
 
 export default function FeedbackPage() {
   const navigate = useNavigate();
@@ -105,7 +106,8 @@ export default function FeedbackPage() {
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-slate-800">Thank you!</h1>
           <p className="text-slate-600 mt-2 mb-8">
-            Your feedback has been submitted successfully. Our team will review it shortly.
+            Your feedback has been submitted successfully. Our team will review
+            it shortly.
           </p>
           <Button onClick={() => navigate(createPageUrl("mytrips"))}>
             Back to Trips
@@ -117,6 +119,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <BackButton />
       <div className="max-w-3xl mx-auto space-y-8">
         <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-xl">
           <CardHeader>
@@ -125,7 +128,8 @@ export default function FeedbackPage() {
               Submit Feedback
             </CardTitle>
             <CardDescription>
-              Have a bug to report or a feature to request? We'd love to hear from you.
+              Have a bug to report or a feature to request? We'd love to hear
+              from you.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -161,10 +165,16 @@ export default function FeedbackPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Bug Report">Bug Report</SelectItem>
-                    <SelectItem value="Feature Request">Feature Request</SelectItem>
+                    <SelectItem value="Feature Request">
+                      Feature Request
+                    </SelectItem>
                     <SelectItem value="Payment Issue">Payment Issue</SelectItem>
-                    <SelectItem value="General Feedback">General Feedback</SelectItem>
-                    <SelectItem value="Account/Login Problem">Account/Login Problem</SelectItem>
+                    <SelectItem value="General Feedback">
+                      General Feedback
+                    </SelectItem>
+                    <SelectItem value="Account/Login Problem">
+                      Account/Login Problem
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -213,7 +223,9 @@ export default function FeedbackPage() {
                   disabled={isSubmitting}
                   className="px-8 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {isSubmitting && (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  )}
                   Submit Feedback
                 </Button>
               </div>

@@ -185,7 +185,7 @@ export default function Dashboard() {
 
   const totalContributed = getTotalContributed();
   const totalExpenses = getTotalExpenses();
- const handleAddItem = () => {
+  const handleAddItem = () => {
     setEditingItem(null);
     setShowForm(true);
   };
@@ -222,8 +222,14 @@ export default function Dashboard() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
                 <div className="absolute bottom-6 left-6 right-6 text-white">
                   <div className="flex items-center gap-3 mb-2">
-                    <Badge className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent hover:bg-primary/80 bg-blue-600/90 text-white backdrop-blur-sm text-xs sm:text-sm">
-                      Trip Admin
+                    <Badge
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-xs sm:text-sm backdrop-blur-sm hover:bg-primary/80 bg-blue-600/90`}
+                    >
+                      {user?.trip_role === "creator"
+                        ? "Trip Admin"
+                        : user?.trip_role === "co-admin"
+                        ? "Trip Co-Admin"
+                        : "Participant"}
                     </Badge>
 
                     {(() => {
@@ -591,7 +597,8 @@ export default function Dashboard() {
                 </Badge>
               )}
             </CardTitle>
-            {user.trip_role === "creator" && (
+            {(user.trip_role === "creator" ||
+              user.trip_role === "co-admin") && (
               <button
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 h-9 rounded-md flex-shrink-0 text-xs sm:text-sm px-2 sm:px-4 bg-green-600 hover:bg-green-700 text-white"
                 data-filename="pages/Dashboard"

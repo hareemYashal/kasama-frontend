@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, HelpCircle, Send, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import BackButton from "@/components/ui/BackButton";
 
 const KASAMA_KNOWLEDGE_BASE = `
 You are Kasama, an AI assistant for a group travel planning app. Your goal is to answer user questions based on the app's features.
@@ -36,24 +37,23 @@ export default function Help() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-useEffect(() => {
-  // Mock user for now
-  const fetchUser = async () => {
-    try {
-      // Replace this with your actual API call if available
-      const currentUser = {
-        id: "123",
-        name: "John Doe",
-        trip_role: "participant", // or 'admin'
-      };
-      setUser(currentUser);
-    } catch (err) {
-      setUser(null);
-    }
-  };
-  fetchUser();
-}, []);
-
+  useEffect(() => {
+    // Mock user for now
+    const fetchUser = async () => {
+      try {
+        // Replace this with your actual API call if available
+        const currentUser = {
+          id: "123",
+          name: "John Doe",
+          trip_role: "participant", // or 'admin'
+        };
+        setUser(currentUser);
+      } catch (err) {
+        setUser(null);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
@@ -63,7 +63,7 @@ useEffect(() => {
     setResponse("");
 
     try {
-      const userRole = user?.trip_role || "participant"; // Default role
+      const userRole = user?.trip_role === "creator" || user?.trip_role === "co-admin" || "participant";
       const prompt = `
         ${KASAMA_KNOWLEDGE_BASE}
         ---
@@ -78,7 +78,9 @@ useEffect(() => {
       setResponse(aiResponse);
     } catch (err) {
       console.error("Error invoking LLM:", err);
-      setError("Sorry, the AI assistant is currently unavailable. Please try again later.");
+      setError(
+        "Sorry, the AI assistant is currently unavailable. Please try again later."
+      );
     }
 
     setIsLoading(false);
@@ -94,11 +96,15 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <BackButton />
+
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center">
           <HelpCircle className="w-16 h-16 text-blue-600 mx-auto mb-4" />
           <h1 className="text-4xl font-bold text-slate-800">Help Center</h1>
-          <p className="text-xl text-slate-600 mt-2">How can we help you today?</p>
+          <p className="text-xl text-slate-600 mt-2">
+            How can we help you today?
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -116,7 +122,11 @@ useEffect(() => {
             disabled={isLoading || !question.trim()}
             className="py-6 px-6"
           >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </Button>
         </div>
 
@@ -149,7 +159,10 @@ useEffect(() => {
                 <ReactMarkdown
                   components={{
                     a: ({ node, ...props }) => (
-                      <span className="text-blue-600 hover:underline cursor-pointer" {...props} />
+                      <span
+                        className="text-blue-600 hover:underline cursor-pointer"
+                        {...props}
+                      />
                     ),
                   }}
                 >
@@ -164,8 +177,8 @@ useEffect(() => {
           <Card className="bg-white/80 backdrop-blur-sm text-center py-12">
             <CardContent>
               <p className="text-slate-500">
-                Ask a question to get started. For example: "How do I pay for my trip?" or "How do I
-                add an expense?"
+                Ask a question to get started. For example: "How do I pay for my
+                trip?" or "How do I add an expense?"
               </p>
             </CardContent>
           </Card>

@@ -45,7 +45,8 @@ export default function ContributionBreakdown({
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   console.log("contributions----->", contributions);
-  const isCreator = user?.trip_role === "creator";
+  const isCreator =
+    user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
@@ -53,7 +54,7 @@ export default function ContributionBreakdown({
         <CardTitle className="flex items-center gap-2 font-semibold tracking-tight text-amber-700 text-base sm:text-lg">
           <Users className="w-5 h-5 text-amber-600" />
           All Participants
-          {user?.trip_role === "creator" && (
+          {isCreator && (
             <Badge
               variant="outline"
               className="inline-flex items-center rounded-full !mx-0 border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-slate-50 text-slate-700 border-slate-200 ml-2 text-xs sm:text-sm flex-shrink-0"
@@ -63,7 +64,7 @@ export default function ContributionBreakdown({
           )}
         </CardTitle>
 
-        {user?.trip_role === "creator" && (
+        {isCreator && (
           <button
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 h-9 rounded-md flex-shrink-0 text-xs sm:text-sm px-2 sm:px-4 bg-amber-600 hover:bg-amber-700 text-white"
             data-filename="pages/Dashboard"

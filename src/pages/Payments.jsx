@@ -291,7 +291,7 @@ export default function Payments() {
             baseAmount: parsedAmount,
             totalCharge,
             paymentType: "self",
-            isCreator: isCreator,
+            hasAdminAcess: hasAdminAcess,
           }),
         }
       );
@@ -455,7 +455,7 @@ export default function Payments() {
   console.log("noExpensesAdded", noExpensesAdded);
   const user = useSelector((state) => state.user.user);
 
-  const isCreator = user?.trip_role === "creator";
+  const hasAdminAcess = user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   return (
     <>
@@ -491,7 +491,7 @@ export default function Payments() {
                 onClick={() =>
                   navigate(
                     createPageUrl(
-                      isCreator ? "Dashboard" : "participantDashboard"
+                      hasAdminAcess ? "Dashboard" : "participantDashboard"
                     )
                   )
                 }
@@ -523,19 +523,19 @@ export default function Payments() {
                     <div>
                       <p className="text-sm text-slate-500">Your Goal</p>
                       <p className="text-2xl font-bold text-slate-800">
-                        ${paymentDetailData?.your_goal}
+                        ${paymentDetailData?.your_goal?.toFixed(2)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">Amount Paid</p>
                       <p className="text-2xl font-bold text-green-600">
-                        ${paymentDetailData?.amountPaid}
+                        ${paymentDetailData?.amountPaid?.toFixed(2)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">Remaining</p>
                       <p className="text-2xl font-bold text-red-600">
-                        ${paymentDetailData?.remainings}
+                        ${paymentDetailData?.remainings?.toFixed(2)}
                       </p>
                     </div>
                   </div>

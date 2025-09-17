@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,11 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Loader2, Save, UserCircle, ArrowLeft } from "lucide-react";
+import { Loader2, Save, UserCircle, ArrowLeft, AlertTriangle } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { getProfileService, saveProfileService } from "@/services/profile";
 import { toast } from "sonner";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -122,7 +123,16 @@ export default function Profile() {
 
     mutate(payload);
   };
+  const dispatch = useDispatch();
 
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("activeTripId");
+    dispatch(setUserRed(null));
+    dispatch(setActiveTripId(null));
+    navigate("/");
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -133,6 +143,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+   
       <div className="max-w-3xl mx-auto space-y-8">
         <Button
           variant="outline"

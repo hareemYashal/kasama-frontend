@@ -44,7 +44,7 @@ export default function Itinerary() {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  const isAdmin = authUser?.trip_role === "creator";
+  const isAdmin = authUser?.trip_role === "creator" || authUser?.trip_role === "co-admin";
 
   // ✅ Get Itineraries
   const {

@@ -1,12 +1,17 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Crown, Phone, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button"; // ✅ using your shadcn/ui button
 import { useSelector } from "react-redux";
 
-export default function ParticipantList({ participants, onRemove }) {
+export default function ParticipantList({
+  participants,
+  isAdmin,
+  onMakeAdmin,
+}) {
   const [participantToRemove, setParticipantToRemove] = useState(null);
   const user = useSelector((state) => state.user.user);
-console.log('usercheckemail',user?.email)
+  console.log("participantsMAKEADMIN", participants);
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
       <CardHeader className="pb-4">
@@ -20,7 +25,6 @@ console.log('usercheckemail',user?.email)
         {participants?.length > 0 ? (
           participants.map((participant) => {
             const profile = participant?.user?.Profile;
-
             return (
               <div
                 key={participant.id}
@@ -29,18 +33,19 @@ console.log('usercheckemail',user?.email)
                 <div className="flex items-start gap-3">
                   {/* Profile Image */}
                   <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-white dark:ring-slate-800 shadow-md">
-                    {participant?.user?.Profile?.profile_photo_url ? (
+                    {profile?.profile_photo_url ? (
                       <img
-                        src={participant?.user?.Profile?.profile_photo_url}
+                        src={profile?.profile_photo_url}
                         alt={participant?.user?.name || "Participant"}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          // Agar image load na ho to fallback letter dikhayen
                           e.target.style.display = "none";
                           e.target.parentNode.innerHTML = `
-          <span class='w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold'>
-            ${(participant?.user?.name?.[0] || "P").toUpperCase()}
-          </span>`;
+                              <span class='w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold'>
+                                ${(
+                                  participant?.user?.name?.[0] || "P"
+                                ).toUpperCase()}
+                              </span>`;
                         }}
                       />
                     ) : (
@@ -61,44 +66,76 @@ console.log('usercheckemail',user?.email)
 
                         {/* Badges */}
                         <div className="flex items-center gap-x-1.5">
-                          {participant?.user?.role === "admin" && (
-                            <div className="inline-flex items-center rounded-full border px-2.5 transition-colors bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
-                              <Crown className="w-3 h-3 mr-1" />
-                              Admin
-                            </div>
-                          )}
-                          {participant?.user?.email ===
-                            user?.email && (
+                          {/* Admin badge */}
+                          {participant?.user?.email === user?.email &&
+                            user?.trip_role === "creator" && (
+                              <div className="inline-flex items-center rounded-full border px-2.5 transition-colors bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
+                                <Crown className="w-3 h-3 mr-1" />
+                                Admin
+                              </div>
+                            )}
+
+                          {/* Co-Admin badge */}
+                          {participant.isHelperAdmin &&(
+                              <div className="inline-flex items-center rounded-full border px-2.5 bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
+                                <Crown className="w-3 h-3 mr-1" />
+                                Co-Admin
+                              </div>
+                            )}
+
+                          {/* “You” badge */}
+                          {participant?.user?.email === user?.email && (
                             <div className="inline-flex items-center rounded-full border px-2.5 font-semibold text-foreground text-xs py-0.5">
                               You
                             </div>
                           )}
                         </div>
                       </div>
+
+                      {/* 👉 Make Admin button (only visible to existing admins, 
+                            not for yourself, not for current admins) */}
+                      {isAdmin &&
+                        user?.trip_role === "creator" &&
+                        participant?.user?.email !== user?.email && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onMakeAdmin?.(participant)}
+                          >
+                            <Crown className="w-4 h-4 mr-1 text-amber-600" />
+                            {participant.isHelperAdmin
+                              ? "Remove Co-Admin"
+                              : "Make Co-Admin"}
+                          </Button>
+                        )}
                     </div>
 
                     {/* Email */}
-                    <p className="text-sm text-muted-foreground truncate mt-1">
-                      {participant?.user?.email || "No email provided"}
-                    </p>
+                    {isAdmin && (
+                      <p className="text-sm text-muted-foreground truncate mt-1">
+                        {participant?.user?.email || "No email provided"}
+                      </p>
+                    )}
 
                     {/* DOB */}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1.5">
-                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="font-medium">DOB:</span>
-                      <span className="truncate">
-                        {profile?.birthday
-                          ? new Date(profile?.birthday).toLocaleDateString(
-                              "en-US",
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              }
-                            )
-                          : "Not provided"}
-                      </span>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1.5">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="font-medium">DOB:</span>
+                        <span className="truncate">
+                          {profile?.birthday
+                            ? new Date(profile?.birthday).toLocaleDateString(
+                                "en-US",
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                }
+                              )
+                            : "Not provided"}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Emergency Contact */}
                     <div className="flex items-start gap-2 text-xs text-muted-foreground mt-1">
@@ -122,16 +159,30 @@ console.log('usercheckemail',user?.email)
                     </div>
 
                     {/* Travel Document */}
-                    <div className="mt-3 pt-3 border-t border-border/60">
-                      <p className="text-xs text-slate-400 italic">
+                    {isAdmin && (
+                      <div className="mt-3 pt-3 border-t border-border/60">
                         {profile?.passport_country &&
                         profile?.passport_expiration &&
-                        profile?.passport_number
-                          ? profile?.travelDocument ||
-                            "Travel document details available"
-                          : "No travel document submitted."}
-                      </p>
-                    </div>
+                        profile?.passport_number ? (
+                          <div className="space-y-1">
+                            <p className="text-xs text-slate-400 italic">
+                              {profile?.travelDocument ||
+                                "Travel document details available"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              <span className="font-medium">
+                                Passport Number:
+                              </span>{" "}
+                              {profile?.passport_number}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">
+                            No travel document submitted.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

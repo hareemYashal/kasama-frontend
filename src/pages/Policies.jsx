@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Shield, FileText, Users, CreditCard, AlertTriangle, Lock, Database, Cookie, Eye, Baby, Globe } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 export default function Policies() {
   const [openItems, setOpenItems] = useState("");
@@ -587,6 +588,7 @@ export default function Policies() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+         <BackButton />
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Header */}

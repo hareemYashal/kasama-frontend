@@ -1,8 +1,10 @@
+import BackButton from "@/components/ui/BackButton";
 import React from "react";
 
 const KasamaTips = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <BackButton />
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-6">

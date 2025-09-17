@@ -68,7 +68,8 @@ const ItineraryCalander = () => {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  const isAdmin = authUser?.trip_role === "creator";
+  const isAdmin =
+    authUser?.trip_role === "creator" || authUser?.trip_role === "co-admin";
   useEffect(() => {
     if (editingItem) {
       setFormData({
@@ -213,51 +214,60 @@ const ItineraryCalander = () => {
   const selectedDayKey = format(selectedDate, "yyyy-MM-dd");
   const activitiesForSelectedDay = itinerariesByDate[selectedDayKey] || [];
 
- const renderHeader = () => {
-  if (!activeTrip) return null;
+  const renderHeader = () => {
+    if (!activeTrip) return null;
 
-  const tripStart = startOfDay(new Date(activeTrip.start_date));
-  const tripEnd = endOfDay(new Date(activeTrip.end_date));
+    const tripStart = startOfDay(new Date(activeTrip.start_date));
+    const tripEnd = endOfDay(new Date(activeTrip.end_date));
 
-  // calendar ke current month ka visible range nikaalo
-  const monthStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
-  const monthEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
+    // calendar ke current month ka visible range nikaalo
+    const monthStart = startOfWeek(startOfMonth(currentMonth), {
+      weekStartsOn: 0,
+    });
+    const monthEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
 
-  // ✅ prev disable: agar already tripStart se pehle nahi jaa sakte
-  const prevDisabled = monthStart <= startOfWeek(startOfMonth(tripStart), { weekStartsOn: 0 });
+    // ✅ prev disable: agar already tripStart se pehle nahi jaa sakte
+    const prevDisabled =
+      monthStart <= startOfWeek(startOfMonth(tripStart), { weekStartsOn: 0 });
 
-  // ✅ next disable: agar already tripEnd ke aage nahi jaa sakte
-  const nextDisabled = monthEnd >= endOfWeek(endOfMonth(tripEnd), { weekStartsOn: 0 });
+    // ✅ next disable: agar already tripEnd ke aage nahi jaa sakte
+    const nextDisabled =
+      monthEnd >= endOfWeek(endOfMonth(tripEnd), { weekStartsOn: 0 });
 
-  return (
-    <div className="flex justify-between items-center mb-4">
-      <button
-        onClick={() => !prevDisabled && setCurrentMonth(subMonths(currentMonth, 1))}
-        disabled={prevDisabled}
-        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium 
+    return (
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={() =>
+            !prevDisabled && setCurrentMonth(subMonths(currentMonth, 1))
+          }
+          disabled={prevDisabled}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium 
           border border-input bg-background h-9 rounded-md px-3
           disabled:opacity-50 disabled:cursor-not-allowed
           hover:bg-accent hover:text-accent-foreground"
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </button>
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
-      <h3 className="text-lg font-semibold">{format(currentMonth, "MMMM yyyy")}</h3>
+        <h3 className="text-lg font-semibold">
+          {format(currentMonth, "MMMM yyyy")}
+        </h3>
 
-      <button
-        onClick={() => !nextDisabled && setCurrentMonth(addMonths(currentMonth, 1))}
-        disabled={nextDisabled}
-        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium 
+        <button
+          onClick={() =>
+            !nextDisabled && setCurrentMonth(addMonths(currentMonth, 1))
+          }
+          disabled={nextDisabled}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium 
           border border-input bg-background h-9 rounded-md px-3
           disabled:opacity-50 disabled:cursor-not-allowed
           hover:bg-accent hover:text-accent-foreground"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
-    </div>
-  );
-};
-
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  };
 
   const renderDays = () => {
     const days = [];
@@ -420,21 +430,25 @@ const ItineraryCalander = () => {
                       </div>
                     </div>
 
-                    {/* Right side: edit / delete buttons */}
-                    <div className="flex gap-1 ml-2">
-                      <button
-                        onClick={() => handleEditItem(a)}
-                        className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium h-6 w-6 hover:bg-accent hover:text-accent-foreground"
-                      >
-                        <SquarePen className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteItem(a?.id)}
-                        className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium h-6 w-6 text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <>
+                        {/* Right side: edit / delete buttons */}
+                        <div className="flex gap-1 ml-2">
+                          <button
+                            onClick={() => handleEditItem(a)}
+                            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium h-6 w-6 hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <SquarePen className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(a?.id)}
+                            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium h-6 w-6 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ))

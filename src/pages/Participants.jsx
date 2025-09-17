@@ -20,8 +20,11 @@ import {
   Phone,
 } from "lucide-react";
 import ParticipantList from "../components/participants/ParticipantList";
-import { useQuery } from "@tanstack/react-query";
-import { totalParticipantsService } from "@/services/participant";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  makeAdminService,
+  totalParticipantsService,
+} from "@/services/participant";
 import { useSelector } from "react-redux";
 import { getTripService } from "@/services/trip";
 
@@ -48,6 +51,20 @@ export default function Participants() {
   useEffect(() => {
     loadParticipantData();
   }, []);
+  const queryClient = useQueryClient(); // ✅ yeh zaroori hai
+
+  const handleMakeAdmin = async (participant) => {
+    console.log("handleMakeAdmin", participant);
+    try {
+      await makeAdminService(token, {
+        userId: participant.user?.id, // 👈 Correct key
+        tripId: tripId,
+      });
+      queryClient.invalidateQueries(["totalParticipantsService"]);
+    } catch (err) {
+      console.error("Make Admin Error:", err);
+    }
+  };
 
   // const loadParticipantData = async () => {
   //   setLoading(true);
@@ -249,12 +266,12 @@ export default function Participants() {
     }
   };
 
-     const { data: tripData, isLoading: isLoadingTripData } = useQuery({
-        queryKey: ["getTripService", tripId],
-        queryFn: () => getTripService(tripId),
-      });
-    
-      const tripDetails = tripData?.data?.activeTrip;
+  const { data: tripData, isLoading: isLoadingTripData } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(tripId),
+  });
+
+  const tripDetails = tripData?.data?.activeTrip;
 
   if (loading) {
     return (
@@ -266,7 +283,9 @@ export default function Participants() {
 
   console.log("trip-0-0", tripDetails);
 
-  const isAdmin = user?.trip_role === "creator";
+  const isAdmin =
+    user?.trip_role === "creator" || user?.trip_role === "co-admin";
+
   const adminCount = participants.filter(
     (p) => p.trip_role === "creator"
   ).length;
@@ -291,17 +310,17 @@ export default function Participants() {
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-xl border border-slate-200/60">
-            <div className="flex flex-col mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
-                  <h1 className="tracking-tight flex items-center gap-3 text-2xl font-bold text-slate-800">
-                    Trip Participants
-                  </h1>
-                </div>
-              <p className="text-lg md:text-xl text-slate-600">
-                {tripDetails?.trip_occasion} • {tripParticipantsNumber} People
-              </p>
+          <div className="flex flex-col mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+              <h1 className="tracking-tight flex items-center gap-3 text-2xl font-bold text-slate-800">
+                Trip Participants
+              </h1>
             </div>
+            <p className="text-lg md:text-xl text-slate-600">
+              {tripDetails?.trip_occasion} • {tripParticipantsNumber} People
+            </p>
+          </div>
           {totalParticipant && (
             <ParticipantList
               participants={totalParticipant}
@@ -312,6 +331,7 @@ export default function Participants() {
               onRoleChange={handleRoleChange}
               onRemove={handleRemoveParticipant}
               isAdmin={isAdmin}
+              onMakeAdmin={handleMakeAdmin}
             />
           )}
         </div>

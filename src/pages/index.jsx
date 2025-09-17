@@ -37,6 +37,7 @@ import {
 import { useSelector } from "react-redux";
 import KasamaTips from "./KasamaTips.jsx";
 import TripInvitePage from "./TripInvitePage.jsx";
+import SocketListener from "@/sockets/SocketListener.jsx";
 
 // Pages mapping (for Layout)
 const PAGES = {
@@ -91,181 +92,184 @@ function PagesContent() {
   const currentPage = _getCurrentPage(location.pathname);
 
   return (
-    <Layout currentPageName={currentPage}>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgotPassword" element={<ForgotPassword />} />
-        <Route path="/verify-otp" element={<VerifyOtp />} />
-        <Route path="/changePassword" element={<ChangePassword />} />
-        <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
-        <Route path="/JoinTrip" element={<JoinTrip />} />
-        {/* Protected routes */}
-        <Route
-          path="/tripSelection"
-          element={
-            <PrivateRoute>
-              <TripSelection />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/TripCreation"
-          element={
-            <PrivateRoute>
-              <TripCreation />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
+    <>
+      <SocketListener /> {/* Socket active on all pages */}
+      <Layout currentPageName={currentPage}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgotPassword" element={<ForgotPassword />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
+          <Route path="/changePassword" element={<ChangePassword />} />
+          <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
+          <Route path="/JoinTrip" element={<JoinTrip />} />
+          {/* Protected routes */}
+          <Route
+            path="/tripSelection"
+            element={
+              <PrivateRoute>
+                <TripSelection />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/TripCreation"
+            element={
+              <PrivateRoute>
+                <TripCreation />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
 
-        <Route
-          path="/Itinerary"
-          element={
-            <PrivateRoute>
-              <Itinerary />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/ParticipantsManagment"
-          element={
-            <PrivateRoute>
-              <ParticipantsManagment />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Expenses"
-          element={
-            <PrivateRoute>
-              <Expenses />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Participants"
-          element={
-            <PrivateRoute>
-              <Participants />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Profile"
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Chat"
-          element={
-            <PrivateRoute>
-              <Chat />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/ManageTrip"
-          element={
-            <PrivateRoute>
-              <ManageTrip />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/MyTrips"
-          element={
-            <PrivateRoute>
-              <MyTrips />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Payments"
-          element={
-            <PrivateRoute>
-              <Payments />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/ParticipantDashboard"
-          element={
-            <PrivateRoute>
-              <ParticipantDashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Help"
-          element={
-            <PrivateRoute>
-              <Help />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Tips"
-          element={
-            <PrivateRoute>
-              <KasamaTips />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Feedback"
-          element={
-            <PrivateRoute>
-              <Feedback />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/CancelTrip"
-          element={
-            <PrivateRoute>
-              <CancelTrip />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/Policies"
-          element={
-            <PrivateRoute>
-              <Policies />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/PoliciesAgreement"
-          element={
-            <PrivateRoute>
-              <PoliciesAgreement />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/ExpediaTeaser"
-          element={
-            <PrivateRoute>
-              <ExpediaTeaser />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </Layout>
+          <Route
+            path="/Itinerary"
+            element={
+              <PrivateRoute>
+                <Itinerary />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ParticipantsManagment"
+            element={
+              <PrivateRoute>
+                <ParticipantsManagment />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Expenses"
+            element={
+              <PrivateRoute>
+                <Expenses />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Participants"
+            element={
+              <PrivateRoute>
+                <Participants />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Chat"
+            element={
+              <PrivateRoute>
+                <Chat />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ManageTrip"
+            element={
+              <PrivateRoute>
+                <ManageTrip />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/MyTrips"
+            element={
+              <PrivateRoute>
+                <MyTrips />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Payments"
+            element={
+              <PrivateRoute>
+                <Payments />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ParticipantDashboard"
+            element={
+              <PrivateRoute>
+                <ParticipantDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Help"
+            element={
+              <PrivateRoute>
+                <Help />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Tips"
+            element={
+              <PrivateRoute>
+                <KasamaTips />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Feedback"
+            element={
+              <PrivateRoute>
+                <Feedback />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/CancelTrip"
+            element={
+              <PrivateRoute>
+                <CancelTrip />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Policies"
+            element={
+              <PrivateRoute>
+                <Policies />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/PoliciesAgreement"
+            element={
+              <PrivateRoute>
+                <PoliciesAgreement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ExpediaTeaser"
+            element={
+              <PrivateRoute>
+                <ExpediaTeaser />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </Layout>
+    </>
   );
 }
 
