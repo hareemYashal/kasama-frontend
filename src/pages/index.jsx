@@ -5,6 +5,7 @@ import Dashboard from "./Dashboard.jsx";
 import JoinTrip from "./JoinTrip.jsx";
 import Itinerary from "./Itinerary.jsx";
 import Expenses from "./Expenses.jsx";
+import Notifications from "./Notifications.jsx";
 import Participants from "./Participants.jsx";
 import Profile from "./Profile.jsx";
 import Chat from "./Chat.jsx";
@@ -47,6 +48,7 @@ const PAGES = {
   JoinTrip,
   Itinerary,
   Expenses,
+  Notifications,
   Participants,
   Profile,
   Chat,
@@ -264,6 +266,15 @@ function PagesContent() {
             element={
               <PrivateRoute>
                 <ExpediaTeaser />
+              </PrivateRoute>
+            }
+          />
+
+           <Route
+            path="/Notifications"
+            element={
+              <PrivateRoute>
+                <Notifications />
               </PrivateRoute>
             }
           />

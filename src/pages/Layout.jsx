@@ -61,11 +61,20 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { getProfileService } from "@/services/profile";
 import BackButton from "@/components/ui/BackButton";
+import { getNotificationsService } from "@/services/notification";
+import { addNotification } from "@/store/notificationSlice";
+import { io } from "socket.io-client";
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 export default function Layout({ children, currentPageName }) {
+  const dispatch = useDispatch();
+
   const user = useSelector((state) => state.user.user);
   console.log("hey I am the user from  layout", user);
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
+  const unreadCount = useSelector((state) => state.notifications.unreadCount);
+
   const location = useLocation();
   const navigate = useNavigate();
   const tripId = useSelector((state) => state.trips.activeTripId);
@@ -109,6 +118,19 @@ export default function Layout({ children, currentPageName }) {
       });
     }
   }, [profileData]);
+
+  useEffect(() => {
+    if (!tripId || !token) return;
+
+    const socket = io(BASE_URL, { auth: { token } });
+    socket.emit("joinTrip", tripId);
+
+    socket.on("newNotification", (notif) => {
+      dispatch(addNotification(notif)); // updates unreadCount globally
+    });
+
+    return () => socket.disconnect();
+  }, [tripId, token, dispatch]);
 
   const loadDummyUserAndTrip = () => {
     const dummyUser = {
@@ -168,7 +190,7 @@ export default function Layout({ children, currentPageName }) {
     { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
     { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
     { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
-    // { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
+    { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 
   const participantNavItems = [
@@ -180,7 +202,7 @@ export default function Layout({ children, currentPageName }) {
     { title: "Participants", url: createPageUrl("Participants"), icon: Users },
     // { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
     { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
-    // { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
+    { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 
   const commonNavItems = [
@@ -215,7 +237,6 @@ export default function Layout({ children, currentPageName }) {
   if (hideSidebarPages.includes(currentPageName)) {
     return <div className="min-h-screen">{children}</div>;
   }
-  const dispatch = useDispatch();
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -366,7 +387,13 @@ export default function Layout({ children, currentPageName }) {
                             to={item.url}
                             className="flex items-center gap-3 px-4 py-3"
                           >
-                            <item.icon className="w-4 h-4" />
+                            <div className="relative">
+                              <item.icon className="w-4 h-4" />
+                              {item.title === "Notifications" &&
+                                unreadCount > 0 && (
+                                  <span className="absolute -top-[2px] right-[1.5px] w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                )}
+                            </div>
                             <span className="font-medium">{item.title}</span>
                           </Link>
                         </SidebarMenuButton>

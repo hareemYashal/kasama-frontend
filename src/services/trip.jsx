@@ -109,6 +109,14 @@ const deleteTripService = async (token, tripId) => {
     throw error;
   }
 };
+export const getNotificationsService = async (tripId) => {
+  try {
+    const res = await axiosInstance.get(`/notifications/${tripId}`);
+    return res.data;
+  } catch (err) {
+    throw err;
+  }
+};
 export {
   createTripService,
   getAllTripsService,
