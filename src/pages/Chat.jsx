@@ -10,6 +10,7 @@ import {
   Image,
   ChartColumn,
   Plus,
+  Check,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
@@ -34,16 +35,55 @@ const Chat = () => {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  const formatDate = (date) => {
+
+  // Format time only (without date)
+  const formatTime = (date) => {
     return new Date(date).toLocaleString("en-US", {
       hour: "numeric",
       minute: "numeric",
       hour12: true,
-      day: "numeric",
-      month: "short",
-      year: "numeric",
     });
   };
+
+  // Format date for grouping (e.g., "Today", "Yesterday", "April 15, 2024")
+  const formatDateForGroup = (date) => {
+    const messageDate = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (messageDate.toDateString() === today.toDateString()) {
+      return "Today";
+    } else if (messageDate.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    } else {
+      return messageDate.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+  };
+
+  // Group messages by date
+  const groupMessagesByDate = (messages) => {
+    const grouped = {};
+
+    messages.forEach((message) => {
+      const dateKey = formatDateForGroup(
+        message.timestamp || message.createdAt
+      );
+
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+
+      grouped[dateKey].push(message);
+    });
+
+    return grouped;
+  };
+
   const socketRef = useRef(null);
   useEffect(() => {
     if (!tripId || !token) return;
@@ -59,7 +99,7 @@ const Chat = () => {
 
     s.on("connect", () => {
       s.emit("joinTripChat", {tripId, userId: authUerId});
-      s.emit("getMessages", {tripId}); // fetch history
+      s.emit("getMessages", {tripId});
     });
 
     s.on("messages", (msgs) => {
@@ -91,8 +131,9 @@ const Chat = () => {
       content: input,
       image: selectedImage ? URL.createObjectURL(selectedImage) : null,
       poll: mode === "poll" ? pollOptions : null,
-      timestamp: new Date().toLocaleTimeString(),
+      timestamp: new Date().toISOString(),
       senderId: authUerId,
+      sender: {name: authUser?.name || "You"},
     };
 
     if (socketRef.current && socketRef.current.connected) {
@@ -101,15 +142,13 @@ const Chat = () => {
         senderId: authUerId,
         content: input,
         type: mode || "text",
-        // fileUrl, fileName etc. can be passed too
+        timestamp: new Date().toISOString(),
       });
     } else {
       console.warn("Socket not connected yet");
     }
 
-    // Optimistic UI update
     setMessages((prev) => [...prev, newMessage]);
-
     setInput("");
     setSelectedImage(null);
     setMode("");
@@ -130,6 +169,9 @@ const Chat = () => {
     setPollOptions(newOptions);
   };
 
+  // Get grouped messages
+  const groupedMessages = groupMessagesByDate(messages);
+
   return (
     <main className="flex flex-col h-screen">
       {/* Header */}
@@ -148,9 +190,7 @@ const Chat = () => {
               Group Chat
             </h1>
             <p className="text-xs md:text-sm text-slate-500 truncate">
-              {/* Russell&apos;s Launch Party
-               */}
-              {activeTrip?.welcome_message}
+              {activeTrip?.trip_occasion}
             </p>
           </div>
         </div>
@@ -164,164 +204,227 @@ const Chat = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.map((msg, idx) => (
-          <div key={idx} className="w-full max-w-full">
-            {msg.type === "announcement" && (
-              <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
-                    <Megaphone className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-amber-800">📢 Announcement</p>
-                    <p className="text-xs text-amber-600">
-                      from {msg?.sender?.name}
+        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+          <div key={date}>
+            {/* Date separator */}
+            <div className="flex justify-center my-4">
+              <div className="bg-slate-200 text-slate-600 text-xs px-3 py-1 rounded-full">
+                {date}
+              </div>
+            </div>
+
+            {/* Messages for this date */}
+            {dateMessages.map((msg, idx) => (
+              <div key={idx} className="w-full max-w-full mb-3">
+                {msg.type === "announcement" && (
+                  <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
+                        <Megaphone className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-amber-800">
+                          📢 Announcement
+                        </p>
+                        <p className="text-xs text-amber-600">
+                          from {msg?.sender?.name}
+                        </p>
+                      </div>
+                    </div>
+                    {msg.image && (
+                      <img
+                        src={msg.image}
+                        className="w-full h-auto rounded-lg mb-2"
+                        alt="Announcement"
+                      />
+                    )}
+                    {msg.content && (
+                      <p className="text-slate-800 font-semibold text-base">
+                        {msg.content}
+                      </p>
+                    )}
+                    <p className="text-xs text-amber-500 mt-2 text-right">
+                      {formatTime(msg.timestamp)}
                     </p>
                   </div>
-                </div>
-                {msg.image && (
-                  <img
-                    src={msg.image}
-                    className="w-full h-auto rounded-lg mb-2"
-                  />
                 )}
-                {msg.content && (
-                  <p className="text-slate-800 font-semibold text-base">
-                    {msg.content}
-                  </p>
-                )}
-                <p className="text-xs text-amber-500 mt-2 text-right">
-                  {formatDate(msg.timestamp)}
-                </p>
-              </div>
-            )}
 
-            {msg.type === "poll" && (
-              <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
-                <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
-                  <p className="text-sm leading-relaxed break-words">
-                    {msg.content}
-                  </p>
-                  <div className="max-w-full overflow-hidden" />
-                  <div className="max-w-full">
-                    <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
-                      <div className="flex flex-col space-y-1.5 p-6 pb-3">
-                        <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
-                          <ChartColumn className="w-4 h-4 text-blue-600" />
-                          {msg.content}
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          {msg.poll.reduce((a, b) => a + b.votes, 0)} vote
-                          <span className="ml-2">
-                            • Click any option to change your vote
-                          </span>
+                {msg.type === "poll" && (
+                  <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
+                    <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
+                      <p className="text-sm leading-relaxed break-words">
+                        {msg.content}
+                      </p>
+                      <div className="max-w-full overflow-hidden" />
+                      <div className="max-w-full">
+                        <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
+                          <div className="flex flex-col space-y-1.5 p-6 pb-3">
+                            <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
+                              <ChartColumn className="w-4 h-4 text-blue-600" />
+                              {msg.content}
+                            </h3>
+                            <p className="text-xs text-slate-500">
+                              {msg?.poll?.reduce((a, b) => a + b.votes, 0)} vote
+                              <span className="ml-2">
+                                • Click any option to change your vote
+                              </span>
+                            </p>
+                          </div>
+
+                          <div className="p-6 pt-0 space-y-2">
+                            {msg?.poll?.map((opt, i) => {
+                              const totalVotes = msg.poll.reduce(
+                                (a, b) => a + b.votes,
+                                0
+                              );
+                              const percent = totalVotes
+                                ? (opt.votes / totalVotes) * 100
+                                : 0;
+
+                              return (
+                                <div key={i} className="space-y-1">
+                                  <button
+                                    className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
+                                      ${
+                                        opt.votes > 0
+                                          ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
+                                          : "border-slate-200 bg-white hover:bg-slate-50"
+                                      }`}
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium flex items-center gap-2">
+                                          {opt.label}
+                                          {opt.votes > 0 && (
+                                            <Check className="w-4 h-4 text-blue-600" />
+                                          )}
+                                        </span>
+                                        <span className="text-xs text-slate-500">
+                                          {opt.votes} ({Math.round(percent)}%)
+                                        </span>
+                                      </div>
+                                      <div
+                                        role="progressbar"
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
+                                      >
+                                        <div
+                                          className="h-full w-full flex-1 bg-primary transition-all"
+                                          style={{
+                                            transform: `translateX(${
+                                              100 - percent
+                                            }%)`,
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between w-full mt-1">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1 mt-1">
+                          <button className="inline-flex items-center justify-center h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100">
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400 px-1 flex-shrink-0">
+                        {formatTime(msg.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {msg.type === "text" && (
+                  <div
+                    className={`flex ${
+                      msg.senderId === authUerId
+                        ? "justify-end"
+                        : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-start gap-2 ${
+                        msg.senderId === authUerId
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      {/* Show profile picture only for others' messages (left side) */}
+                      {msg.senderId !== authUerId && (
+                        <img
+                          src={
+                            msg?.sender?.profilePic ||
+                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                          }
+                          alt={msg?.sender?.name || "User"}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      )}
+
+                      <div
+                        className={`px-4 py-2 rounded-2xl max-w-xs break-words ${
+                          // msg.senderId === authUerId
+                          "bg-blue-500 text-white rounded-br-md"
+                          // : "bg-gray-200 text-gray-800 rounded-bl-md"
+                        }`}
+                      >
+                        {/* Sender name (only for others’ messages) */}
+                        {msg.senderId !== authUerId && (
+                          <p className="text-xs font-medium mb-1">
+                            {msg?.sender?.name || "Unknown"}
+                          </p>
+                        )}
+
+                        {/* Text content */}
+                        {msg.content && (
+                          <p className="text-sm">{msg.content}</p>
+                        )}
+
+                        {/* Image content */}
+                        {msg.image && (
+                          <img
+                            src={msg.image}
+                            className="mt-2 rounded-lg max-w-full h-auto"
+                            alt="Message attachment"
+                          />
+                        )}
+
+                        {/* Timestamp */}
+                        <p className="text-xs text-right mt-1 opacity-80">
+                          {formatTime(msg.timestamp)}
                         </p>
                       </div>
 
-                      <div className="p-6 pt-0 space-y-2">
-                        {msg.poll.map((opt, i) => {
-                          const totalVotes = msg.poll.reduce(
-                            (a, b) => a + b.votes,
-                            0
-                          );
-                          const percent = totalVotes
-                            ? (opt.votes / totalVotes) * 100
-                            : 0;
-
-                          return (
-                            <div key={i} className="space-y-1">
-                              <button
-                                className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
-                    ${
-                      opt.votes > 0
-                        ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
-                    }`}
-                              >
-                                <div className="flex-1">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium flex items-center gap-2">
-                                      {opt.label}
-                                      {opt.votes > 0 && (
-                                        <Check className="w-4 h-4 text-blue-600" />
-                                      )}
-                                    </span>
-                                    <span className="text-xs text-slate-500">
-                                      {opt.votes} ({Math.round(percent)}%)
-                                    </span>
-                                  </div>
-                                  <div
-                                    role="progressbar"
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
-                                  >
-                                    <div
-                                      className="h-full w-full flex-1 bg-primary transition-all"
-                                      style={{
-                                        transform: `translateX(${
-                                          100 - percent
-                                        }%)`,
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {/* Show profile picture for current user messages (right side) */}
+                      {msg.senderId === authUerId && (
+                        <img
+                          src={
+                            msg?.sender?.Profile ||
+                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                          }
+                          alt="Me"
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      )}
                     </div>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between w-full mt-1">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1 mt-1">
-                      <button className="inline-flex items-center justify-center h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100">
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-400 px-1 flex-shrink-0">
-                    {formatDate(msg.timestamp)}
-                  </p>
-                </div>
+                )}
               </div>
-            )}
-
-            {msg.type === "text" && (
-              <div
-                className={`flex ${
-                  msg.senderId === authUerId ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div className="bg-blue-500 text-white px-4 py-2 rounded-2xl max-w-xs break-words">
-                  {/* Sender name (only show if it's not me, or show anyway if you want both) */}
-                  {msg.senderId !== authUerId && (
-                    <p className="text-xs  mb-1">
-                      {msg?.sender?.name || "Unknown"}
-                    </p>
-                  )}
-                  {msg.content && <p>{msg.content}</p>}
-                  {msg.image && (
-                    <img
-                      src={msg.image}
-                      className="mt-2 rounded-lg max-w-full h-auto"
-                    />
-                  )}
-                  <p className="text-xs text-right mt-1">
-                    {formatDate(msg.timestamp)}
-                  </p>
-                </div>
-              </div>
-            )}
+            ))}
           </div>
         ))}
       </div>
 
-      {/* Input */}
-      {/* Input / Announcement / Poll */}
+      {/* Input Section - Remains the same as your original code */}
       <div className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
         <div className="bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
           {/* Announcement Mode */}
@@ -357,7 +460,6 @@ const Chat = () => {
                   onChange={(e) => setInput(e.target.value)}
                 />
 
-                {/* Poll Options: always show 2 by default, no cross button for first 2 */}
                 {pollOptions.map((opt, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <input
@@ -366,7 +468,6 @@ const Chat = () => {
                       value={opt.label}
                       onChange={(e) => handlePollChange(i, e.target.value)}
                     />
-                    {/* Show cross button only for options after the first 2 */}
                     {i >= 2 && (
                       <button
                         type="button"
@@ -417,18 +518,18 @@ const Chat = () => {
             </div>
           )}
 
-          {/* Default Input (only if not in Poll mode) */}
+          {/* Default Input */}
           {mode !== "poll" && (
             <form className="w-full">
               <div className="flex items-end gap-2 md:gap-3 w-full">
                 <div className="flex-1 min-w-0">
                   <textarea
                     className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none w-full min-h-[40px] md:min-h-[48px] max-h-32 rounded-2xl transition-colors text-sm md:text-base
-              ${
-                mode === "announcement"
-                  ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
-                  : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
-              }`}
+                      ${
+                        mode === "announcement"
+                          ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+                          : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     placeholder={
                       mode === "announcement"
                         ? "Share an important announcement..."
@@ -438,7 +539,7 @@ const Chat = () => {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault(); // Line break na ho
+                        e.preventDefault();
                         handleSendMessage();
                       }
                     }}
@@ -450,17 +551,17 @@ const Chat = () => {
                   onClick={handleSendMessage}
                   disabled={!input && !selectedImage}
                   className={`inline-flex items-center justify-center gap-2 text-sm font-medium rounded-full w-10 h-10 md:w-12 md:h-12 flex-shrink-0 shadow-lg transition-all
-            ${
-              mode === "announcement"
-                ? "bg-amber-500 hover:bg-amber-600 text-white"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }
-            ${
-              !input && !selectedImage
-                ? "opacity-50 cursor-not-allowed"
-                : "opacity-100"
-            }
-          `}
+                    ${
+                      mode === "announcement"
+                        ? "bg-amber-500 hover:bg-amber-600 text-white"
+                        : "bg-blue-500 hover:bg-blue-600 text-white"
+                    }
+                    ${
+                      !input && !selectedImage
+                        ? "opacity-50 cursor-not-allowed"
+                        : "opacity-100"
+                    }
+                  `}
                 >
                   <Send className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
@@ -468,14 +569,15 @@ const Chat = () => {
             </form>
           )}
 
-          {/* Bottom icons (always visible) */}
+          {/* Bottom icons */}
           {mode !== "poll" && (
             <div className="flex justify-start items-center mt-2 w-full overflow-hidden">
               <div className="flex items-center gap-1 flex-wrap">
                 <input
                   type="file"
-                  multiple
+                  accept="image/*"
                   ref={fileInputRef}
+                  onChange={handleImageUpload}
                   className="hidden"
                 />
                 <button
@@ -487,31 +589,31 @@ const Chat = () => {
                 </button>
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current.click()}
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <Image className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
-                {authUser?.trip_role === "creator" ||
-                  (authUser?.trip_role === "co-admin" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMode(mode === "announcement" ? "" : "announcement")
-                      }
-                      className={`inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full transition-colors ${
-                        mode === "announcement"
-                          ? "bg-amber-100 text-amber-500"
-                          : "bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-                      }`}
-                    >
-                      <Megaphone className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-                  ))}
+                {(authUser?.trip_role === "creator" ||
+                  authUser?.trip_role === "co-admin") && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMode(mode === "announcement" ? "" : "announcement")
+                    }
+                    className={`inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full transition-colors ${
+                      mode === "announcement"
+                        ? "bg-amber-100 text-amber-500"
+                        : "bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Megaphone className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setMode("poll");
-                    // Initialize with 2 empty options if none exist
                     if (pollOptions.length === 0) {
                       setPollOptions([{label: ""}, {label: ""}]);
                     }
