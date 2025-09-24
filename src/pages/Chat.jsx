@@ -34,7 +34,6 @@ const Chat = () => {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  console.log(activeTrip, "trp");
   const formatDate = (date) => {
     return new Date(date).toLocaleString("en-US", {
       hour: "numeric",
@@ -59,18 +58,15 @@ const Chat = () => {
     socketRef.current = s;
 
     s.on("connect", () => {
-      console.log("socket connect", s.id);
       s.emit("joinTripChat", {tripId, userId: authUerId});
       s.emit("getMessages", {tripId}); // fetch history
     });
 
     s.on("messages", (msgs) => {
-      console.log("messages history:", msgs);
       setMessages(msgs);
     });
 
     s.on("newMessage", (msg) => {
-      console.log("newMessage received:", msg);
       setMessages((prev) => [...prev, msg]);
     });
 
