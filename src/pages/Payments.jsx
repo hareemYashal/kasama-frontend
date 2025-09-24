@@ -455,7 +455,8 @@ export default function Payments() {
   console.log("noExpensesAdded", noExpensesAdded);
   const user = useSelector((state) => state.user.user);
 
-  const hasAdminAcess = user?.trip_role === "creator" || user?.trip_role === "co-admin";
+  const hasAdminAcess =
+    user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   return (
     <>
@@ -824,78 +825,94 @@ export default function Payments() {
             {paymentMethod &&
               paymentDetailData &&
               paymentDetailData.remainings > 0 && (
-                <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-blue-600" />
-                        Auto-Pay Setup
-                      </div>
-                      <Switch
-                        checked={autoPayEnabled}
-                        onCheckedChange={handleAutoPayToggle}
-                      />
-                    </CardTitle>
-                  </CardHeader>
-                  {autoPayEnabled && (
-                    <CardContent className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Payment Frequency</Label>
-                          <Select
-                            value={paymentFrequency}
-                            onValueChange={handleFrequencyChange}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Frequency" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="biweekly">
-                                Every 2 Weeks
-                              </SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                <div className="mt-6 p-6 bg-blue-50 rounded-2xl border border-blue-200 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-800">
+                        Enable Auto-Pay
+                      </h3>
+                      <p className="text-sm text-slate-600">
+                        Set up automatic recurring payments until your balance
+                        is paid.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={autoPayEnabled}
+                      onCheckedChange={handleAutoPayToggle}
+                    />
+                  </div>
 
+                  {autoPayEnabled && (
+                    <div className="space-y-4">
+                      {/* Frequency Select */}
+                      <div>
+                        <Label>Payment Frequency</Label>
+                        <Select
+                          value={paymentFrequency}
+                          onValueChange={handleFrequencyChange}
+                        >
+                          <SelectTrigger className="w-full mt-2">
+                            <SelectValue placeholder="Select frequency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Recurring Day */}
+                      {paymentFrequency && (
                         <div>
-                          <Label>Select recurring payment day</Label>
+                          <Label>Recurring Day</Label>
                           <Select
                             value={recurringPaymentDay}
                             onValueChange={handleRecurringDayChange}
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Day" />
+                            <SelectTrigger className="w-full mt-2">
+                              <SelectValue placeholder="Choose a day" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="monday">Monday</SelectItem>
-                              <SelectItem value="tuesday">Tuesday</SelectItem>
-                              <SelectItem value="wednesday">
-                                Wednesday
-                              </SelectItem>
-                              <SelectItem value="thursday">Thursday</SelectItem>
-                              <SelectItem value="friday">Friday</SelectItem>
-                              <SelectItem value="saturday">Saturday</SelectItem>
-                              <SelectItem value="sunday">Sunday</SelectItem>
+                              {[...Array(28).keys()].map((d) => (
+                                <SelectItem
+                                  key={d + 1}
+                                  value={(d + 1).toString()}
+                                >
+                                  Day {d + 1}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="p-4 bg-blue-50 rounded-xl">
-                        <p className="text-sm text-slate-600">
-                          ${autoPayAmount.toFixed(2)} every {paymentFrequency}{" "}
-                          on {recurringPaymentDay}s until your goal is met
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Auto-charged to your {paymentMethod.brand} ****{" "}
-                          {paymentMethod.last4}
-                        </p>
-                      </div>
-                    </CardContent>
+                      {/* Auto-Pay Amount */}
+                      {autoPayAmount > 0 && (
+                        <div className="bg-white rounded-xl p-4 border text-sm">
+                          <p className="text-slate-600">
+                            Each payment will be:{" "}
+                            <span className="font-bold text-green-600">
+                              ${autoPayAmount.toFixed(2)}
+                            </span>
+                          </p>
+                          <p className="text-slate-500 mt-1">
+                            Based on your remaining balance of $
+                            {paymentDetailData.remainings.toFixed(2)}.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Save Button */}
+                      <Button
+                        onClick={handleSaveAutoPay}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        Save Auto-Pay Settings
+                      </Button>
+                    </div>
                   )}
-                </Card>
+                </div>
               )}
 
             {/* 4. Pay for a Friend - Enhanced with real-time data and cost breakdown */}

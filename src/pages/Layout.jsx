@@ -599,24 +599,24 @@ export default function Layout({ children, currentPageName }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-h-screen">
-          <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* Sidebar toggle for mobile */}
-              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200 md:hidden" />
-              <h1 className="text-xl font-bold text-slate-800">Kasama</h1>
-            </div>
+          {location.pathname !== "/chat" && (
+            <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200 md:hidden" />
+                <h1 className="text-xl font-bold text-slate-800">Kasama</h1>
+              </div>
 
-            {/* Show Logout Button only on /profile */}
-            {location.pathname === createPageUrl("Profile") && (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Logout
-              </button>
-            )}
-          </header>
+              {location.pathname === createPageUrl("Profile") && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Logout
+                </button>
+              )}
+            </header>
+          )}
 
           <div className="flex-1 overflow-auto">{children}</div>
         </main>
