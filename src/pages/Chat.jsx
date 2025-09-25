@@ -11,18 +11,23 @@ import {
   ChartColumn,
   Plus,
   Check,
+  Users,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {useQuery} from "@tanstack/react-query";
 import {formatTime} from "../utils/utils";
 import {groupMessagesByDate} from "../utils/utils";
+import {
+  totalParticipantsService,
+} from "@/services/participant";
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("");
   const [selectedImage, setSelectedImage] = useState(null);
   const [pollOptions, setPollOptions] = useState([]);
+  const [showParticipants, setShowParticipants] = useState(false);
   const fileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -39,7 +44,24 @@ const Chat = () => {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
+  const user = useSelector((state) => state.user.user);
 
+  const {data: participantsData} = useQuery({
+    queryKey: ["totalParticipantsService"],
+    queryFn: () => totalParticipantsService(token, tripId),
+    enabled: !!token && !!tripId,
+  });
+  let totalParticipant = participantsData?.data?.participants;
+  let tripParticipantsNumber =
+    participantsData?.data?.participants?.length || 0;
+  console.log(
+    participantsData?.data?.participants?.length,
+    "Heyyyyy",
+    totalParticipant
+  );
+  // useEffect(() => {
+  //   // loadParticipantData();
+  // }, []);
   const socketRef = useRef(null);
 
   // Scroll to bottom function
@@ -160,6 +182,7 @@ const Chat = () => {
 
           <MessageCircle className="w-4 h-4 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
 
+
           <div className="min-w-0 flex-1">
             <h1 className="text-sm md:text-xl font-bold text-slate-800 truncate">
               Group Chat
@@ -171,11 +194,66 @@ const Chat = () => {
         </div>
 
         <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm flex-shrink-0">
+          <button
+            onClick={() => setShowParticipants(!showParticipants)}
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            <Users className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">
+              {tripParticipantsNumber} members
+            </span>
+          </button>
           <div className="flex items-center gap-1 text-blue-600">
             <WifiOff className="w-3 h-3 md:w-4 md:h-4" />
           </div>
         </div>
       </header>
+
+      {/* Participants List */}
+      {showParticipants && (
+        <div className="bg-slate-50 border-b border-slate-200 p-3 md:p-4 max-h-[20vh] overflow-y-auto flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-slate-700">
+              Group Members
+            </h3>
+            <button
+              onClick={() => setShowParticipants(false)}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {totalParticipant.map((participant) => (
+              <div
+                key={participant.user?.id}
+                className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm"
+              >
+                <div className="relative">
+                  <img
+                    src={
+                      participant.user.Profile ||
+                      "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                    }
+                    alt={participant.user.name}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <div className="flex flex-col">
+                  <span className="text-xs font-medium text-slate-800">
+                    {participant.user?.name}
+                    {/* {participant.role === 'creator' && ' 👑'} */}
+                    {/* {participant.role === 'co-admin' && ' ⭐'} */}
+                  </span>
+                  {/* <span className="text-xs text-slate-500">
+                    {participant.isOnline ? 'Online' : 'Offline'}
+                  </span> */}
+                </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Messages Container with ref */}
       <div
