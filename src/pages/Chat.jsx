@@ -1,3 +1,5 @@
+"use client";
+
 import {useState, useRef, useEffect} from "react";
 import {
   ArrowLeft,
@@ -7,28 +9,30 @@ import {
   X,
   Send,
   Paperclip,
-  Image,
-  ChartColumn,
+  ImageIcon,
+  CarIcon as ChartColumn,
   Plus,
   Check,
   Users,
+  FileText,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {useQuery} from "@tanstack/react-query";
 import {formatTime} from "../utils/utils";
-import {groupMessagesByDate} from "../utils/utils";
-import {
-  totalParticipantsService,
-} from "@/services/participant";
+import {groupMessagesByDate, bufferToUrl, fileToBuffer} from "../utils/utils";
+import {totalParticipantsService} from "@/services/participant";
+
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("");
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [pollOptions, setPollOptions] = useState([]);
   const [showParticipants, setShowParticipants] = useState(false);
   const fileInputRef = useRef();
+  const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
 
@@ -44,24 +48,16 @@ const Chat = () => {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  const user = useSelector((state) => state.user.user);
 
   const {data: participantsData} = useQuery({
     queryKey: ["totalParticipantsService"],
     queryFn: () => totalParticipantsService(token, tripId),
     enabled: !!token && !!tripId,
   });
-  let totalParticipant = participantsData?.data?.participants;
-  let tripParticipantsNumber =
+  const totalParticipant = participantsData?.data?.participants;
+  const tripParticipantsNumber =
     participantsData?.data?.participants?.length || 0;
-  console.log(
-    participantsData?.data?.participants?.length,
-    "Heyyyyy",
-    totalParticipant
-  );
-  // useEffect(() => {
-  //   // loadParticipantData();
-  // }, []);
+
   const socketRef = useRef(null);
 
   // Scroll to bottom function
@@ -100,11 +96,42 @@ const Chat = () => {
     });
 
     s.on("messages", (msgs) => {
-      setMessages(msgs);
+      const processedMessages = msgs.map((msg) => {
+        if (msg.file && msg.file.buffer) {
+          // Convert buffer data to proper file structure
+          return {
+            ...msg,
+            file: {
+              name: msg.file.name || "Unknown File",
+              type: msg.file.type || "application/octet-stream",
+              size: msg.file.size || 0,
+              buffer: msg.file.buffer,
+              url: msg.file.buffer
+                ? bufferToUrl(msg.file, msg.file.type)
+                : null,
+            },
+          };
+        }
+        return msg;
+      });
+      setMessages(processedMessages);
     });
 
     s.on("newMessage", (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      let processedMessage = msg;
+      if (msg.file && msg.file.buffer) {
+        processedMessage = {
+          ...msg,
+          file: {
+            name: msg.file.name || "Unknown File",
+            type: msg.file.type || "application/octet-stream",
+            size: msg.file.size || 0,
+            buffer: msg.file.buffer,
+            url: bufferToUrl(msg.file, msg.file.type),
+          },
+        };
+      }
+      setMessages((prev) => [...prev, processedMessage]);
     });
 
     s.on("disconnect", (reason) => {
@@ -119,14 +146,40 @@ const Chat = () => {
     };
   }, [tripId, token, authUerId, BASE_URL]);
 
-  const handleSendMessage = () => {
-    if (!input && !selectedImage && !(mode === "poll" && pollOptions.length))
+  const handleSendMessage = async () => {
+    if (
+      !input &&
+      !selectedImage &&
+      !selectedFile &&
+      !(mode === "poll" && pollOptions.length)
+    )
       return;
+
+    let fileBuffer = null;
+    let imageBuffer = null;
+
+    // Convert selected file to buffer if exists
+    if (selectedFile) {
+      fileBuffer = await fileToBuffer(selectedFile);
+    }
+
+    // Convert selected image to buffer if exists
+    if (selectedImage) {
+      imageBuffer = await fileToBuffer(selectedImage);
+    }
 
     const newMessage = {
       type: mode || "text",
       content: input,
       image: selectedImage ? URL.createObjectURL(selectedImage) : null,
+      file: selectedFile
+        ? {
+            name: selectedFile.name,
+            type: selectedFile.type,
+            size: selectedFile.size,
+            url: URL.createObjectURL(selectedFile),
+          }
+        : null,
       poll: mode === "poll" ? pollOptions : null,
       timestamp: new Date().toISOString(),
       senderId: authUerId,
@@ -140,6 +193,7 @@ const Chat = () => {
         content: input,
         type: mode || "text",
         timestamp: new Date().toISOString(),
+        file: fileBuffer || imageBuffer || null,
       });
     } else {
       console.warn("Socket not connected yet");
@@ -148,12 +202,25 @@ const Chat = () => {
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
     setSelectedImage(null);
+    setSelectedFile(null);
     setMode("");
     setPollOptions([]);
   };
 
   const handleImageUpload = (e) => {
     if (e.target.files[0]) setSelectedImage(e.target.files[0]);
+  };
+
+  const handleFileUpload = (e) => {
+    if (e.target.files[0]) {
+      const file = e.target.files[0];
+      // Check if it's an image, if so use image handler
+      if (file.type.startsWith("image/")) {
+        setSelectedImage(file);
+      } else {
+        setSelectedFile(file);
+      }
+    }
   };
 
   const handleAddPollOption = () => {
@@ -166,7 +233,6 @@ const Chat = () => {
     setPollOptions(newOptions);
   };
 
-  // Get grouped messages
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
@@ -181,7 +247,6 @@ const Chat = () => {
           </button>
 
           <MessageCircle className="w-4 h-4 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
-
 
           <div className="min-w-0 flex-1">
             <h1 className="text-sm md:text-xl font-bold text-slate-800 truncate">
@@ -233,21 +298,19 @@ const Chat = () => {
                   <img
                     src={
                       participant.user.Profile ||
-                      "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                      "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                      "/placeholder.svg" ||
+                      "/placeholder.svg" ||
+                      "/placeholder.svg"
                     }
                     alt={participant.user.name}
                     className="w-8 h-8 rounded-full object-cover"
                   />
                   <div className="flex flex-col">
-                  <span className="text-xs font-medium text-slate-800">
-                    {participant.user?.name}
-                    {/* {participant.role === 'creator' && ' 👑'} */}
-                    {/* {participant.role === 'co-admin' && ' ⭐'} */}
-                  </span>
-                  {/* <span className="text-xs text-slate-500">
-                    {participant.isOnline ? 'Online' : 'Offline'}
-                  </span> */}
-                </div>
+                    <span className="text-xs font-medium text-slate-800">
+                      {participant.user?.name}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -287,13 +350,14 @@ const Chat = () => {
                         </p>
                       </div>
                     </div>
-                    {msg.image && (
+                    {msg.file && (
                       <img
-                        src={msg.image}
+                        src={msg.file || "/placeholder.svg"}
                         className="w-full h-auto rounded-lg mb-2"
                         alt="Announcement"
                       />
                     )}
+                    {/* {msg.file && renderFileAttachment(msg.file)} */}
                     {msg.content && (
                       <p className="text-slate-800 font-semibold text-base">
                         {msg.content}
@@ -420,7 +484,10 @@ const Chat = () => {
                         <img
                           src={
                             msg?.sender?.profilePic ||
-                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                            "/placeholder.svg" ||
+                            "/placeholder.svg" ||
+                            "/placeholder.svg"
                           }
                           alt={msg?.sender?.name || "User"}
                           className="w-8 h-8 rounded-full object-cover"
@@ -442,14 +509,15 @@ const Chat = () => {
                             <p className="text-sm">{msg.content}</p>
                           )}
 
-                          {/* Image content */}
                           {msg.image && (
                             <img
-                              src={msg.image}
+                              src={msg.image || "/placeholder.svg"}
                               className="mt-2 rounded-lg max-w-full h-auto"
                               alt="Message attachment"
                             />
                           )}
+
+                          {/* {msg.file && renderFileAttachment(msg.file)} */}
                         </div>
                         <p className="text-xs text-slate-400 px-1 flex-shrink-0 mt-1">
                           {formatTime(msg.timestamp)}
@@ -461,7 +529,10 @@ const Chat = () => {
                         <img
                           src={
                             msg?.sender?.Profile ||
-                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                            "/placeholder.svg" ||
+                            "/placeholder.svg" ||
+                            "/placeholder.svg"
                           }
                           alt="Me"
                           className="w-8 h-8 rounded-full object-cover"
@@ -486,7 +557,7 @@ const Chat = () => {
           {mode === "announcement" && (
             <div className="bg-amber-100 text-amber-800 border border-amber-200 rounded-md p-2 flex items-center gap-2 w-full max-w-full overflow-hidden">
               <Megaphone className="w-3 h-3 flex-shrink-0" />
-              <span className="text-xs flex-1 min-w-0 truncate">
+              <span className="text-sm flex-1 min-w-0 truncate">
                 Announcement Mode
               </span>
               <button
@@ -496,6 +567,43 @@ const Chat = () => {
               >
                 <X className="w-3 h-3" />
               </button>
+            </div>
+          )}
+
+          {(selectedImage || selectedFile) && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-700">
+                  {selectedImage ? "Image Preview" : "File Selected"}
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedImage(null);
+                    setSelectedFile(null);
+                  }}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {selectedImage && (
+                <img
+                  src={URL.createObjectURL(selectedImage) || "/placeholder.svg"}
+                  alt="Preview"
+                  className="max-w-full h-32 object-cover rounded-lg"
+                />
+              )}
+              {selectedFile && (
+                <div className="flex items-center gap-3 p-2 bg-white rounded border">
+                  <FileText className="w-6 h-6 text-slate-600" />
+                  <div>
+                    <p className="text-sm font-medium">{selectedFile.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {(selectedFile.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -604,7 +712,7 @@ const Chat = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={!input && !selectedImage}
+                  disabled={!input && !selectedImage && !selectedFile}
                   className={`inline-flex items-center justify-center gap-2 text-sm font-medium rounded-full w-10 h-10 md:w-12 md:h-12 flex-shrink-0 shadow-lg transition-all
                     ${
                       mode === "announcement"
@@ -612,7 +720,7 @@ const Chat = () => {
                         : "bg-blue-500 hover:bg-blue-600 text-white"
                     }
                     ${
-                      !input && !selectedImage
+                      !input && !selectedImage && !selectedFile
                         ? "opacity-50 cursor-not-allowed"
                         : "opacity-100"
                     }
@@ -635,19 +743,27 @@ const Chat = () => {
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-                {/* <button
+                <input
+                  type="file"
+                  ref={generalFileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <button
                   type="button"
-                  onClick={() => fileInputRef.current.click()}
-                  className="inline-flex items-center justify-center gap-2 h-10 w-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  onClick={() => generalFileInputRef.current.click()}
+                  className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
-                  <Paperclip className="w-5 h-5" />
-                </button> */}
+                  <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+
                 <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
-                  <Image className="w-4 h-4 md:w-5 md:h-5" />
+                  <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
                 {(authUser?.trip_role === "creator" ||
                   authUser?.trip_role === "co-admin") && (

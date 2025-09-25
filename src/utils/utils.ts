@@ -44,3 +44,26 @@
 
     return grouped;
   };
+
+  export   const fileToBuffer = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const arrayBuffer = reader.result as ArrayBuffer;
+        const buffer = new Uint8Array(arrayBuffer);
+        resolve({
+          buffer: Array.from(buffer),
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        });
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+   export const bufferToUrl = (bufferData, type) => {
+    const uint8Array = new Uint8Array(bufferData.buffer);
+    const blob = new Blob([uint8Array], {type});
+    return URL.createObjectURL(blob);
+  };

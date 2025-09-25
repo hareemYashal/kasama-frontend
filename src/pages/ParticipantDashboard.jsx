@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { Trip } from "@/api/entities";
-import { User } from "@/api/entities";
-import { Expense } from "@/api/entities";
-import { Contribution } from "@/api/entities";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import React, {useState, useEffect} from "react";
+import {useNavigate} from "react-router-dom";
+import {createPageUrl} from "@/utils";
+import {Trip} from "@/api/entities";
+import {User} from "@/api/entities";
+import {Expense} from "@/api/entities";
+import {Contribution} from "@/api/entities";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Badge} from "@/components/ui/badge";
+import {Progress} from "@/components/ui/progress";
 import {
   MapPin,
   Calendar,
@@ -22,24 +22,24 @@ import {
   CheckCircle,
   Settings,
 } from "lucide-react";
-import { format } from "date-fns";
+import {format} from "date-fns";
 import CountdownTimer from "../components/dashboard/CountdownTimer";
 import BookingDeadlineTimer from "../components/dashboard/BookingDeadlineTimer";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import ContributionBreakdown from "../components/dashboard/ContributionBreakdown";
-import { useQuery } from "@tanstack/react-query";
+import {useQuery} from "@tanstack/react-query";
 import {
   getExpenseByTripIdService,
   getExpenseListService,
 } from "@/services/expense";
-import { useDispatch, useSelector } from "react-redux";
+import {useDispatch, useSelector} from "react-redux";
 import {
   getParticipantsWithContributions,
   totalParticipantsService,
 } from "@/services/participant";
-import { getActiveTripService, getTripService } from "@/services/trip";
-import { getPaymentRemainingsService } from "@/services/paynent";
-import { setActiveTripId } from "@/store/tripSlice";
+import {getActiveTripService, getTripService} from "@/services/trip";
+import {getPaymentRemainingsService} from "@/services/paynent";
+import {setActiveTripId} from "@/store/tripSlice";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 
 export default function ParticipantDashboard() {
@@ -56,13 +56,13 @@ export default function ParticipantDashboard() {
   const authUser = useSelector((state) => state.user.user);
   const authUerId = authUser?.id;
   const dispatch = useDispatch();
-  const { data: expenseDataList, isSuccess: expenseListSuccess } = useQuery({
+  const {data: expenseDataList, isSuccess: expenseListSuccess} = useQuery({
     queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
     enabled: !!tripId && !!token,
   });
 
-  const { data: participantsData } = useQuery({
+  const {data: participantsData} = useQuery({
     queryKey: ["totalParticipantsService"],
     queryFn: () => totalParticipantsService(token, tripId),
     enabled: !!token && !!tripId,
@@ -73,7 +73,7 @@ export default function ParticipantDashboard() {
   //   queryFn: () => getActiveTripService(token),
   //   enabled: !!token,
   // });
-  const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
+  const {data: tripExpenseDetails, isLoading: isLoadingExpenseDetails} =
     useQuery({
       queryKey: ["getExpenseByTripIdService", tripId],
       queryFn: () => getExpenseByTripIdService(token, tripId),
@@ -81,7 +81,7 @@ export default function ParticipantDashboard() {
     });
   const tripDataList = tripExpenseDetails?.data?.data;
 
-  const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
+  const {data: activeTripData, isLoading: isLoadingActiveTrip} = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -89,7 +89,7 @@ export default function ParticipantDashboard() {
     "activeTripData?.data?.activeTrip.booking_deadline=====>",
     activeTripData?.data?.activeTrip.booking_deadline
   );
-  const { data: paymentData, isSuccess: activeTripSuccess } = useQuery({
+  const {data: paymentData, isSuccess: activeTripSuccess} = useQuery({
     queryKey: ["getPaymentRemainingsQuery", tripId, authUerId],
     queryFn: () => getPaymentRemainingsService(token, tripId, authUerId),
     enabled: !!token && !!tripId && !!authUerId,
@@ -206,30 +206,30 @@ export default function ParticipantDashboard() {
   }
 
   const mockParticipants = [
-    { id: 1, name: "Alice", role: "admin" },
-    { id: 2, name: "Bob", role: "member" },
-    { id: 3, name: "Charlie", role: "member" },
+    {id: 1, name: "Alice", role: "admin"},
+    {id: 2, name: "Bob", role: "member"},
+    {id: 3, name: "Charlie", role: "member"},
   ];
 
   const mockContributions = [
     {
       id: 101,
       user_id: 1,
-      user: { id: 1, name: "Alice", role: "admin" },
+      user: {id: 1, name: "Alice", role: "admin"},
       paidAmount: 120,
       mygoal: 200,
     },
     {
       id: 102,
       user_id: 2,
-      user: { id: 2, name: "Bob", role: "member" },
+      user: {id: 2, name: "Bob", role: "member"},
       paidAmount: 80,
       mygoal: 150,
     },
     {
       id: 103,
       user_id: 3,
-      user: { id: 3, name: "Charlie", role: "member" },
+      user: {id: 3, name: "Charlie", role: "member"},
       paidAmount: 200,
       mygoal: 200,
     },
@@ -639,7 +639,7 @@ export default function ParticipantDashboard() {
 
         {/* All Participants Contribution Breakdown */}
         <ContributionBreakdown
-          participantContributionData={{ participants }}
+          participantContributionData={{participants}}
           contributions={contributions}
           participants={participants}
           totalAmount={apiData?.totalTripGoal || 0}
@@ -765,6 +765,16 @@ export default function ParticipantDashboard() {
         </Card>
 
         <ItineraryCalander />
+        <div className="flex flex-row justify-end fixed bottom-6 right-6 z-50">
+          <button
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 px-4 py-2 w-14 h-14 rounded-full bg-pink-500 hover:bg-pink-600 text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative"
+            onClick={() => navigate("/chat")}
+
+            // onClick={() => router.push("/chat")}
+          >
+            <MessageCircle className="w-6 h-6" />
+          </button>
+        </div>
 
         {/* Quick Actions */}
         {/* <div className="grid grid-cols-2 gap-6">
