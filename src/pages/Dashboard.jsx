@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import React, {useState, useEffect} from "react";
+import {redirect, useRoutes} from "react-router-dom";
+import {createPageUrl} from "@/utils";
+import {Button} from "@/components/ui/button";
+import {Card, CardHeader, CardTitle, CardContent} from "@/components/ui/card";
+import {Progress} from "@/components/ui/progress";
 import {
   MapPin,
   Calendar,
@@ -19,24 +19,26 @@ import {
   Settings,
   PenLine,
 } from "lucide-react";
-import { format } from "date-fns";
+import {format} from "date-fns";
 import CountdownTimer from "../components/dashboard/CountdownTimer";
 import BookingDeadlineTimer from "../components/dashboard/BookingDeadlineTimer";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import ContributionBreakdown from "../components/dashboard/ContributionBreakdown";
-import { useQuery } from "@tanstack/react-query";
+import {useQuery} from "@tanstack/react-query";
 import {
   getExpenseByTripIdService,
   getExpenseListService,
 } from "@/services/expense";
-import { useSelector, useDispatch } from "react-redux";
+import {useSelector, useDispatch} from "react-redux";
 import {
   getParticipantsWithContributions,
   totalParticipantsService,
 } from "@/services/participant";
-import { getActiveTripService, getTripService } from "@/services/trip";
-import { setActiveTripId } from "@/store/tripSlice";
-import { Badge } from "@/components/ui/badge";
+import {getActiveTripService, getTripService} from "@/services/trip";
+import {setActiveTripId} from "@/store/tripSlice";
+import {useNavigate} from "react-router-dom";
+
+import {Badge} from "@/components/ui/badge";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 
 export default function Dashboard() {
@@ -45,11 +47,12 @@ export default function Dashboard() {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
+  // const router = useRouter();
 
   const dispatch = useDispatch();
 
   // Query for expense list
-  const { data: tripExpenseData, isLoading: isLoadingExpenses } = useQuery({
+  const {data: tripExpenseData, isLoading: isLoadingExpenses} = useQuery({
     queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
     enabled: !!token && !!tripId,
@@ -63,7 +66,7 @@ export default function Dashboard() {
   //     enabled: !!token && !!tripId,
   //   });
 
-  const { data: getContributionsData, isLoading: isLoadingContributions } =
+  const {data: getContributionsData, isLoading: isLoadingContributions} =
     useQuery({
       queryKey: ["totalParticipantsService"],
       queryFn: () => totalParticipantsService(token, tripId),
@@ -77,14 +80,14 @@ export default function Dashboard() {
   //   enabled: !!token,
   // });
 
-  const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
+  const {data: activeTripData, isLoading: isLoadingActiveTrip} = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
 
   console.log("activeTripData----000998>>>", activeTripData);
   // Query for trip expense details
-  const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
+  const {data: tripExpenseDetails, isLoading: isLoadingExpenseDetails} =
     useQuery({
       queryKey: ["getExpenseByTripIdService", tripId],
       queryFn: () => getExpenseByTripIdService(token, tripId),
@@ -576,7 +579,7 @@ export default function Dashboard() {
           />
         )}
         <ContributionBreakdown
-          participantContributionData={{ participants }}
+          participantContributionData={{participants}}
           contributions={contributions}
           participants={participants}
           totalAmount={participantContributionData?.totalTripGoal || 0}
@@ -738,6 +741,16 @@ export default function Dashboard() {
         {/* {activeTripDataState?.id && <ActivityFeed trip={activeTripDataState} />} */}
 
         <ItineraryCalander />
+      </div>
+      <div className="flex flex-row justify-end fixed bottom-6 right-6 z-50">
+        <button
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 px-4 py-2 w-14 h-14 rounded-full bg-pink-500 hover:bg-pink-600 text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative"
+          onClick={() => navigate("/chat")}
+
+          // onClick={() => router.push("/chat")}
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
       </div>
     </div>
   );

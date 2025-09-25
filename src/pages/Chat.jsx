@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from "react";
+import {useState, useRef, useEffect} from "react";
 import {
   ArrowLeft,
   MessageCircle,
@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
-import {useMutation, useQuery} from "@tanstack/react-query";
-
+import {useQuery} from "@tanstack/react-query";
+import {formatTime} from "../utils/utils";
+import {groupMessagesByDate} from "../utils/utils";
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -23,68 +24,42 @@ const Chat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [pollOptions, setPollOptions] = useState([]);
   const fileInputRef = useRef();
+  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const tripId = useSelector((s) => s.trips.activeTripId);
   const token = useSelector((s) => s.user.token);
   const authUser = useSelector((s) => s.user.user);
   const authUerId = authUser?.id;
   const BASE_URL = import.meta.env.VITE_API_URL;
-  const {data: activeTripData, isLoading: isLoadingTrip} = useQuery({
+
+  const {data: activeTripData} = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
 
-  // Format time only (without date)
-  const formatTime = (date) => {
-    return new Date(date).toLocaleString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    });
-  };
+  const socketRef = useRef(null);
 
-  // Format date for grouping (e.g., "Today", "Yesterday", "April 15, 2024")
-  const formatDateForGroup = (date) => {
-    const messageDate = new Date(date);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      const scrollHeight = messagesContainerRef.current.scrollHeight;
+      const height = messagesContainerRef.current.clientHeight;
+      const maxScrollTop = scrollHeight - height;
 
-    if (messageDate.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (messageDate.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return messageDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      messagesContainerRef.current.scrollTop =
+        maxScrollTop > 0 ? maxScrollTop : 0;
     }
   };
 
-  // Group messages by date
-  const groupMessagesByDate = (messages) => {
-    const grouped = {};
+  // Auto-scroll when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-    messages.forEach((message) => {
-      const dateKey = formatDateForGroup(
-        message.timestamp || message.createdAt
-      );
-
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
-      }
-
-      grouped[dateKey].push(message);
-    });
-
-    return grouped;
-  };
-
-  const socketRef = useRef(null);
+  // Socket connection
   useEffect(() => {
     if (!tripId || !token) return;
 
@@ -202,13 +177,16 @@ const Chat = () => {
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      {/* Messages Container with ref */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-auto p-4 space-y-4"
+      >
         {Object.entries(groupedMessages).map(([date, dateMessages]) => (
           <div key={date}>
             {/* Date separator */}
             <div className="flex justify-center my-4">
-              <div className="bg-slate-200 text-slate-600 text-xs px-3 py-1 rounded-full">
+              <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
                 {date}
               </div>
             </div>
@@ -243,6 +221,7 @@ const Chat = () => {
                         {msg.content}
                       </p>
                     )}
+
                     <p className="text-xs text-amber-500 mt-2 text-right">
                       {formatTime(msg.timestamp)}
                     </p>
@@ -369,37 +348,32 @@ const Chat = () => {
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       )}
+                      <div className="flex flex-col items-start">
+                        <div
+                          className={`px-4 py-2 rounded-2xl max-w-xs break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                        >
+                          {/* Sender name (only for others' messages) */}
+                          {msg.senderId !== authUerId && (
+                            <p className="text-xs font-medium mb-1">
+                              {msg?.sender?.name || "Unknown"}
+                            </p>
+                          )}
 
-                      <div
-                        className={`px-4 py-2 rounded-2xl max-w-xs break-words ${
-                          // msg.senderId === authUerId
-                          "bg-blue-500 text-white rounded-br-md"
-                          // : "bg-gray-200 text-gray-800 rounded-bl-md"
-                        }`}
-                      >
-                        {/* Sender name (only for others’ messages) */}
-                        {msg.senderId !== authUerId && (
-                          <p className="text-xs font-medium mb-1">
-                            {msg?.sender?.name || "Unknown"}
-                          </p>
-                        )}
+                          {/* Text content */}
+                          {msg.content && (
+                            <p className="text-sm">{msg.content}</p>
+                          )}
 
-                        {/* Text content */}
-                        {msg.content && (
-                          <p className="text-sm">{msg.content}</p>
-                        )}
-
-                        {/* Image content */}
-                        {msg.image && (
-                          <img
-                            src={msg.image}
-                            className="mt-2 rounded-lg max-w-full h-auto"
-                            alt="Message attachment"
-                          />
-                        )}
-
-                        {/* Timestamp */}
-                        <p className="text-xs text-right mt-1 opacity-80">
+                          {/* Image content */}
+                          {msg.image && (
+                            <img
+                              src={msg.image}
+                              className="mt-2 rounded-lg max-w-full h-auto"
+                              alt="Message attachment"
+                            />
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 px-1 flex-shrink-0 mt-1">
                           {formatTime(msg.timestamp)}
                         </p>
                       </div>
@@ -422,9 +396,12 @@ const Chat = () => {
             ))}
           </div>
         ))}
+
+        {/* Empty div to mark the end of messages for scrolling */}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Section - Remains the same as your original code */}
+      {/* Input Section */}
       <div className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
         <div className="bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
           {/* Announcement Mode */}
@@ -445,7 +422,7 @@ const Chat = () => {
           )}
 
           {/* Poll Mode */}
-          {mode === "poll" && (
+          {/* {mode === "poll" && (
             <div className="bg-white border rounded-lg shadow-sm w-full max-w-md mx-auto p-4">
               <div className="flex flex-col space-y-2">
                 <h3 className="font-semibold tracking-tight flex items-center gap-2 text-lg">
@@ -516,7 +493,7 @@ const Chat = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Default Input */}
           {mode !== "poll" && (
@@ -580,13 +557,13 @@ const Chat = () => {
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-                <button
+                {/* <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
                   className="inline-flex items-center justify-center gap-2 h-10 w-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <Paperclip className="w-5 h-5" />
-                </button>
+                </button> */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
@@ -610,7 +587,7 @@ const Chat = () => {
                     <Megaphone className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                 )}
-                <button
+                {/* <button
                   type="button"
                   onClick={() => {
                     setMode("poll");
@@ -621,7 +598,7 @@ const Chat = () => {
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <ChartColumn className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
+                </button> */}
               </div>
             </div>
           )}
