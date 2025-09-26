@@ -6,6 +6,7 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  User,
 } from "lucide-react";
 import {useState, useRef, useEffect} from "react";
 
@@ -120,7 +121,7 @@ const ChatHeader = () => {
                     key={participant.user?.id}
                     className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors"
                   >
-                    <div className="relative flex-shrink-0">
+                    {/* <div className="relative flex-shrink-0">
                       <img
                         src={
                           participant.user.Profile ||
@@ -130,7 +131,17 @@ const ChatHeader = () => {
                         alt={participant.user.name}
                         className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
                       />
-                    </div>
+                    </div> */}
+                    {/* <p className="font-semibold text-slate-800 text-sm truncate">
+                      {userProfileData.username
+                        ? userProfileData.username
+                        : user?.name}
+                    <User/>
+                    </p> */}
+                    <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                      {/* {"U"} */}
+                      <User  className="w-4 h-4"/>
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-800 truncate">
