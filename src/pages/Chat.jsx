@@ -18,11 +18,13 @@ import {formatTime} from "../utils/utils";
 import {groupMessagesByDate, uploadToS3} from "../utils/utils";
 import ChatHeader from "./ChatHeader";
 import ChatLoader from "./ChatLoader";
+import ModalChatGIF from "./ModalChatGIF";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("");
+  const [isOpen, setIsOpenGif] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [pollOptions, setPollOptions] = useState([]);
   const [loadingState, setLoadingState] = useState(null); // null, "poll", "file", "announcement", "gif"
@@ -413,6 +415,7 @@ const Chat = () => {
     <main className="flex flex-col h-screen">
       {/* Header */}
       <ChatHeader />
+      <ModalChatGIF open={isOpen} onOpenChange={setIsOpenGif} />
 
       {/* Messages Container with ref */}
       <div
@@ -838,13 +841,13 @@ const Chat = () => {
                   </button>
                 )}
 
-                {/* <button
+                <button
                   type="button"
-                  onClick={() => fileInputRef.current.click()}
+                  onClick={() => setIsOpenGif(true)}
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
-                </button> */}
+                </button>
                 {(authUser?.trip_role === "creator" ||
                   authUser?.trip_role === "co-admin") &&
                   (loadingState === "announcement" ? (
