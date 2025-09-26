@@ -15,8 +15,38 @@ import {
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {formatTime} from "../utils/utils";
-import {groupMessagesByDate, bufferToUrl, fileToBuffer} from "../utils/utils";
+import {groupMessagesByDate, bufferToUrl} from "../utils/utils";
 import ChatHeader from "./ChatHeader";
+
+// Add this helper function inside the same file (no new imports)
+const uploadToS3 = async ({file, BASE_URL, token, folder = "chat-uploads"}) => {
+  try {
+    alert('sjsk')
+    const form = new FormData();
+    form.append("file", file);
+    // You can optionally pass folder via query or body. Using query here:
+    const endpoint = `${BASE_URL}/files/upload?folder=${encodeURIComponent(folder)}`;
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      body: form,
+    });
+
+    if (!res.ok) {
+      console.warn("[uploadToS3] Upload failed with status:", res.status);
+      return null;
+    }
+    const json = await res.json();
+    if (json?.success && json?.data?.url) {
+      return json.data;
+    }
+    return null;
+  } catch (e) {
+    console.error("[uploadToS3] Error:", e);
+    return null;
+  }
+};
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -133,29 +163,34 @@ const Chat = () => {
     )
       return;
 
-    let fileBuffer = null;
-    let imageBuffer = null;
+    let uploaded = null;
 
-    // Convert selected file to buffer if exists
-    if (selectedFile) {
-      fileBuffer = await fileToBuffer(selectedFile);
-    }
-
-    // Convert selected image to buffer if exists
-    if (selectedImage) {
-      imageBuffer = await fileToBuffer(selectedImage);
+    const fileToUpload = selectedFile || selectedImage || null;
+    if (fileToUpload) {
+      uploaded = await uploadToS3({
+        file: fileToUpload,
+        BASE_URL,
+        token,
+        folder: "chat-uploads",
+      });
     }
 
     const newMessage = {
       type: mode || "text",
       content: input,
-      image: selectedImage ? URL.createObjectURL(selectedImage) : null,
+      image:
+        selectedImage && uploaded?.url
+          ? uploaded.url
+          : selectedImage
+          ? URL.createObjectURL(selectedImage)
+          : null,
       file: selectedFile
         ? {
-            name: selectedFile.name,
-            type: selectedFile.type,
-            size: selectedFile.size,
-            url: URL.createObjectURL(selectedFile),
+            name: uploaded?.name || selectedFile.name,
+            type: uploaded?.type || selectedFile.type,
+            size: uploaded?.size ?? selectedFile.size,
+            url: uploaded?.url || URL.createObjectURL(selectedFile),
+            key: uploaded?.key,
           }
         : null,
       poll: mode === "poll" ? pollOptions : null,
@@ -171,7 +206,18 @@ const Chat = () => {
         content: input,
         type: mode || "text",
         timestamp: new Date().toISOString(),
-        file: fileBuffer || imageBuffer || null,
+        file: uploaded
+          ? {
+              url: uploaded.url,
+              key: uploaded.key,
+              name: uploaded.name,
+              type: uploaded.type,
+              size: uploaded.size,
+            }
+          : null,
+        // Optional convenience fields if your server expects them
+        fileUrl: uploaded?.url,
+        fileKey: uploaded?.key,
       });
     } else {
       console.warn("Socket not connected yet");
@@ -387,6 +433,7 @@ const Chat = () => {
                             "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
                             "/placeholder.svg" ||
                             "/placeholder.svg" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
                           alt={msg?.sender?.name || "User"}
@@ -430,6 +477,7 @@ const Chat = () => {
                           src={
                             msg?.sender?.Profile ||
                             "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg" ||
                             "/placeholder.svg" ||
                             "/placeholder.svg"
