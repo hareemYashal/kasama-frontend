@@ -15,38 +15,8 @@ import {
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {formatTime} from "../utils/utils";
-import {groupMessagesByDate, bufferToUrl} from "../utils/utils";
+import {groupMessagesByDate,  uploadToS3} from "../utils/utils";
 import ChatHeader from "./ChatHeader";
-
-// Add this helper function inside the same file (no new imports)
-const uploadToS3 = async ({file, BASE_URL, token, folder = "chat-uploads"}) => {
-  try {
-    alert('sjsk')
-    const form = new FormData();
-    form.append("file", file);
-    // You can optionally pass folder via query or body. Using query here:
-    const endpoint = `${BASE_URL}/files/upload?folder=${encodeURIComponent(folder)}`;
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
-      body: form,
-    });
-
-    if (!res.ok) {
-      console.warn("[uploadToS3] Upload failed with status:", res.status);
-      return null;
-    }
-    const json = await res.json();
-    if (json?.success && json?.data?.url) {
-      return json.data;
-    }
-    return null;
-  } catch (e) {
-    console.error("[uploadToS3] Error:", e);
-    return null;
-  }
-};
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -84,10 +54,46 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  const getFileUrl = async (fileKey) => {
+    const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
 
-  // Socket connection
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const json = await res.json();
+
+    if (json?.success && json?.data?.url) {
+      const result = json.data.url;
+      return result;
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (!tripId || !token) return;
+
+    const processMessages = async (msgs) => {
+      const processed = await Promise.all(
+        msgs.map(async (msg) => {
+          if (msg.fileUrl) {
+            try {
+              const fileUrl = await getFileUrl(msg.fileUrl);
+              console.log();
+              return {...msg, fileUrl};
+            } catch (error) {
+              console.error("Error getting file URL:", error);
+              return msg;
+            }
+          }
+          return msg;
+        })
+      );
+      setMessages(processed);
+    };
 
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("joinTripChat", {tripId, userId: authUerId});
@@ -103,43 +109,9 @@ const Chat = () => {
       s.emit("getMessages", {tripId});
     });
 
-    s.on("messages", (msgs) => {
-      const processedMessages = msgs.map((msg) => {
-        if (msg.file && msg.file.buffer) {
-          // Convert buffer data to proper file structure
-          return {
-            ...msg,
-            file: {
-              name: msg.file.name || "Unknown File",
-              type: msg.file.type || "application/octet-stream",
-              size: msg.file.size || 0,
-              buffer: msg.file.buffer,
-              url: msg.file.buffer
-                ? bufferToUrl(msg.file, msg.file.type)
-                : null,
-            },
-          };
-        }
-        return msg;
-      });
-      setMessages(processedMessages);
-    });
-
+    s.on("messages", processMessages);
     s.on("newMessage", (msg) => {
-      let processedMessage = msg;
-      if (msg.file && msg.file.buffer) {
-        processedMessage = {
-          ...msg,
-          file: {
-            name: msg.file.name || "Unknown File",
-            type: msg.file.type || "application/octet-stream",
-            size: msg.file.size || 0,
-            buffer: msg.file.buffer,
-            url: bufferToUrl(msg.file, msg.file.type),
-          },
-        };
-      }
-      setMessages((prev) => [...prev, processedMessage]);
+      setMessages((prev) => [...prev, msg]);
     });
 
     s.on("disconnect", (reason) => {
@@ -296,11 +268,16 @@ const Chat = () => {
                         </p>
                       </div>
                     </div>
-                    {msg.file && (
+                    {msg.fileUrl && (
                       <img
-                        src={msg.file || "/placeholder.svg"}
-                        className="w-full h-auto rounded-lg mb-2"
+                        src={msg.fileUrl}
+                        className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        // className="w-full h-auto rounded-lg mb-2"
                         alt="Announcement"
+                        onError={(e) => {
+                          console.error("Error loading image:", e);
+                          e.target.style.display = "none";
+                        }}
                       />
                     )}
                     {/* {msg.file && renderFileAttachment(msg.file)} */}
@@ -339,57 +316,47 @@ const Chat = () => {
                           </div>
 
                           <div className="p-6 pt-0 space-y-2">
-                            {msg?.poll?.map((opt, i) => {
-                              const totalVotes = msg.poll.reduce(
-                                (a, b) => a + b.votes,
-                                0
-                              );
-                              const percent = totalVotes
-                                ? (opt.votes / totalVotes) * 100
-                                : 0;
-
-                              return (
-                                <div key={i} className="space-y-1">
-                                  <button
-                                    className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
-                                      ${
-                                        opt.votes > 0
-                                          ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
-                                          : "border-slate-200 bg-white hover:bg-slate-50"
-                                      }`}
-                                  >
-                                    <div className="flex-1">
-                                      <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm font-medium flex items-center gap-2">
-                                          {opt.label}
-                                          {opt.votes > 0 && (
-                                            <Check className="w-4 h-4 text-blue-600" />
-                                          )}
-                                        </span>
-                                        <span className="text-xs text-slate-500">
-                                          {opt.votes} ({Math.round(percent)}%)
-                                        </span>
-                                      </div>
-                                      <div
-                                        role="progressbar"
-                                        aria-valuemin={0}
-                                        aria-valuemax={100}
-                                        className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
-                                      >
-                                        <div
-                                          className="h-full w-full flex-1 bg-primary transition-all"
-                                          style={{
-                                            transform: `translateX(${
-                                              100 - percent
-                                            }%)`,
-                                          }}
-                                        />
-                                      </div>
+                            {msg?.poll?.map((opt, i) => (
+                              <div key={i} className="space-y-1">
+                                <button
+                                  className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
+                                    ${
+                                      opt.votes > 0
+                                        ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
+                                        : "border-slate-200 bg-white hover:bg-slate-50"
+                                    }`}
+                                >
+                                  <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-sm font-medium flex items-center gap-2">
+                                        {opt.label}
+                                        {opt.votes > 0 && (
+                                          <Check className="w-4 h-4 text-blue-600" />
+                                        )}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        {opt.votes} ({Math.round(percent)}%)
+                                      </span>
                                     </div>
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                    <div
+                                      role="progressbar"
+                                      aria-valuemin={0}
+                                      aria-valuemax={100}
+                                      className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
+                                    >
+                                      <div
+                                        className="h-full w-full flex-1 bg-primary transition-all"
+                                        style={{
+                                          transform: `translateX(${
+                                            100 - percent
+                                          }%)`,
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -456,11 +423,15 @@ const Chat = () => {
                             <p className="text-sm">{msg.content}</p>
                           )}
 
-                          {msg.image && (
+                          {msg.fileUrl && (
                             <img
-                              src={msg.image || "/placeholder.svg"}
+                              src={msg.fileUrl}
                               className="mt-2 rounded-lg max-w-full h-auto"
                               alt="Message attachment"
+                              onError={(e) => {
+                                console.error("Error loading image:", e);
+                                e.target.style.display = "none";
+                              }}
                             />
                           )}
 
@@ -706,13 +677,13 @@ const Chat = () => {
                   <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
 
-                <button
+                {/* <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
+                </button> */}
                 {(authUser?.trip_role === "creator" ||
                   authUser?.trip_role === "co-admin") && (
                   <button
