@@ -11,13 +11,13 @@ import {
   Plus,
   Check,
   FileText,
-  Loader,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {formatTime} from "../utils/utils";
 import {groupMessagesByDate, uploadToS3} from "../utils/utils";
 import ChatHeader from "./ChatHeader";
+import ChatLoader from "./ChatLoader";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -25,13 +25,7 @@ const Chat = () => {
   const [mode, setMode] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [pollOptions, setPollOptions] = useState([]);
-  const [laodingstate, setLoadingState] = useState([
-    null,
-    "poll",
-    "file",
-    "announcement",
-    "gif",
-  ]);
+  const [loadingState, setLoadingState] = useState(null); // null, "poll", "file", "announcement", "gif"
   const fileInputRef = useRef();
   const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
@@ -201,82 +195,88 @@ const Chat = () => {
   }, [tripId, token, authUerId, BASE_URL]);
 
   const handleSendMessage = async () => {
-    try {
-      setIsLoading(true);
-      if (selectedFiles?.length > 0) setLoadingState("file");
-      setLoadingState(mode);
+    setIsLoading(true);
 
-      if (
-        !input &&
-        selectedFiles.length === 0 &&
-        !(mode === "poll" && pollOptions.length)
-      )
-        return;
+    if (selectedFiles?.length > 0) {
+      setLoadingState("file");
+    } else if (mode === "announcement") {
+      setLoadingState("announcement");
+    } else if (mode === "poll") {
+      setLoadingState("poll");
+    } else if (mode === "gif") {
+      setLoadingState("gif");
+    } else {
+      setLoadingState("text");
+    }
 
-      const uploadedFiles = [];
+    if (
+      !input &&
+      selectedFiles.length === 0 &&
+      !(mode === "poll" && pollOptions.length)
+    )
+      return;
 
-      if (selectedFiles.length > 0) {
-        for (const file of selectedFiles) {
-          const uploaded = await uploadToS3({
-            file: file,
-            BASE_URL,
-            token,
-            folder: "chat-uploads",
-          });
-          if (uploaded) {
-            uploadedFiles.push(uploaded);
-          }
+    const uploadedFiles = [];
+
+    if (selectedFiles.length > 0) {
+      for (const file of selectedFiles) {
+        const uploaded = await uploadToS3({
+          file: file,
+          BASE_URL,
+          token,
+          folder: "chat-uploads",
+        });
+        if (uploaded) {
+          uploadedFiles.push(uploaded);
         }
       }
+    }
 
-      const newMessage = {
-        type: mode || "text",
+    const newMessage = {
+      type: mode || "text",
+      content: input,
+      attachments: uploadedFiles.map((file) => file.key),
+      attachmentUrls: uploadedFiles.map((file) => file.url),
+      files: uploadedFiles.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        url: file.url,
+        key: file.key,
+      })),
+      poll: mode === "poll" ? pollOptions : null,
+      timestamp: new Date().toISOString(),
+      senderId: authUerId,
+      sender: {name: authUser?.name || "You"},
+    };
+
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("sendMessage", {
+        tripId,
+        senderId: authUerId,
         content: input,
+        type: mode || "text",
+        timestamp: new Date().toISOString(),
         attachments: uploadedFiles.map((file) => file.key),
-        attachmentUrls: uploadedFiles.map((file) => file.url),
         files: uploadedFiles.map((file) => ({
+          url: file.url,
+          key: file.key,
           name: file.name,
           type: file.type,
           size: file.size,
-          url: file.url,
-          key: file.key,
         })),
-        poll: mode === "poll" ? pollOptions : null,
-        timestamp: new Date().toISOString(),
-        senderId: authUerId,
-        sender: {name: authUser?.name || "You"},
-      };
-
-      if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit("sendMessage", {
-          tripId,
-          senderId: authUerId,
-          content: input,
-          type: mode || "text",
-          timestamp: new Date().toISOString(),
-          attachments: uploadedFiles.map((file) => file.key),
-          files: uploadedFiles.map((file) => ({
-            url: file.url,
-            key: file.key,
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          })),
-        });
-      } else {
-        console.warn("Socket not connected yet");
-      }
-
-      setMessages((prev) => [...prev, newMessage]);
-      setInput("");
-      setSelectedFiles([]);
-      setMode("");
-      setPollOptions([]);
-      setIsLoading(false);
-      setLoadingState(null);
-    } catch {
-      console.log("error");
+      });
+    } else {
+      console.warn("Socket not connected yet");
     }
+
+    setMessages((prev) => [...prev, newMessage]);
+    setInput("");
+    setSelectedFiles([]);
+    setMode("");
+    setPollOptions([]);
+    setIsLoading(false);
+    setLoadingState(null);
   };
 
   const handleFileUpload = (e) => {
@@ -571,6 +571,7 @@ const Chat = () => {
                             msg?.sender?.profilePic ||
                             "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
                             "/placeholder.svg" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
                           alt={msg?.sender?.name || "User"}
@@ -606,6 +607,7 @@ const Chat = () => {
                           src={
                             msg?.sender?.Profile ||
                             "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                            "/placeholder.svg" ||
                             "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
@@ -784,7 +786,11 @@ const Chat = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={(!input && selectedFiles.length === 0) || isLoading}
+                  disabled={
+                    (!input && selectedFiles.length === 0) ||
+                    isLoading ||
+                    loadingState !== null
+                  }
                   className={`inline-flex items-center justify-center gap-2 text-sm font-medium rounded-full w-10 h-10 md:w-12 md:h-12 flex-shrink-0 shadow-lg transition-all
                     ${
                       mode === "announcement"
@@ -815,8 +821,8 @@ const Chat = () => {
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                {laodingstate == "file" ? (
-                  <Loader />
+                {loadingState === "file" ? (
+                  <ChatLoader />
                 ) : (
                   <button
                     type="button"
@@ -841,8 +847,8 @@ const Chat = () => {
                 </button> */}
                 {(authUser?.trip_role === "creator" ||
                   authUser?.trip_role === "co-admin") &&
-                  (laodingstate === "announcement" ? (
-                    <Loader />
+                  (loadingState === "announcement" ? (
+                    <ChatLoader />
                   ) : (
                     <button
                       type="button"
