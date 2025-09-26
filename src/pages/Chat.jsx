@@ -11,6 +11,7 @@ import {
   Plus,
   Check,
   FileText,
+  User,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
@@ -381,17 +382,21 @@ const Chat = () => {
                     >
                       {/* Show profile picture only for others' messages (left side) */}
                       {msg.senderId !== authUerId && (
-                        <img
-                          src={
-                            msg?.sender?.profilePic ||
-                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                            "/placeholder.svg" ||
-                            "/placeholder.svg" ||
-                            "/placeholder.svg"
-                          }
-                          alt={msg?.sender?.name || "User"}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                        // <img
+                        //   src={
+                        //     msg?.sender?.profilePic ||
+                        //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                        //     "/placeholder.svg" ||
+                        //     "/placeholder.svg" ||
+                        //     "/placeholder.svg"
+                        //   }
+                        //   alt={msg?.sender?.name || "User"}
+                        //   className="w-8 h-8 rounded-full object-cover"
+                        // />
+                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                          {/* {"U"} */}
+                          <User className="w-4 h-4" />
+                        </span>
                       )}
                       <div className="flex flex-col items-start">
                         <div
@@ -426,17 +431,21 @@ const Chat = () => {
 
                       {/* Show profile picture for current user messages (right side) */}
                       {msg.senderId === authUerId && (
-                        <img
-                          src={
-                            msg?.sender?.Profile ||
-                            "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                            "/placeholder.svg" ||
-                            "/placeholder.svg" ||
-                            "/placeholder.svg"
-                          }
-                          alt="Me"
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                        // <img
+                        //   src={
+                        //     msg?.sender?.Profile ||
+                        //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                        //     "/placeholder.svg" ||
+                        //     "/placeholder.svg" ||
+                        //     "/placeholder.svg"
+                        //   }
+                        //   alt="Me"
+                        //   className="w-8 h-8 rounded-full object-cover"
+                        // />
+                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                          {/* {"U"} */}
+                          <User className="w-4 h-4" />
+                        </span>
                       )}
                     </div>
                   </div>
