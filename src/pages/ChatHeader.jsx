@@ -89,9 +89,9 @@ const ChatHeader = () => {
             <ChevronDown className="w-4 h-4" />
           )}
         </button>
-        <div className="flex items-center gap-1 text-blue-600">
+        {/* <div className="flex items-center gap-1 text-blue-600">
           <WifiOff className="w-3 h-3 md:w-4 md:h-4" />
-        </div>
+        </div> */}
 
         {/* Dropdown Participants List */}
         {isDropdownOpen && (

@@ -11,20 +11,27 @@ import {
   Plus,
   Check,
   FileText,
+  Loader,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {formatTime} from "../utils/utils";
-import {groupMessagesByDate,  uploadToS3} from "../utils/utils";
+import {groupMessagesByDate, uploadToS3} from "../utils/utils";
 import ChatHeader from "./ChatHeader";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("");
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [pollOptions, setPollOptions] = useState([]);
+  const [laodingstate, setLoadingState] = useState([
+    null,
+    "poll",
+    "file",
+    "announcement",
+    "gif",
+  ]);
   const fileInputRef = useRef();
   const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
@@ -35,6 +42,7 @@ const Chat = () => {
   const authUser = useSelector((s) => s.user.user);
   const authUerId = authUser?.id;
   const BASE_URL = import.meta.env.VITE_API_URL;
+  const [isLoading, setIsLoading] = useState(false);
 
   const socketRef = useRef(null);
 
@@ -79,19 +87,54 @@ const Chat = () => {
     const processMessages = async (msgs) => {
       const processed = await Promise.all(
         msgs.map(async (msg) => {
+          if (msg.attachments && msg.attachments.length > 0) {
+            try {
+              const attachmentUrls = await Promise.all(
+                msg.attachments.map(async (attachment) => {
+                  const fileUrl = await getFileUrl(attachment);
+
+                  return fileUrl;
+                })
+              );
+              const processedMsg = {
+                ...msg,
+                attachmentUrls: attachmentUrls.filter((url) => url !== null),
+                files:
+                  msg.files ||
+                  msg.attachments.map((attachment, index) => ({
+                    name: `attachment-${index + 1}`,
+                    type: "application/octet-stream",
+                    url: attachmentUrls[index],
+                    key: attachment,
+                  })),
+              };
+
+              return processedMsg;
+            } catch (error) {
+              console.error("[v0] Error getting attachment URLs:", error);
+              return msg;
+            }
+          }
+          // Keep backward compatibility for old single file messages
           if (msg.fileUrl) {
             try {
               const fileUrl = await getFileUrl(msg.fileUrl);
-              console.log();
+              console.log(
+                "[v0] Got file URL for old format:",
+                msg.fileUrl,
+                "->",
+                fileUrl
+              );
               return {...msg, fileUrl};
             } catch (error) {
-              console.error("Error getting file URL:", error);
+              console.error("[v0] Error getting file URL:", error);
               return msg;
             }
           }
           return msg;
         })
       );
+      console.log("[v0] Final processed messages:", processed);
       setMessages(processed);
     };
 
@@ -110,8 +153,39 @@ const Chat = () => {
     });
 
     s.on("messages", processMessages);
-    s.on("newMessage", (msg) => {
-      setMessages((prev) => [...prev, msg]);
+    s.on("newMessage", async (msg) => {
+      console.log("[v0] Received new message:", msg);
+      if (msg.attachments && msg.attachments.length > 0) {
+        try {
+          const attachmentUrls = await Promise.all(
+            msg.attachments.map(async (attachment) => {
+              const fileUrl = await getFileUrl(attachment);
+              return fileUrl;
+            })
+          );
+          const processedMsg = {
+            ...msg,
+            attachmentUrls: attachmentUrls.filter((url) => url !== null),
+            files:
+              msg.files ||
+              msg.attachments.map((attachment, index) => ({
+                name: `attachment-${index + 1}`,
+                type: "application/octet-stream",
+                url: attachmentUrls[index],
+                key: attachment,
+              })),
+          };
+          setMessages((prev) => [...prev, processedMsg]);
+        } catch (error) {
+          console.error(
+            "[v0] Error processing new message attachments:",
+            error
+          );
+          setMessages((prev) => [...prev, msg]);
+        }
+      } else {
+        setMessages((prev) => [...prev, msg]);
+      }
     });
 
     s.on("disconnect", (reason) => {
@@ -127,96 +201,200 @@ const Chat = () => {
   }, [tripId, token, authUerId, BASE_URL]);
 
   const handleSendMessage = async () => {
-    if (
-      !input &&
-      !selectedImage &&
-      !selectedFile &&
-      !(mode === "poll" && pollOptions.length)
-    )
-      return;
+    try {
+      setIsLoading(true);
+      if (selectedFiles?.length > 0) setLoadingState("file");
+      setLoadingState(mode);
 
-    let uploaded = null;
+      if (
+        !input &&
+        selectedFiles.length === 0 &&
+        !(mode === "poll" && pollOptions.length)
+      )
+        return;
 
-    const fileToUpload = selectedFile || selectedImage || null;
-    if (fileToUpload) {
-      uploaded = await uploadToS3({
-        file: fileToUpload,
-        BASE_URL,
-        token,
-        folder: "chat-uploads",
-      });
-    }
+      const uploadedFiles = [];
 
-    const newMessage = {
-      type: mode || "text",
-      content: input,
-      image:
-        selectedImage && uploaded?.url
-          ? uploaded.url
-          : selectedImage
-          ? URL.createObjectURL(selectedImage)
-          : null,
-      file: selectedFile
-        ? {
-            name: uploaded?.name || selectedFile.name,
-            type: uploaded?.type || selectedFile.type,
-            size: uploaded?.size ?? selectedFile.size,
-            url: uploaded?.url || URL.createObjectURL(selectedFile),
-            key: uploaded?.key,
+      if (selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          const uploaded = await uploadToS3({
+            file: file,
+            BASE_URL,
+            token,
+            folder: "chat-uploads",
+          });
+          if (uploaded) {
+            uploadedFiles.push(uploaded);
           }
-        : null,
-      poll: mode === "poll" ? pollOptions : null,
-      timestamp: new Date().toISOString(),
-      senderId: authUerId,
-      sender: {name: authUser?.name || "You"},
-    };
+        }
+      }
 
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit("sendMessage", {
-        tripId,
-        senderId: authUerId,
-        content: input,
+      const newMessage = {
         type: mode || "text",
+        content: input,
+        attachments: uploadedFiles.map((file) => file.key),
+        attachmentUrls: uploadedFiles.map((file) => file.url),
+        files: uploadedFiles.map((file) => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: file.url,
+          key: file.key,
+        })),
+        poll: mode === "poll" ? pollOptions : null,
         timestamp: new Date().toISOString(),
-        file: uploaded
-          ? {
-              url: uploaded.url,
-              key: uploaded.key,
-              name: uploaded.name,
-              type: uploaded.type,
-              size: uploaded.size,
-            }
-          : null,
-        // Optional convenience fields if your server expects them
-        fileUrl: uploaded?.url,
-        fileKey: uploaded?.key,
-      });
-    } else {
-      console.warn("Socket not connected yet");
+        senderId: authUerId,
+        sender: {name: authUser?.name || "You"},
+      };
+
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit("sendMessage", {
+          tripId,
+          senderId: authUerId,
+          content: input,
+          type: mode || "text",
+          timestamp: new Date().toISOString(),
+          attachments: uploadedFiles.map((file) => file.key),
+          files: uploadedFiles.map((file) => ({
+            url: file.url,
+            key: file.key,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          })),
+        });
+      } else {
+        console.warn("Socket not connected yet");
+      }
+
+      setMessages((prev) => [...prev, newMessage]);
+      setInput("");
+      setSelectedFiles([]);
+      setMode("");
+      setPollOptions([]);
+      setIsLoading(false);
+      setLoadingState(null);
+    } catch {
+      console.log("error");
     }
-
-    setMessages((prev) => [...prev, newMessage]);
-    setInput("");
-    setSelectedImage(null);
-    setSelectedFile(null);
-    setMode("");
-    setPollOptions([]);
-  };
-
-  const handleImageUpload = (e) => {
-    if (e.target.files[0]) setSelectedImage(e.target.files[0]);
   };
 
   const handleFileUpload = (e) => {
-    if (e.target.files[0]) {
-      const file = e.target.files[0];
-      // Check if it's an image, if so use image handler
-      if (file.type.startsWith("image/")) {
-        setSelectedImage(file);
-      } else {
-        setSelectedFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      const totalFiles = selectedFiles.length + newFiles.length;
+
+      // Limit to 10 files maximum
+      if (totalFiles > 10) {
+        alert("You can only attach up to 10 files at once.");
+        return;
       }
+
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
     }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setSelectedFiles((prev) =>
+      prev.filter((_, index) => index !== indexToRemove)
+    );
+  };
+
+  const truncateFileName = (fileName, maxLength = 15) => {
+    if (fileName.length <= maxLength) return fileName;
+    const extension = fileName.split(".").pop();
+    const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."));
+    const truncatedName =
+      nameWithoutExt.substring(0, maxLength - extension.length - 4) + "...";
+    return `${truncatedName}.${extension}`;
+  };
+
+  const isImageFile = (fileName, fileUrl) => {
+    if (!fileName && !fileUrl) return false;
+    const fileToCheck = fileName || fileUrl;
+    return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileToCheck);
+  };
+
+  const renderAttachments = (msg) => {
+    const attachments = msg.files || [];
+    const attachmentUrls = msg.attachmentUrls || [];
+
+    if (attachments.length === 0 && !msg.fileUrl) return null;
+
+    // Handle old single file format for backward compatibility
+    if (msg.fileUrl && !attachments.length) {
+      // if (!isImageFile(null, msg.fileUrl)) {
+      return (
+        <img
+          src={msg.fileUrl || "/placeholder.svg"}
+          className="mt-2 rounded-lg max-w-full h-auto"
+          alt="Message attachment"
+        />
+      );
+      // }
+      // return (
+      //   <div className="mt-2">
+      //     <div className="flex items-center gap-3 p-2 bg-white/10 rounded border">
+      //       <FileText className="w-6 h-6 text-current" />
+      //       <div className="flex-1 min-w-0">
+      //         <p className="text-sm font-medium truncate">Attachment</p>
+      //       </div>
+      //       <a
+      //         href={msg.fileUrl}
+      //         target="_blank"
+      //         rel="noopener noreferrer"
+      //         className="text-xs px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition-colors"
+      //       >
+      //         Open
+      //       </a>
+      //     </div>
+      //   </div>
+      // )
+    }
+
+    return (
+      <div className="mt-2 space-y-2">
+        {attachments.map((file, index) => {
+          const fileUrl = attachmentUrls[index] || file.url || file.fileUrl;
+
+          // if (isImageFile(file.name, fileUrl)) {
+          return (
+            <img
+              key={index}
+              src={fileUrl || "/placeholder.svg"}
+              className="rounded-lg max-w-full h-auto"
+              alt={file.name || "Attachment"}
+            />
+          );
+          // } else {
+          //   return (
+          //     <div
+          //       key={index}
+          //       className="flex items-center gap-3 p-2 bg-white/10 rounded border"
+          //     >
+          //       <FileText className="w-6 h-6 text-current" />
+          //       <div className="flex-1 min-w-0">
+          //         <p className="text-sm font-medium truncate">{file.name}</p>
+          //         <p className="text-xs opacity-75">
+          //           {file.size ? `${(file.size / 1024).toFixed(1)} KB` : "File"}
+          //         </p>
+          //       </div>
+          //       {/* {fileUrl && (
+          //         <a
+          //           href={fileUrl}
+          //           target="_blank"
+          //           rel="noopener noreferrer"
+          //           className="text-xs px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition-colors"
+          //         >
+          //           Open
+          //         </a>
+          //       )} */}
+          //     </div>
+          //   );
+          // }
+        })}
+      </div>
+    );
   };
 
   const handleAddPollOption = () => {
@@ -268,19 +446,7 @@ const Chat = () => {
                         </p>
                       </div>
                     </div>
-                    {msg.fileUrl && (
-                      <img
-                        src={msg.fileUrl}
-                        className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                        // className="w-full h-auto rounded-lg mb-2"
-                        alt="Announcement"
-                        onError={(e) => {
-                          console.error("Error loading image:", e);
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    )}
-                    {/* {msg.file && renderFileAttachment(msg.file)} */}
+                    {renderAttachments(msg)}
                     {msg.content && (
                       <p className="text-slate-800 font-semibold text-base">
                         {msg.content}
@@ -316,47 +482,53 @@ const Chat = () => {
                           </div>
 
                           <div className="p-6 pt-0 space-y-2">
-                            {msg?.poll?.map((opt, i) => (
-                              <div key={i} className="space-y-1">
-                                <button
-                                  className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
-                                    ${
-                                      opt.votes > 0
-                                        ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
-                                        : "border-slate-200 bg-white hover:bg-slate-50"
-                                    }`}
-                                >
-                                  <div className="flex-1">
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="text-sm font-medium flex items-center gap-2">
-                                        {opt.label}
-                                        {opt.votes > 0 && (
-                                          <Check className="w-4 h-4 text-blue-600" />
-                                        )}
-                                      </span>
-                                      <span className="text-xs text-slate-500">
-                                        {opt.votes} ({Math.round(percent)}%)
-                                      </span>
-                                    </div>
-                                    <div
-                                      role="progressbar"
-                                      aria-valuemin={0}
-                                      aria-valuemax={100}
-                                      className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
-                                    >
+                            {msg?.poll?.map((opt, i) => {
+                              const percent =
+                                (opt.votes /
+                                  msg.poll.reduce((a, b) => a + b.votes, 0)) *
+                                100;
+                              return (
+                                <div key={i} className="space-y-1">
+                                  <button
+                                    className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
+                                      ${
+                                        opt.votes > 0
+                                          ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
+                                          : "border-slate-200 bg-white hover:bg-slate-50"
+                                      }`}
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium flex items-center gap-2">
+                                          {opt.label}
+                                          {opt.votes > 0 && (
+                                            <Check className="w-4 h-4 text-blue-600" />
+                                          )}
+                                        </span>
+                                        <span className="text-xs text-slate-500">
+                                          {opt.votes} ({Math.round(percent)}%)
+                                        </span>
+                                      </div>
                                       <div
-                                        className="h-full w-full flex-1 bg-primary transition-all"
-                                        style={{
-                                          transform: `translateX(${
-                                            100 - percent
-                                          }%)`,
-                                        }}
-                                      />
+                                        role="progressbar"
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
+                                      >
+                                        <div
+                                          className="h-full w-full flex-1 bg-primary transition-all"
+                                          style={{
+                                            transform: `translateX(${
+                                              100 - percent
+                                            }%)`,
+                                          }}
+                                        />
+                                      </div>
                                     </div>
-                                  </div>
-                                </button>
-                              </div>
-                            ))}
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -399,8 +571,6 @@ const Chat = () => {
                             msg?.sender?.profilePic ||
                             "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
                             "/placeholder.svg" ||
-                            "/placeholder.svg" ||
-                            "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
                           alt={msg?.sender?.name || "User"}
@@ -423,19 +593,7 @@ const Chat = () => {
                             <p className="text-sm">{msg.content}</p>
                           )}
 
-                          {msg.fileUrl && (
-                            <img
-                              src={msg.fileUrl}
-                              className="mt-2 rounded-lg max-w-full h-auto"
-                              alt="Message attachment"
-                              onError={(e) => {
-                                console.error("Error loading image:", e);
-                                e.target.style.display = "none";
-                              }}
-                            />
-                          )}
-
-                          {/* {msg.file && renderFileAttachment(msg.file)} */}
+                          {renderAttachments(msg)}
                         </div>
                         <p className="text-xs text-slate-400 px-1 flex-shrink-0 mt-1">
                           {formatTime(msg.timestamp)}
@@ -448,8 +606,6 @@ const Chat = () => {
                           src={
                             msg?.sender?.Profile ||
                             "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                            "/placeholder.svg" ||
-                            "/placeholder.svg" ||
                             "/placeholder.svg" ||
                             "/placeholder.svg"
                           }
@@ -489,39 +645,36 @@ const Chat = () => {
             </div>
           )}
 
-          {(selectedImage || selectedFile) && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">
-                  {selectedImage ? "Image Preview" : "File Selected"}
-                </span>
-                <button
-                  onClick={() => {
-                    setSelectedImage(null);
-                    setSelectedFile(null);
-                  }}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              {selectedImage && (
-                <img
-                  src={URL.createObjectURL(selectedImage) || "/placeholder.svg"}
-                  alt="Preview"
-                  className="max-w-full h-32 object-cover rounded-lg"
-                />
-              )}
-              {selectedFile && (
-                <div className="flex items-center gap-3 p-2 bg-white rounded border">
-                  <FileText className="w-6 h-6 text-slate-600" />
-                  <div>
-                    <p className="text-sm font-medium">{selectedFile.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
-                    </p>
+          {selectedFiles.length > 0 && (
+            <div className="w-full">
+              <div className="flex flex-wrap gap-1 mb-2 max-h-20 overflow-y-auto">
+                {selectedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="rounded-full border font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5 py-1 px-2 flex-shrink-0 text-xs"
+                    // className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-sm max-w-[200px]"
+                  >
+                    {file.type.startsWith("image/") ? (
+                      <ImageIcon className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                    )}
+                    <span className="truncate flex-1 min-w-0" title={file.name}>
+                      {truncateFileName(file.name)}
+                    </span>
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="text-slate-400 hover:text-slate-600 flex-shrink-0 ml-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
-                </div>
+                ))}
+              </div>
+              {selectedFiles.length >= 10 && (
+                <p className="text-xs text-amber-600 mb-2">
+                  Maximum 10 files allowed
+                </p>
               )}
             </div>
           )}
@@ -615,7 +768,7 @@ const Chat = () => {
                     placeholder={
                       mode === "announcement"
                         ? "Share an important announcement..."
-                        : "Type a message..."
+                        : "Type your message..."
                     }
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -631,7 +784,7 @@ const Chat = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={!input && !selectedImage && !selectedFile}
+                  disabled={(!input && selectedFiles.length === 0) || isLoading}
                   className={`inline-flex items-center justify-center gap-2 text-sm font-medium rounded-full w-10 h-10 md:w-12 md:h-12 flex-shrink-0 shadow-lg transition-all
                     ${
                       mode === "announcement"
@@ -639,7 +792,7 @@ const Chat = () => {
                         : "bg-blue-500 hover:bg-blue-600 text-white"
                     }
                     ${
-                      !input && !selectedImage && !selectedFile
+                      !input && selectedFiles.length === 0
                         ? "opacity-50 cursor-not-allowed"
                         : "opacity-100"
                     }
@@ -657,25 +810,27 @@ const Chat = () => {
               <div className="flex items-center gap-1 flex-wrap">
                 <input
                   type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <input
-                  type="file"
+                  multiple
                   ref={generalFileInputRef}
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-
-                <button
-                  type="button"
-                  onClick={() => generalFileInputRef.current.click()}
-                  className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                >
-                  <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
+                {laodingstate == "file" ? (
+                  <Loader />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => generalFileInputRef.current.click()}
+                    disabled={selectedFiles.length >= 10}
+                    className={`inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full transition-colors ${
+                      selectedFiles.length >= 10
+                        ? "text-slate-400 cursor-not-allowed"
+                        : "text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                )}
 
                 {/* <button
                   type="button"
@@ -685,21 +840,24 @@ const Chat = () => {
                   <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
                 </button> */}
                 {(authUser?.trip_role === "creator" ||
-                  authUser?.trip_role === "co-admin") && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setMode(mode === "announcement" ? "" : "announcement")
-                    }
-                    className={`inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full transition-colors ${
-                      mode === "announcement"
-                        ? "bg-amber-100 text-amber-500"
-                        : "bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Megaphone className="w-4 h-4 md:w-5 md:h-5" />
-                  </button>
-                )}
+                  authUser?.trip_role === "co-admin") &&
+                  (laodingstate === "announcement" ? (
+                    <Loader />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMode(mode === "announcement" ? "" : "announcement")
+                      }
+                      className={`inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full transition-colors ${
+                        mode === "announcement"
+                          ? "bg-amber-100 text-amber-500"
+                          : "bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                      }`}
+                    >
+                      <Megaphone className="w-4 h-4 md:w-5 md:h-5" />
+                    </button>
+                  ))}
                 {/* <button
                   type="button"
                   onClick={() => {
