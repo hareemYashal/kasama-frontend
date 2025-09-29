@@ -11,7 +11,6 @@ import {
   Check,
   FileText,
   User,
-  Plug,
   Plus,
 } from "lucide-react";
 import {useSelector} from "react-redux";
@@ -88,11 +87,6 @@ const Chat = () => {
   };
 
   const handleAddReaction = (messageId, reactionType) => {
-    console.log("[v0] Frontend adding reaction:", {
-      messageId,
-      reactionType,
-      userId: authUerId,
-    });
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("addReaction", {
         messageId,
@@ -104,11 +98,6 @@ const Chat = () => {
   };
 
   const handleRemoveReaction = (messageId, reactionType) => {
-    console.log("[v0] Frontend removing reaction:", {
-      messageId,
-      reactionType,
-      userId: authUerId,
-    });
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("removeReaction", {
         messageId,
@@ -172,23 +161,7 @@ const Chat = () => {
               return msg;
             }
           }
-          // Keep backward compatibility for old single file messages
-          // if (msg.fileUrl) {
-          //   try {
-          //     const fileUrl = await getFileUrl(msg.fileUrl);
-          //     console.log(
-          //       "[v0] Got file URL for old format:",
-          //       msg.fileUrl,
-          //       "->",
-          //       fileUrl
-          //     );
-          //     return {...msg, fileUrl};
-          //   }
-          //   catch (error) {
-          //     console.error("[v0] Error getting file URL:", error);
-          //     return msg;
-          //   }
-          // }
+
           return msg;
         })
       );
@@ -254,10 +227,6 @@ const Chat = () => {
     });
 
     s.on("reactionUpdated", ({messageId, reactions: updatedReactions}) => {
-      console.log("[v0] Frontend received reaction update:", {
-        messageId,
-        reactions: updatedReactions,
-      });
       setReactions((prev) => ({
         ...prev,
         [messageId]: updatedReactions,
