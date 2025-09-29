@@ -11,7 +11,6 @@ import {
   Check,
   FileText,
   User,
-  Plug,
   Plus,
 } from "lucide-react";
 import {useSelector} from "react-redux";
@@ -21,10 +20,14 @@ import {
   groupMessagesByDate,
   uploadToS3,
   availableReactions,
+  truncateFileName,
 } from "../utils/utils";
-import ChatHeader from "./ChatHeader";
+import ChatHeader from "@/components/chat/ChatHeader";
 import ChatLoader from "./ChatLoader";
-import ModalChatGIF from "./ModalChatGIF";
+import ModalChatGIF from "@/components/chat/ModalChatGIF";
+import {ChatAttachments} from "@/components/chat/ChatAttachments";
+import {ChatReactions} from "@/components/chat/ChatReactions";
+import WelcomeChat from "@/components/chat/WelcomeChat";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -49,7 +52,6 @@ const Chat = () => {
 
   const socketRef = useRef(null);
 
-  // Scroll to bottom function
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       const scrollHeight = messagesContainerRef.current.scrollHeight;
@@ -61,7 +63,6 @@ const Chat = () => {
     }
   };
 
-  // Auto-scroll when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -86,11 +87,6 @@ const Chat = () => {
   };
 
   const handleAddReaction = (messageId, reactionType) => {
-    console.log("[v0] Frontend adding reaction:", {
-      messageId,
-      reactionType,
-      userId: authUerId,
-    });
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("addReaction", {
         messageId,
@@ -102,11 +98,6 @@ const Chat = () => {
   };
 
   const handleRemoveReaction = (messageId, reactionType) => {
-    console.log("[v0] Frontend removing reaction:", {
-      messageId,
-      reactionType,
-      userId: authUerId,
-    });
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("removeReaction", {
         messageId,
@@ -114,20 +105,6 @@ const Chat = () => {
         type: reactionType,
       });
     }
-  };
-
-  const getUserReaction = (messageId) => {
-    const messageReactions = reactions[messageId] || [];
-    return messageReactions.find((r) => r.userId === authUerId);
-  };
-
-  const getReactionCounts = (messageId) => {
-    const messageReactions = reactions[messageId] || [];
-    const counts = {};
-    messageReactions.forEach((reaction) => {
-      counts[reaction.type] = (counts[reaction.type] || 0) + 1;
-    });
-    return counts;
   };
 
   useEffect(() => {
@@ -149,7 +126,7 @@ const Chat = () => {
                 msg.attachments.map(async (attachment) => {
                   const fileUrl = await getFileUrl(attachment);
 
-                  return fileUrl; // Fixed undeclared variable urls
+                  return fileUrl;
                 })
               );
               const processedMsg = {
@@ -170,27 +147,9 @@ const Chat = () => {
               return msg;
             }
           }
-          // Keep backward compatibility for old single file messages
-          // if (msg.fileUrl) {
-          //   try {
-          //     const fileUrl = await getFileUrl(msg.fileUrl);
-          //     console.log(
-          //       "[v0] Got file URL for old format:",
-          //       msg.fileUrl,
-          //       "->",
-          //       fileUrl
-          //     );
-          //     return {...msg, fileUrl};
-          //   }
-          //   catch (error) {
-          //     console.error("[v0] Error getting file URL:", error);
-          //     return msg;
-          //   }
-          // }
           return msg;
         })
       );
-      console.log("[v0] Final processed messages:", processed);
       setMessages(processed);
     };
 
@@ -210,7 +169,6 @@ const Chat = () => {
 
     s.on("messages", processMessages);
     s.on("newMessage", async (msg) => {
-      console.log("[v0] Received new message:", msg);
       if (msg.reactions && msg.reactions.length > 0) {
         setReactions((prev) => ({
           ...prev,
@@ -252,10 +210,6 @@ const Chat = () => {
     });
 
     s.on("reactionUpdated", ({messageId, reactions: updatedReactions}) => {
-      console.log("[v0] Frontend received reaction update:", {
-        messageId,
-        reactions: updatedReactions,
-      });
       setReactions((prev) => ({
         ...prev,
         [messageId]: updatedReactions,
@@ -269,7 +223,7 @@ const Chat = () => {
     return () => {
       s.off("messages");
       s.off("newMessage");
-      s.off("reactionUpdated"); // Clean up reaction listener
+      s.off("reactionUpdated");
       s.disconnect();
       socketRef.current = null;
     };
@@ -365,7 +319,6 @@ const Chat = () => {
       const newFiles = Array.from(e.target.files);
       const totalFiles = selectedFiles.length + newFiles.length;
 
-      // Limit to 10 files maximum
       if (totalFiles > 10) {
         alert("You can only attach up to 10 files at once.");
         return;
@@ -381,54 +334,10 @@ const Chat = () => {
     );
   };
 
-  const truncateFileName = (fileName, maxLength = 15) => {
-    if (fileName.length <= maxLength) return fileName;
-    const extension = fileName.split(".").pop();
-    const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."));
-    const truncatedName =
-      nameWithoutExt.substring(0, maxLength - extension.length - 4) + "...";
-    return `${truncatedName}.${extension}`;
-  };
-
   const isImageFile = (fileName, fileUrl) => {
     if (!fileName && !fileUrl) return false;
     const fileToCheck = fileName || fileUrl;
     return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileToCheck);
-  };
-
-  const renderAttachments = (msg) => {
-    const attachments = msg.files || [];
-    const attachmentUrls = msg.attachmentUrls || [];
-
-    if (attachments.length === 0 && !msg.fileUrl) return null;
-
-    // Handle old single file format for backward compatibility
-    if (msg.fileUrl && !attachments.length) {
-      return (
-        <img
-          src={msg.fileUrl || "/placeholder.svg"}
-          className="mt-2 rounded-lg max-w-full h-auto"
-          alt="Message attachment"
-        />
-      );
-    }
-
-    return (
-      <div className="mt-2 space-y-2">
-        {attachments.map((file, index) => {
-          const fileUrl = attachmentUrls[index] || file.url || file.fileUrl;
-
-          return (
-            <img
-              key={index}
-              src={fileUrl || "/placeholder.svg"}
-              className="rounded-lg max-w-full h-auto"
-              alt={file.name || "Attachment"}
-            />
-          );
-        })}
-      </div>
-    );
   };
 
   const handleAddPollOption = () => {
@@ -480,36 +389,6 @@ const Chat = () => {
     setIsOpenGif(false);
   };
 
-  const renderReactions = (messageId) => {
-    const reactionCounts = getReactionCounts(messageId);
-    const userReaction = getUserReaction(messageId);
-
-    if (Object.keys(reactionCounts).length === 0) return null;
-
-    return (
-      <div className="flex flex-wrap gap-1">
-        {Object.entries(reactionCounts).map(([reactionType, count]) => (
-          <button
-            key={reactionType}
-            onClick={() => {
-              if (userReaction && userReaction.type === reactionType) {
-                handleRemoveReaction(messageId, reactionType);
-              } else {
-                handleAddReaction(messageId, reactionType);
-              }
-            }}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors bg-blue-100 hover:bg-gray-200
-
-            `}
-          >
-            <span>{reactionType}</span>
-            <span className="font-medium">{count}</span>
-          </button>
-        ))}
-      </div>
-    );
-  };
-
   const renderReactionPicker = (messageId, sender) => {
     if (showReactionPicker !== messageId) return null;
 
@@ -549,322 +428,340 @@ const Chat = () => {
         ref={messagesContainerRef}
         className="flex-1 overflow-auto p-4 space-y-4"
       >
-        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-          <div key={date}>
-            {/* Date separator */}
-            <div className="flex justify-center my-4">
-              <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
-                {date}
+        {messages.length === 0 ? (
+          <WelcomeChat />
+        ) : (
+          Object.entries(groupedMessages).map(([date, dateMessages]) => (
+            <div key={date}>
+              <div className="flex justify-center my-4">
+                <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
+                  {date}
+                </div>
               </div>
-            </div>
 
-            {/* Messages for this date */}
-            {dateMessages.map((msg, idx) => (
-              <div key={idx} className="w-full max-w-full mb-3">
-                {msg.type === "announcement" && (
-                  <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
-                        <Megaphone className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-amber-800">
-                          📢 Announcement
-                        </p>
-                        <p className="text-xs text-amber-600">
-                          from {msg?.sender?.name}
-                        </p>
-                      </div>
-                    </div>
-                    {renderAttachments(msg)}
-                    {msg.content && (
-                      <p className="text-slate-800 font-semibold text-base">
-                        {msg.content}
-                      </p>
-                    )}
-
-                    <p className="text-xs text-amber-500 mt-2 text-right">
-                      {formatTime(msg.timestamp)}
-                    </p>
-                  </div>
-                )}
-
-                {msg.type === "poll" && (
-                  <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
-                    <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
-                      <p className="text-sm leading-relaxed break-words">
-                        {msg.content}
-                      </p>
-                      <div className="max-w-full overflow-hidden" />
-                      <div className="max-w-full">
-                        <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
-                          <div className="flex flex-col space-y-1.5 p-6 pb-3">
-                            <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
-                              <ChartColumn className="w-4 h-4 text-blue-600" />
-                              {msg.content}
-                            </h3>
-                            <p className="text-xs text-slate-500">
-                              {msg?.poll?.reduce((a, b) => a + b.votes, 0)} vote
-                              <span className="ml-2">
-                                • Click any option to change your vote
-                              </span>
-                            </p>
-                          </div>
-
-                          <div className="p-6 pt-0 space-y-2">
-                            {msg?.poll?.map((opt, i) => {
-                              const percent =
-                                (opt.votes /
-                                  msg.poll.reduce((a, b) => a + b.votes, 0)) *
-                                100;
-                              return (
-                                <div key={i} className="space-y-1">
-                                  <button
-                                    className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
-                                      ${
-                                        opt.votes > 0
-                                          ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
-                                          : "border-slate-200 bg-white hover:bg-slate-50"
-                                      }`}
-                                  >
-                                    <div className="flex-1">
-                                      <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm font-medium flex items-center gap-2">
-                                          {opt.label}
-                                          {opt.votes > 0 && (
-                                            <Check className="w-4 h-4 text-blue-600" />
-                                          )}
-                                        </span>
-                                        <span className="text-xs text-slate-500">
-                                          {opt.votes} ({Math.round(percent)}%)
-                                        </span>
-                                      </div>
-                                      <div
-                                        role="progressbar"
-                                        aria-valuemin={0}
-                                        aria-valuemax={100}
-                                        className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
-                                      >
-                                        <div
-                                          className="h-full w-full flex-1 bg-primary transition-all"
-                                          style={{
-                                            transform: `translateX(${
-                                              100 - percent
-                                            }%)`,
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
+              {/* Messages for this date */}
+              {dateMessages.map((msg, idx) => (
+                <div key={idx} className="w-full max-w-full mb-3">
+                  {msg.type === "announcement" && (
+                    <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
+                          <Megaphone className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-amber-800">
+                            📢 Announcement
+                          </p>
+                          <p className="text-xs text-amber-600">
+                            from {msg?.sender?.name}
+                          </p>
                         </div>
                       </div>
-                    </div>
+                      <ChatAttachments msg={msg} />
+                      {msg.content && (
+                        <p className="text-slate-800 font-semibold text-base">
+                          {msg.content}
+                        </p>
+                      )}
 
-                    <div className="flex items-center gap-2 mt-1 w-full">
-                      <p className="text-xs text-slate-400 flex-shrink-0">
+                      <p className="text-xs text-amber-500 mt-2 text-right">
                         {formatTime(msg.timestamp)}
                       </p>
-                      <div className="relative flex items-center gap-1">
-                        {renderReactions(msg.id)}
-                        {renderReactionPicker(
-                          msg.id,
+                    </div>
+                  )}
+
+                  {msg.type === "poll" && (
+                    <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
+                      <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
+                        <p className="text-sm leading-relaxed break-words">
+                          {msg.content}
+                        </p>
+                        <div className="max-w-full overflow-hidden" />
+                        <div className="max-w-full">
+                          <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
+                            <div className="flex flex-col space-y-1.5 p-6 pb-3">
+                              <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
+                                <ChartColumn className="w-4 h-4 text-blue-600" />
+                                {msg.content}
+                              </h3>
+                              <p className="text-xs text-slate-500">
+                                {msg?.poll?.reduce((a, b) => a + b.votes, 0)}{" "}
+                                vote
+                                <span className="ml-2">
+                                  • Click any option to change your vote
+                                </span>
+                              </p>
+                            </div>
+
+                            <div className="p-6 pt-0 space-y-2">
+                              {msg?.poll?.map((opt, i) => {
+                                const percent =
+                                  (opt.votes /
+                                    msg.poll.reduce((a, b) => a + b.votes, 0)) *
+                                  100;
+                                return (
+                                  <div key={i} className="space-y-1">
+                                    <button
+                                      className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
+                                        ${
+                                          opt.votes > 0
+                                            ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
+                                            : "border-slate-200 bg-white hover:bg-slate-50"
+                                        }`}
+                                    >
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-sm font-medium flex items-center gap-2">
+                                            {opt.label}
+                                            {opt.votes > 0 && (
+                                              <Check className="w-4 h-4 text-blue-600" />
+                                            )}
+                                          </span>
+                                          <span className="text-xs text-slate-500">
+                                            {opt.votes} ({Math.round(percent)}%)
+                                          </span>
+                                        </div>
+                                        <div
+                                          role="progressbar"
+                                          aria-valuemin={0}
+                                          aria-valuemax={100}
+                                          className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
+                                        >
+                                          <div
+                                            className="h-full w-full flex-1 bg-primary transition-all"
+                                            style={{
+                                              transform: `translateX(${
+                                                100 - percent
+                                              }%)`,
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1 w-full">
+                        <p className="text-xs text-slate-400 flex-shrink-0">
+                          {formatTime(msg.timestamp)}
+                        </p>
+                        <div className="relative flex items-center gap-1">
+                          <ChatReactions
+                            messageId={msg.id}
+                            reactions={reactions}
+                            authUerId={authUerId}
+                            handleRemoveReaction={handleRemoveReaction}
+                          />
+                          {renderReactionPicker(
+                            msg.id,
+                            msg.senderId === authUerId
+                          )}
+                          <button
+                            onClick={() =>
+                              setShowReactionPicker(
+                                showReactionPicker === msg.id ? null : msg.id
+                              )
+                            }
+                            className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.type === "gif" && (
+                    <div
+                      className={`flex ${
+                        msg.senderId === authUerId
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`flex items-start gap-2 ${
                           msg.senderId === authUerId
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        {msg.senderId !== authUerId && (
+                          <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                            <User className="w-4 h-4" />
+                          </span>
                         )}
-                        <button
-                          onClick={() =>
-                            setShowReactionPicker(
-                              showReactionPicker === msg.id ? null : msg.id
-                            )
-                          }
-                          className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                        <div className="flex flex-col items-start">
+                          <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
+                            {msg.senderId !== authUerId && (
+                              <p className="text-xs font-medium mb-1">
+                                {msg?.sender?.name || "Unknown"}
+                              </p>
+                            )}
+
+                            <div className="rounded-lg overflow-hidden">
+                              <img
+                                src={msg.fileUrl || "/placeholder.svg"}
+                                alt={msg.content || "GIF"}
+                                className="max-w-2xl h-auto rounded-lg"
+                                style={{maxWidth: "200px", maxHeight: "200px"}}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-3">
+                            <p className="text-xs text-slate-400 flex-shrink-0">
+                              {formatTime(msg.timestamp)}
+                            </p>
+                            <div className="relative flex items-center gap-1">
+                              <ChatReactions
+                                messageId={msg.id}
+                                reactions={reactions}
+                                authUerId={authUerId}
+                                handleRemoveReaction={handleRemoveReaction}
+                              />
+                              {renderReactionPicker(
+                                msg.id,
+                                msg.senderId === authUerId
+                              )}
+                              <button
+                                onClick={() =>
+                                  setShowReactionPicker(
+                                    showReactionPicker === msg.id
+                                      ? null
+                                      : msg.id
+                                  )
+                                }
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                              >
+                                <div className="group relative px-3">
+                                  <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                </div>{" "}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {msg.senderId === authUerId && (
+                          <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                            <User className="w-4 h-4" />
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {msg.type === "gif" && (
-                  <div
-                    className={`flex ${
-                      msg.senderId === authUerId
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
+                  {msg.type === "text" && (
                     <div
-                      className={`flex items-start gap-2 ${
+                      className={`flex ${
                         msg.senderId === authUerId
                           ? "justify-end"
                           : "justify-start"
                       }`}
                     >
-                      {/* Show profile picture only for others' messages (left side) */}
-                      {msg.senderId !== authUerId && (
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                      <div className="flex flex-col items-start">
-                        <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
-                          {/* Sender name (only for others' messages) */}
-                          {msg.senderId !== authUerId && (
-                            <p className="text-xs font-medium mb-1">
-                              {msg?.sender?.name || "Unknown"}
-                            </p>
-                          )}
-
-                          {/* GIF content */}
-                          <div className="rounded-lg overflow-hidden">
-                            <img
-                              src={msg.fileUrl || "/placeholder.svg"}
-                              alt={msg.content || "GIF"}
-                              className="max-w-full h-auto rounded-lg"
-                              style={{maxWidth: "200px", maxHeight: "200px"}}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <p className="text-xs text-slate-400 flex-shrink-0">
-                            {formatTime(msg.timestamp)}
-                          </p>
-                          <div className="relative flex items-center gap-1">
-                            {renderReactions(msg.id)}
-                            {renderReactionPicker(
-                              msg.id,
-                              msg.senderId === authUerId
+                      <div
+                        className={`flex items-start gap-2 ${
+                          msg.senderId === authUerId
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        {/* Show profile picture only for others' messages (left side) */}
+                        {msg.senderId !== authUerId && (
+                          // <img
+                          //   src={
+                          //     msg?.sender?.profilePic ||
+                          //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                          //     "/placeholder.svg" ||
+                          //     "/placeholder.svg" ||
+                          //     "/placeholder.svg"
+                          //   }
+                          //   alt={msg?.sender?.name || "User"}
+                          //   className="w-8 h-8 rounded-full object-cover"
+                          // />
+                          <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                            <User className="w-4 h-4" />
+                          </span>
+                        )}
+                        <div className="flex flex-col items-start">
+                          <div
+                            className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                          >
+                            {/* Sender name (only for others' messages) */}
+                            {msg.senderId !== authUerId && (
+                              <p className="text-xs font-medium mb-1">
+                                {msg?.sender?.name || "Unknown"}
+                              </p>
                             )}
-                            <button
-                              onClick={() =>
-                                setShowReactionPicker(
-                                  showReactionPicker === msg.id ? null : msg.id
-                                )
-                              }
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
-                            >
-                              <div className="group relative px-3">
-                                <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                              </div>{" "}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Show profile picture for current user messages (right side) */}
-                      {msg.senderId === authUerId && (
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {msg.type === "text" && (
-                  <div
-                    className={`flex ${
-                      msg.senderId === authUerId
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-start gap-2 ${
-                        msg.senderId === authUerId
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      {/* Show profile picture only for others' messages (left side) */}
-                      {msg.senderId !== authUerId && (
-                        // <img
-                        //   src={
-                        //     msg?.sender?.profilePic ||
-                        //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg"
-                        //   }
-                        //   alt={msg?.sender?.name || "User"}
-                        //   className="w-8 h-8 rounded-full object-cover"
-                        // />
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                      <div className="flex flex-col items-start">
-                        <div
-                          className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
-                        >
-                          {/* Sender name (only for others' messages) */}
-                          {msg.senderId !== authUerId && (
-                            <p className="text-xs font-medium mb-1">
-                              {msg?.sender?.name || "Unknown"}
-                            </p>
-                          )}
-
-                          {/* Text content */}
-                          {msg.content && (
-                            <p className="text-sm">{msg.content}</p>
-                          )}
-
-                          {renderAttachments(msg)}
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <p className="text-xs text-slate-400 flex-shrink-0">
-                            {formatTime(msg.timestamp)}
-                          </p>
-                          <div className="relative flex items-center gap-1">
-                            {renderReactions(msg.id)}
-                            {renderReactionPicker(
-                              msg.id,
-                              msg.senderId === authUerId
+                            {msg.content && (
+                              <p className="text-sm max-w-2xl">{msg.content}</p>
                             )}
-                            <button
-                              onClick={() =>
-                                setShowReactionPicker(
-                                  showReactionPicker === msg.id ? null : msg.id
-                                )
-                              }
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
-                            >
-                              <div className="group relative px-3">
-                                <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                              </div>{" "}
-                            </button>
+
+                            <ChatAttachments msg={msg} />
+                          </div>
+                          <div className="flex items-center gap-2 mt-3">
+                            <p className="text-xs text-slate-400 flex-shrink-0">
+                              {formatTime(msg.timestamp)}
+                            </p>
+                            <div className="relative flex items-center gap-1">
+                              <ChatReactions
+                                messageId={msg.id}
+                                reactions={reactions}
+                                authUerId={authUerId}
+                                handleRemoveReaction={handleRemoveReaction}
+                              />
+                              {renderReactionPicker(
+                                msg.id,
+                                msg.senderId === authUerId
+                              )}
+                              <button
+                                onClick={() =>
+                                  setShowReactionPicker(
+                                    showReactionPicker === msg.id
+                                      ? null
+                                      : msg.id
+                                  )
+                                }
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                              >
+                                <div className="group relative px-3">
+                                  <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                </div>{" "}
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Show profile picture for current user messages (right side) */}
-                      {msg.senderId === authUerId && (
-                        // <img
-                        //   src={
-                        //     msg?.sender?.Profile ||
-                        //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg"
-                        //   }
-                        //   alt="Me"
-                        //   className="w-8 h-8 rounded-full object-cover"
-                        // />
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
+                        {/* Show profile picture for current user messages (right side) */}
+                        {msg.senderId === authUerId && (
+                          // <img
+                          //   src={
+                          //     msg?.sender?.Profile ||
+                          //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                          //     "/placeholder.svg" ||
+                          //     "/placeholder.svg" ||
+                          //     "/placeholder.svg"
+                          //   }
+                          //   alt="Me"
+                          //   className="w-8 h-8 rounded-full object-cover"
+                          // />
+                          <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                            <User className="w-4 h-4" />
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
+                  )}
+                </div>
+              ))}
+            </div>
+          ))
+        )}
 
         {/* Empty div to mark the end of messages for scrolling */}
         <div ref={messagesEndRef} />
