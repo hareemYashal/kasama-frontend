@@ -191,6 +191,12 @@ const Chat = () => {
           ...prev,
           [msg.id]: msg.reactions,
         }));
+      } else {
+        // Initialize empty reactions array for new messages
+        setReactions((prev) => ({
+          ...prev,
+          [msg.id]: [],
+        }));
       }
 
       if (msg.attachments && msg.attachments.length > 0) {
@@ -226,7 +232,38 @@ const Chat = () => {
       }
     });
 
+    s.on("messageDelivered", async (serverMsg) => {
+      console.log("[v0] Message delivered from server:", serverMsg);
+
+      // Initialize reactions for the delivered message
+      if (serverMsg.reactions && serverMsg.reactions.length > 0) {
+        setReactions((prev) => ({
+          ...prev,
+          [serverMsg.id]: serverMsg.reactions,
+        }));
+      } else {
+        setReactions((prev) => ({
+          ...prev,
+          [serverMsg.id]: [],
+        }));
+      }
+
+      // Update the message in the list with the server version (which has the proper ID)
+      setMessages((prev) => {
+        // Find the temporary message (without ID or with temporary ID) and replace it
+        const lastIndex = prev.length - 1;
+        if (lastIndex >= 0 && !prev[lastIndex].id) {
+          // Replace the last message (temporary one) with the server message
+          const updated = [...prev];
+          updated[lastIndex] = serverMsg;
+          return updated;
+        }
+        return prev;
+      });
+    });
+
     s.on("reactionUpdated", ({messageId, reactions: updatedReactions}) => {
+      console.log("[v0] Reaction updated:", {messageId, updatedReactions});
       setReactions((prev) => ({
         ...prev,
         [messageId]: updatedReactions,
@@ -240,6 +277,7 @@ const Chat = () => {
     return () => {
       s.off("messages");
       s.off("newMessage");
+      s.off("messageDelivered"); // Clean up messageDelivered listener
       s.off("reactionUpdated"); // Clean up reaction listener
       s.disconnect();
       socketRef.current = null;
@@ -300,6 +338,7 @@ const Chat = () => {
       timestamp: new Date().toISOString(),
       senderId: authUerId,
       sender: {name: authUser?.name || "You"},
+      reactions: [], // Initialize empty reactions array
     };
 
     if (socketRef.current && socketRef.current.connected) {
@@ -394,6 +433,7 @@ const Chat = () => {
       timestamp: new Date().toISOString(),
       senderId: authUerId,
       sender: {name: authUser?.name || "You"},
+      reactions: [], // Initialize empty reactions array
     };
 
     if (socketRef.current && socketRef.current.connected) {
@@ -610,10 +650,13 @@ const Chat = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 mt-1 w-full">
-                          <p className="text-xs text-slate-400 flex-shrink-0">
-                            {formatTime(msg.timestamp)}
-                          </p>
+                        <div className="flex items-center gap-2 mt-2 w-full">
+                          {msg.senderId !== authUerId && (
+                            <p className="text-xs text-slate-400 flex-shrink-0">
+                              {formatTime(msg.timestamp)}
+                            </p>
+                          )}
+
                           <div className="relative flex items-center gap-1">
                             {renderReactions(msg.id)}
                             {renderReactionPicker(
@@ -631,6 +674,11 @@ const Chat = () => {
                               <Plus className="w-4 h-4" />
                             </button>
                           </div>
+                          {msg.senderId === authUerId && (
+                            <p className="text-xs text-slate-400 flex-shrink-0">
+                              {formatTime(msg.timestamp)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -656,7 +704,13 @@ const Chat = () => {
                               <User className="w-4 h-4" />
                             </span>
                           )}
-                          <div className="flex flex-col items-start">
+                          <div
+                            className={`flex flex-col ${
+                              msg.senderId === authUerId
+                                ? "items-end"
+                                : "items-start"
+                            }`}
+                          >
                             <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
                               {/* Sender name (only for others' messages) */}
                               {msg.senderId !== authUerId && (
@@ -678,10 +732,12 @@ const Chat = () => {
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 mt-3">
-                              <p className="text-xs text-slate-400 flex-shrink-0">
-                                {formatTime(msg.timestamp)}
-                              </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              {msg.senderId !== authUerId && (
+                                <p className="text-xs text-slate-400 flex-shrink-0">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              )}
                               <div className="relative flex items-center gap-1">
                                 {renderReactions(msg.id)}
                                 {renderReactionPicker(
@@ -703,6 +759,11 @@ const Chat = () => {
                                   </div>{" "}
                                 </button>
                               </div>
+                              {msg.senderId === authUerId && (
+                                <p className="text-xs text-slate-400 flex-shrink-0">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -732,23 +793,25 @@ const Chat = () => {
                           }`}
                         >
                           {/* Show profile picture only for others' messages (left side) */}
-                          {msg.senderId !== authUerId && (
-                            // <img
-                            //   src={
-                            //     msg?.sender?.profilePic ||
-                            //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                            //     "/placeholder.svg" ||
-                            //     "/placeholder.svg" ||
-                            //     "/placeholder.svg"
-                            //   }
-                            //   alt={msg?.sender?.name || "User"}
-                            //   className="w-8 h-8 rounded-full object-cover"
-                            // />
-                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                              <User className="w-4 h-4" />
-                            </span>
-                          )}
-                          <div className="flex flex-col items-start">
+                          {msg.senderId !== authUerId &&
+                            (msg?.sender?.Profile?.profile_photo_url ? (
+                              <img
+                                src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
+                                alt={msg?.sender?.name || "User"}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                                <User className="w-4 h-4" />
+                              </span>
+                            ))}
+                          <div
+                            className={`flex flex-col ${
+                              msg.senderId === authUerId
+                                ? "items-end"
+                                : "items-start"
+                            }`}
+                          >
                             <div
                               className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
                             >
@@ -766,10 +829,12 @@ const Chat = () => {
 
                               <RenderAttachments msg={msg} />
                             </div>
-                            <div className="flex items-center gap-2 mt-3">
-                              <p className="text-xs text-slate-400 flex-shrink-0">
-                                {formatTime(msg.timestamp)}
-                              </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              {msg.senderId !== authUerId && (
+                                <p className="text-xs text-slate-400 flex-shrink-0">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              )}
                               <div className="relative flex items-center gap-1">
                                 {renderReactions(msg.id)}
                                 {renderReactionPicker(
@@ -791,26 +856,27 @@ const Chat = () => {
                                   </div>{" "}
                                 </button>
                               </div>
+                              {msg.senderId === authUerId && (
+                                <p className="text-xs text-slate-400 flex-shrink-0">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              )}
                             </div>
                           </div>
 
                           {/* Show profile picture for current user messages (right side) */}
-                          {msg.senderId === authUerId && (
-                            // <img
-                            //   src={
-                            //     msg?.sender?.Profile ||
-                            //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                            //     "/placeholder.svg" ||
-                            //     "/placeholder.svg" ||
-                            //     "/placeholder.svg"
-                            //   }
-                            //   alt="Me"
-                            //   className="w-8 h-8 rounded-full object-cover"
-                            // />
-                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                              <User className="w-4 h-4" />
-                            </span>
-                          )}
+                          {msg.senderId === authUerId &&
+                            (msg?.sender?.Profile?.profile_photo_url ? (
+                              <img
+                                src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
+                                // alt={`http://localhost:4000/${msg?.sender?.Profile.profile_photo_url}`}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                                <User className="w-4 h-4" />
+                              </span>
+                            ))}
                         </div>
                       </div>
                     )}

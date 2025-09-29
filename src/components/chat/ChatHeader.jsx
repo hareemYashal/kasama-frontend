@@ -19,6 +19,7 @@ const ChatHeader = () => {
   const token = useSelector((s) => s.user.token);
   const authUser = useSelector((s) => s.user.user);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const BASE_URL = import.meta.env.VITE_API_URL;
 
   const authUerId = authUser?.id;
   const dropdownRef = useRef(null);
@@ -50,9 +51,9 @@ const ChatHeader = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
+  console.log("totalParticipant", totalParticipant);
   return (
-    <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 p-3 md:p-6 flex items-center justify-between gap-2 md:gap-4 flex-shrink-0">
+    <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 p-3 md:p-6 flex items-center justify-between gap-2 md:gap-4 flex-shrink-0 z-10">
       <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
         <button className="inline-flex items-center justify-center gap-2 border h-9 rounded-md bg-white/80 px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm flex-shrink-0">
           <ArrowLeft className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
@@ -121,27 +122,20 @@ const ChatHeader = () => {
                     key={participant.user?.id}
                     className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors"
                   >
-                    {/* <div className="relative flex-shrink-0">
-                      <img
-                        src={
-                          participant.user.Profile ||
-                          "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                          "/placeholder.svg"
-                        }
-                        alt={participant.user.name}
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-                      />
-                    </div> */}
-                    {/* <p className="font-semibold text-slate-800 text-sm truncate">
-                      {userProfileData.username
-                        ? userProfileData.username
-                        : user?.name}
-                    <User/>
-                    </p> */}
-                    <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                      {/* {"U"} */}
-                      <User  className="w-4 h-4"/>
-                    </span>
+                    {participant?.user?.Profile?.profile_photo_url ? (
+                      <div className="relative flex-shrink-0">
+                        <img
+                          src={`${participant?.user?.Profile.profile_photo_url}`}
+                          alt={participant.user.name}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                        {/* {"U"} */}
+                        <User className="w-4 h-4" />
+                      </span>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-800 truncate">
