@@ -850,13 +850,13 @@ const Chat = () => {
                   </button>
                 )}
 
-                {/* <button
+                <button
                   type="button"
                   onClick={() => setIsOpenGif(true)}
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
-                </button> */}
+                </button>
                 {(authUser?.trip_role === "creator" ||
                   authUser?.trip_role === "co-admin") &&
                   (loadingState === "announcement" ? (
