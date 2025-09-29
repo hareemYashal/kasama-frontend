@@ -8,15 +8,20 @@ import {
   Paperclip,
   ImageIcon,
   CarIcon as ChartColumn,
-  Plus,
   Check,
   FileText,
   User,
+  Plug,
+  Plus,
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {formatTime} from "../utils/utils";
-import {groupMessagesByDate, uploadToS3} from "../utils/utils";
+import {
+  groupMessagesByDate,
+  uploadToS3,
+  availableReactions,
+} from "../utils/utils";
 import ChatHeader from "./ChatHeader";
 import ChatLoader from "./ChatLoader";
 import ModalChatGIF from "./ModalChatGIF";
@@ -28,8 +33,9 @@ const Chat = () => {
   const [isOpen, setIsOpenGif] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [pollOptions, setPollOptions] = useState([]);
-  const [loadingState, setLoadingState] = useState(null); // null, "poll", "file", "announcement", "gif"
-  const fileInputRef = useRef();
+  const [loadingState, setLoadingState] = useState(null);
+  const [reactions, setReactions] = useState({});
+  const [showReactionPicker, setShowReactionPicker] = useState(null);
   const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -59,6 +65,7 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
   const getFileUrl = async (fileKey) => {
     const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
 
@@ -78,19 +85,71 @@ const Chat = () => {
     return null;
   };
 
+  const handleAddReaction = (messageId, reactionType) => {
+    console.log("[v0] Frontend adding reaction:", {
+      messageId,
+      reactionType,
+      userId: authUerId,
+    });
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("addReaction", {
+        messageId,
+        userId: authUerId,
+        type: reactionType,
+      });
+    }
+    setShowReactionPicker(null);
+  };
+
+  const handleRemoveReaction = (messageId, reactionType) => {
+    console.log("[v0] Frontend removing reaction:", {
+      messageId,
+      reactionType,
+      userId: authUerId,
+    });
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("removeReaction", {
+        messageId,
+        userId: authUerId,
+        type: reactionType,
+      });
+    }
+  };
+
+  const getUserReaction = (messageId) => {
+    const messageReactions = reactions[messageId] || [];
+    return messageReactions.find((r) => r.userId === authUerId);
+  };
+
+  const getReactionCounts = (messageId) => {
+    const messageReactions = reactions[messageId] || [];
+    const counts = {};
+    messageReactions.forEach((reaction) => {
+      counts[reaction.type] = (counts[reaction.type] || 0) + 1;
+    });
+    return counts;
+  };
+
   useEffect(() => {
     if (!tripId || !token) return;
 
     const processMessages = async (msgs) => {
       const processed = await Promise.all(
         msgs.map(async (msg) => {
+          if (msg.reactions && msg.reactions.length > 0) {
+            setReactions((prev) => ({
+              ...prev,
+              [msg.id]: msg.reactions,
+            }));
+          }
+
           if (msg.attachments && msg.attachments.length > 0) {
             try {
               const attachmentUrls = await Promise.all(
                 msg.attachments.map(async (attachment) => {
                   const fileUrl = await getFileUrl(attachment);
 
-                  return urls;
+                  return fileUrl; // Fixed undeclared variable urls
                 })
               );
               const processedMsg = {
@@ -152,6 +211,13 @@ const Chat = () => {
     s.on("messages", processMessages);
     s.on("newMessage", async (msg) => {
       console.log("[v0] Received new message:", msg);
+      if (msg.reactions && msg.reactions.length > 0) {
+        setReactions((prev) => ({
+          ...prev,
+          [msg.id]: msg.reactions,
+        }));
+      }
+
       if (msg.attachments && msg.attachments.length > 0) {
         try {
           const attachmentUrls = await Promise.all(
@@ -185,6 +251,17 @@ const Chat = () => {
       }
     });
 
+    s.on("reactionUpdated", ({messageId, reactions: updatedReactions}) => {
+      console.log("[v0] Frontend received reaction update:", {
+        messageId,
+        reactions: updatedReactions,
+      });
+      setReactions((prev) => ({
+        ...prev,
+        [messageId]: updatedReactions,
+      }));
+    });
+
     s.on("disconnect", (reason) => {
       console.log("socket disconnect:", reason);
     });
@@ -192,6 +269,7 @@ const Chat = () => {
     return () => {
       s.off("messages");
       s.off("newMessage");
+      s.off("reactionUpdated"); // Clean up reaction listener
       s.disconnect();
       socketRef.current = null;
     };
@@ -402,6 +480,58 @@ const Chat = () => {
     setIsOpenGif(false);
   };
 
+  const renderReactions = (messageId) => {
+    const reactionCounts = getReactionCounts(messageId);
+    const userReaction = getUserReaction(messageId);
+
+    if (Object.keys(reactionCounts).length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {Object.entries(reactionCounts).map(([reactionType, count]) => (
+          <button
+            key={reactionType}
+            onClick={() => {
+              if (userReaction && userReaction.type === reactionType) {
+                handleRemoveReaction(messageId, reactionType);
+              } else {
+                handleAddReaction(messageId, reactionType);
+              }
+            }}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors bg-blue-100 hover:bg-gray-200
+
+            `}
+          >
+            <span>{reactionType}</span>
+            <span className="font-medium">{count}</span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const renderReactionPicker = (messageId, sender) => {
+    if (showReactionPicker !== messageId) return null;
+
+    return (
+      <div
+        className={`absolute bottom-full mb-2  bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-1 z-10 ${
+          sender ? "right-0" : "left-0"
+        }`}
+      >
+        {availableReactions.map((reaction) => (
+          <button
+            key={reaction}
+            onClick={() => handleAddReaction(messageId, reaction)}
+            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors text-lg"
+          >
+            {reaction}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
@@ -534,17 +664,27 @@ const Chat = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between w-full mt-1">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1 mt-1">
-                          <button className="inline-flex items-center justify-center h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100">
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400 px-1 flex-shrink-0">
+                    <div className="flex items-center gap-2 mt-1 w-full">
+                      <p className="text-xs text-slate-400 flex-shrink-0">
                         {formatTime(msg.timestamp)}
                       </p>
+                      <div className="relative flex items-center gap-1">
+                        {renderReactions(msg.id)}
+                        {renderReactionPicker(
+                          msg.id,
+                          msg.senderId === authUerId
+                        )}
+                        <button
+                          onClick={() =>
+                            setShowReactionPicker(
+                              showReactionPicker === msg.id ? null : msg.id
+                            )
+                          }
+                          className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -589,9 +729,30 @@ const Chat = () => {
                             />
                           </div>
                         </div>
-                        <p className="text-xs text-slate-400 px-1 flex-shrink-0 mt-1">
-                          {formatTime(msg.timestamp)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <p className="text-xs text-slate-400 flex-shrink-0">
+                            {formatTime(msg.timestamp)}
+                          </p>
+                          <div className="relative flex items-center gap-1">
+                            {renderReactions(msg.id)}
+                            {renderReactionPicker(
+                              msg.id,
+                              msg.senderId === authUerId
+                            )}
+                            <button
+                              onClick={() =>
+                                setShowReactionPicker(
+                                  showReactionPicker === msg.id ? null : msg.id
+                                )
+                              }
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="group relative px-3">
+                                <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                              </div>{" "}
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Show profile picture for current user messages (right side) */}
@@ -638,7 +799,7 @@ const Chat = () => {
                       )}
                       <div className="flex flex-col items-start">
                         <div
-                          className={`px-4 py-2 rounded-2xl max-w-xs break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                          className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
                         >
                           {/* Sender name (only for others' messages) */}
                           {msg.senderId !== authUerId && (
@@ -654,9 +815,30 @@ const Chat = () => {
 
                           {renderAttachments(msg)}
                         </div>
-                        <p className="text-xs text-slate-400 px-1 flex-shrink-0 mt-1">
-                          {formatTime(msg.timestamp)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <p className="text-xs text-slate-400 flex-shrink-0">
+                            {formatTime(msg.timestamp)}
+                          </p>
+                          <div className="relative flex items-center gap-1">
+                            {renderReactions(msg.id)}
+                            {renderReactionPicker(
+                              msg.id,
+                              msg.senderId === authUerId
+                            )}
+                            <button
+                              onClick={() =>
+                                setShowReactionPicker(
+                                  showReactionPicker === msg.id ? null : msg.id
+                                )
+                              }
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="group relative px-3">
+                                <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                              </div>{" "}
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Show profile picture for current user messages (right side) */}
@@ -715,7 +897,6 @@ const Chat = () => {
                   <div
                     key={index}
                     className="rounded-full border font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-1.5 py-1 px-2 flex-shrink-0 text-xs"
-                    // className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-sm max-w-[200px]"
                   >
                     {file.type.startsWith("image/") ? (
                       <ImageIcon className="w-4 h-4 text-slate-600 flex-shrink-0" />

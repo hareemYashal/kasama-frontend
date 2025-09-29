@@ -99,3 +99,6 @@ export const uploadToS3 = async ({
     return null;
   }
 };
+
+
+  export const availableReactions = ["❤️", "😂", "😮", "😢", "😡", "👍", "👎", "🔥"];
