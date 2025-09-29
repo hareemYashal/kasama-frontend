@@ -17,14 +17,16 @@ import {
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
 import {formatTime} from "../utils/utils";
+import {RenderAttachments} from "@/components/chat/ChatAttachments";
+import WelcomeChat from "@/components/chat/WelcomeChat";
 import {
   groupMessagesByDate,
   uploadToS3,
   availableReactions,
 } from "../utils/utils";
-import ChatHeader from "./ChatHeader";
-import ChatLoader from "./ChatLoader";
-import ModalChatGIF from "./ModalChatGIF";
+import ChatHeader from "@/components/chat/ChatHeader";
+import ChatLoader from "@/components/chat/ChatLoader";
+import ModalChatGIF from "@/components/chat/ModalChatGIF";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -396,41 +398,6 @@ const Chat = () => {
     return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileToCheck);
   };
 
-  const renderAttachments = (msg) => {
-    const attachments = msg.files || [];
-    const attachmentUrls = msg.attachmentUrls || [];
-
-    if (attachments.length === 0 && !msg.fileUrl) return null;
-
-    // Handle old single file format for backward compatibility
-    if (msg.fileUrl && !attachments.length) {
-      return (
-        <img
-          src={msg.fileUrl || "/placeholder.svg"}
-          className="mt-2 rounded-lg max-w-full h-auto"
-          alt="Message attachment"
-        />
-      );
-    }
-
-    return (
-      <div className="mt-2 space-y-2">
-        {attachments.map((file, index) => {
-          const fileUrl = attachmentUrls[index] || file.url || file.fileUrl;
-
-          return (
-            <img
-              key={index}
-              src={fileUrl || "/placeholder.svg"}
-              className="rounded-lg max-w-full h-auto"
-              alt={file.name || "Attachment"}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
   const handleAddPollOption = () => {
     setPollOptions([...pollOptions, {label: "", votes: 0}]);
   };
@@ -549,322 +516,341 @@ const Chat = () => {
         ref={messagesContainerRef}
         className="flex-1 overflow-auto p-4 space-y-4"
       >
-        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-          <div key={date}>
-            {/* Date separator */}
-            <div className="flex justify-center my-4">
-              <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
-                {date}
-              </div>
-            </div>
-
-            {/* Messages for this date */}
-            {dateMessages.map((msg, idx) => (
-              <div key={idx} className="w-full max-w-full mb-3">
-                {msg.type === "announcement" && (
-                  <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
-                        <Megaphone className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-amber-800">
-                          📢 Announcement
-                        </p>
-                        <p className="text-xs text-amber-600">
-                          from {msg?.sender?.name}
-                        </p>
-                      </div>
-                    </div>
-                    {renderAttachments(msg)}
-                    {msg.content && (
-                      <p className="text-slate-800 font-semibold text-base">
-                        {msg.content}
-                      </p>
-                    )}
-
-                    <p className="text-xs text-amber-500 mt-2 text-right">
-                      {formatTime(msg.timestamp)}
-                    </p>
+        {messages.length === 0 ? (
+          <WelcomeChat />
+        ) : (
+          <>
+            {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+              <div key={date}>
+                {/* Date separator */}
+                <div className="flex justify-center my-4">
+                  <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
+                    {date}
                   </div>
-                )}
+                </div>
 
-                {msg.type === "poll" && (
-                  <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
-                    <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
-                      <p className="text-sm leading-relaxed break-words">
-                        {msg.content}
-                      </p>
-                      <div className="max-w-full overflow-hidden" />
-                      <div className="max-w-full">
-                        <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
-                          <div className="flex flex-col space-y-1.5 p-6 pb-3">
-                            <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
-                              <ChartColumn className="w-4 h-4 text-blue-600" />
-                              {msg.content}
-                            </h3>
-                            <p className="text-xs text-slate-500">
-                              {msg?.poll?.reduce((a, b) => a + b.votes, 0)} vote
-                              <span className="ml-2">
-                                • Click any option to change your vote
-                              </span>
+                {/* Messages for this date */}
+                {dateMessages.map((msg, idx) => (
+                  <div key={idx} className="w-full max-w-full mb-3">
+                    {msg.type === "announcement" && (
+                      <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
+                            <Megaphone className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-amber-800">
+                              📢 Announcement
+                            </p>
+                            <p className="text-xs text-amber-600">
+                              from {msg?.sender?.name}
                             </p>
                           </div>
+                        </div>
+                        <RenderAttachments msg={msg} />
 
-                          <div className="p-6 pt-0 space-y-2">
-                            {msg?.poll?.map((opt, i) => {
-                              const percent =
-                                (opt.votes /
-                                  msg.poll.reduce((a, b) => a + b.votes, 0)) *
-                                100;
-                              return (
-                                <div key={i} className="space-y-1">
-                                  <button
-                                    className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
+                        {msg.content && (
+                          <p className="text-slate-800 font-semibold text-base">
+                            {msg.content}
+                          </p>
+                        )}
+
+                        <p className="text-xs text-amber-500 mt-2 text-right">
+                          {formatTime(msg.timestamp)}
+                        </p>
+                      </div>
+                    )}
+
+                    {msg.type === "poll" && (
+                      <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
+                        <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
+                          <p className="text-sm leading-relaxed break-words">
+                            {msg.content}
+                          </p>
+                          <div className="max-w-full overflow-hidden" />
+                          <div className="max-w-full">
+                            <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
+                              <div className="flex flex-col space-y-1.5 p-6 pb-3">
+                                <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
+                                  <ChartColumn className="w-4 h-4 text-blue-600" />
+                                  {msg.content}
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                  {msg?.poll?.reduce((a, b) => a + b.votes, 0)}{" "}
+                                  vote
+                                  <span className="ml-2">
+                                    • Click any option to change your vote
+                                  </span>
+                                </p>
+                              </div>
+
+                              <div className="p-6 pt-0 space-y-2">
+                                {msg?.poll?.map((opt, i) => {
+                                  const percent =
+                                    (opt.votes /
+                                      msg.poll.reduce(
+                                        (a, b) => a + b.votes,
+                                        0
+                                      )) *
+                                    100;
+                                  return (
+                                    <div key={i} className="space-y-1">
+                                      <button
+                                        className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
                                       ${
                                         opt.votes > 0
                                           ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
                                           : "border-slate-200 bg-white hover:bg-slate-50"
                                       }`}
-                                  >
-                                    <div className="flex-1">
-                                      <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm font-medium flex items-center gap-2">
-                                          {opt.label}
-                                          {opt.votes > 0 && (
-                                            <Check className="w-4 h-4 text-blue-600" />
-                                          )}
-                                        </span>
-                                        <span className="text-xs text-slate-500">
-                                          {opt.votes} ({Math.round(percent)}%)
-                                        </span>
-                                      </div>
-                                      <div
-                                        role="progressbar"
-                                        aria-valuemin={0}
-                                        aria-valuemax={100}
-                                        className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
                                       >
-                                        <div
-                                          className="h-full w-full flex-1 bg-primary transition-all"
-                                          style={{
-                                            transform: `translateX(${
-                                              100 - percent
-                                            }%)`,
-                                          }}
-                                        />
-                                      </div>
+                                        <div className="flex-1">
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-medium flex items-center gap-2">
+                                              {opt.label}
+                                              {opt.votes > 0 && (
+                                                <Check className="w-4 h-4 text-blue-600" />
+                                              )}
+                                            </span>
+                                            <span className="text-xs text-slate-500">
+                                              {opt.votes} ({Math.round(percent)}
+                                              %)
+                                            </span>
+                                          </div>
+                                          <div
+                                            role="progressbar"
+                                            aria-valuemin={0}
+                                            aria-valuemax={100}
+                                            className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
+                                          >
+                                            <div
+                                              className="h-full w-full flex-1 bg-primary transition-all"
+                                              style={{
+                                                transform: `translateX(${
+                                                  100 - percent
+                                                }%)`,
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </button>
                                     </div>
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-1 w-full">
+                          <p className="text-xs text-slate-400 flex-shrink-0">
+                            {formatTime(msg.timestamp)}
+                          </p>
+                          <div className="relative flex items-center gap-1">
+                            {renderReactions(msg.id)}
+                            {renderReactionPicker(
+                              msg.id,
+                              msg.senderId === authUerId
+                            )}
+                            <button
+                              onClick={() =>
+                                setShowReactionPicker(
+                                  showReactionPicker === msg.id ? null : msg.id
+                                )
+                              }
+                              className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="flex items-center gap-2 mt-1 w-full">
-                      <p className="text-xs text-slate-400 flex-shrink-0">
-                        {formatTime(msg.timestamp)}
-                      </p>
-                      <div className="relative flex items-center gap-1">
-                        {renderReactions(msg.id)}
-                        {renderReactionPicker(
-                          msg.id,
+                    {msg.type === "gif" && (
+                      <div
+                        className={`flex ${
                           msg.senderId === authUerId
-                        )}
-                        <button
-                          onClick={() =>
-                            setShowReactionPicker(
-                              showReactionPicker === msg.id ? null : msg.id
-                            )
-                          }
-                          className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {msg.type === "gif" && (
-                  <div
-                    className={`flex ${
-                      msg.senderId === authUerId
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-start gap-2 ${
-                        msg.senderId === authUerId
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      {/* Show profile picture only for others' messages (left side) */}
-                      {msg.senderId !== authUerId && (
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                      <div className="flex flex-col items-start">
-                        <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
-                          {/* Sender name (only for others' messages) */}
-                          {msg.senderId !== authUerId && (
-                            <p className="text-xs font-medium mb-1">
-                              {msg?.sender?.name || "Unknown"}
-                            </p>
-                          )}
-
-                          {/* GIF content */}
-                          <div className="rounded-lg overflow-hidden">
-                            <img
-                              src={msg.fileUrl || "/placeholder.svg"}
-                              alt={msg.content || "GIF"}
-                              className="max-w-full h-auto rounded-lg"
-                              style={{maxWidth: "200px", maxHeight: "200px"}}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <p className="text-xs text-slate-400 flex-shrink-0">
-                            {formatTime(msg.timestamp)}
-                          </p>
-                          <div className="relative flex items-center gap-1">
-                            {renderReactions(msg.id)}
-                            {renderReactionPicker(
-                              msg.id,
-                              msg.senderId === authUerId
-                            )}
-                            <button
-                              onClick={() =>
-                                setShowReactionPicker(
-                                  showReactionPicker === msg.id ? null : msg.id
-                                )
-                              }
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
-                            >
-                              <div className="group relative px-3">
-                                <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                              </div>{" "}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Show profile picture for current user messages (right side) */}
-                      {msg.senderId === authUerId && (
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {msg.type === "text" && (
-                  <div
-                    className={`flex ${
-                      msg.senderId === authUerId
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-start gap-2 ${
-                        msg.senderId === authUerId
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      {/* Show profile picture only for others' messages (left side) */}
-                      {msg.senderId !== authUerId && (
-                        // <img
-                        //   src={
-                        //     msg?.sender?.profilePic ||
-                        //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg"
-                        //   }
-                        //   alt={msg?.sender?.name || "User"}
-                        //   className="w-8 h-8 rounded-full object-cover"
-                        // />
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                      <div className="flex flex-col items-start">
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
                         <div
-                          className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                          className={`flex items-start gap-2 ${
+                            msg.senderId === authUerId
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
                         >
-                          {/* Sender name (only for others' messages) */}
+                          {/* Show profile picture only for others' messages (left side) */}
                           {msg.senderId !== authUerId && (
-                            <p className="text-xs font-medium mb-1">
-                              {msg?.sender?.name || "Unknown"}
-                            </p>
+                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                              <User className="w-4 h-4" />
+                            </span>
                           )}
+                          <div className="flex flex-col items-start">
+                            <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
+                              {/* Sender name (only for others' messages) */}
+                              {msg.senderId !== authUerId && (
+                                <p className="text-xs font-medium mb-1">
+                                  {msg?.sender?.name || "Unknown"}
+                                </p>
+                              )}
 
-                          {/* Text content */}
-                          {msg.content && (
-                            <p className="text-sm">{msg.content}</p>
-                          )}
-
-                          {renderAttachments(msg)}
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <p className="text-xs text-slate-400 flex-shrink-0">
-                            {formatTime(msg.timestamp)}
-                          </p>
-                          <div className="relative flex items-center gap-1">
-                            {renderReactions(msg.id)}
-                            {renderReactionPicker(
-                              msg.id,
-                              msg.senderId === authUerId
-                            )}
-                            <button
-                              onClick={() =>
-                                setShowReactionPicker(
-                                  showReactionPicker === msg.id ? null : msg.id
-                                )
-                              }
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
-                            >
-                              <div className="group relative px-3">
-                                <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                              </div>{" "}
-                            </button>
+                              {/* GIF content */}
+                              <div className="rounded-lg overflow-hidden">
+                                <img
+                                  src={msg.fileUrl || "/placeholder.svg"}
+                                  alt={msg.content || "GIF"}
+                                  className="max-w-full h-auto rounded-lg"
+                                  style={{
+                                    maxWidth: "200px",
+                                    maxHeight: "200px",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-3">
+                              <p className="text-xs text-slate-400 flex-shrink-0">
+                                {formatTime(msg.timestamp)}
+                              </p>
+                              <div className="relative flex items-center gap-1">
+                                {renderReactions(msg.id)}
+                                {renderReactionPicker(
+                                  msg.id,
+                                  msg.senderId === authUerId
+                                )}
+                                <button
+                                  onClick={() =>
+                                    setShowReactionPicker(
+                                      showReactionPicker === msg.id
+                                        ? null
+                                        : msg.id
+                                    )
+                                  }
+                                  className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                                >
+                                  <div className="group relative px-3">
+                                    <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                  </div>{" "}
+                                </button>
+                              </div>
+                            </div>
                           </div>
+
+                          {/* Show profile picture for current user messages (right side) */}
+                          {msg.senderId === authUerId && (
+                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                              <User className="w-4 h-4" />
+                            </span>
+                          )}
                         </div>
                       </div>
+                    )}
 
-                      {/* Show profile picture for current user messages (right side) */}
-                      {msg.senderId === authUerId && (
-                        // <img
-                        //   src={
-                        //     msg?.sender?.Profile ||
-                        //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg" ||
-                        //     "/placeholder.svg"
-                        //   }
-                        //   alt="Me"
-                        //   className="w-8 h-8 rounded-full object-cover"
-                        // />
-                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          <User className="w-4 h-4" />
-                        </span>
-                      )}
-                    </div>
+                    {msg.type === "text" && (
+                      <div
+                        className={`flex ${
+                          msg.senderId === authUerId
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`flex items-start gap-2 ${
+                            msg.senderId === authUerId
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
+                        >
+                          {/* Show profile picture only for others' messages (left side) */}
+                          {msg.senderId !== authUerId && (
+                            // <img
+                            //   src={
+                            //     msg?.sender?.profilePic ||
+                            //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                            //     "/placeholder.svg" ||
+                            //     "/placeholder.svg" ||
+                            //     "/placeholder.svg"
+                            //   }
+                            //   alt={msg?.sender?.name || "User"}
+                            //   className="w-8 h-8 rounded-full object-cover"
+                            // />
+                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                              <User className="w-4 h-4" />
+                            </span>
+                          )}
+                          <div className="flex flex-col items-start">
+                            <div
+                              className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                            >
+                              {/* Sender name (only for others' messages) */}
+                              {msg.senderId !== authUerId && (
+                                <p className="text-xs font-medium mb-1">
+                                  {msg?.sender?.name || "Unknown"}
+                                </p>
+                              )}
+
+                              {/* Text content */}
+                              {msg.content && (
+                                <p className="text-sm">{msg.content}</p>
+                              )}
+
+                              <RenderAttachments msg={msg} />
+                            </div>
+                            <div className="flex items-center gap-2 mt-3">
+                              <p className="text-xs text-slate-400 flex-shrink-0">
+                                {formatTime(msg.timestamp)}
+                              </p>
+                              <div className="relative flex items-center gap-1">
+                                {renderReactions(msg.id)}
+                                {renderReactionPicker(
+                                  msg.id,
+                                  msg.senderId === authUerId
+                                )}
+                                <button
+                                  onClick={() =>
+                                    setShowReactionPicker(
+                                      showReactionPicker === msg.id
+                                        ? null
+                                        : msg.id
+                                    )
+                                  }
+                                  className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                                >
+                                  <div className="group relative px-3">
+                                    <Plus className="w-4 h-4 absolute top-0  -mt-2 right-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                  </div>{" "}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Show profile picture for current user messages (right side) */}
+                          {msg.senderId === authUerId && (
+                            // <img
+                            //   src={
+                            //     msg?.sender?.Profile ||
+                            //     "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" ||
+                            //     "/placeholder.svg" ||
+                            //     "/placeholder.svg" ||
+                            //     "/placeholder.svg"
+                            //   }
+                            //   alt="Me"
+                            //   className="w-8 h-8 rounded-full object-cover"
+                            // />
+                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                              <User className="w-4 h-4" />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             ))}
-          </div>
-        ))}
+          </>
+        )}
 
         {/* Empty div to mark the end of messages for scrolling */}
         <div ref={messagesEndRef} />
