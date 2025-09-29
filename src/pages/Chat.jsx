@@ -90,7 +90,7 @@ const Chat = () => {
                 msg.attachments.map(async (attachment) => {
                   const fileUrl = await getFileUrl(attachment);
 
-                  return fileUrl;
+                  return urls;
                 })
               );
               const processedMsg = {
@@ -105,7 +105,6 @@ const Chat = () => {
                     key: attachment,
                   })),
               };
-
               return processedMsg;
             } catch (error) {
               console.error("[v0] Error getting attachment URLs:", error);
@@ -113,21 +112,22 @@ const Chat = () => {
             }
           }
           // Keep backward compatibility for old single file messages
-          if (msg.fileUrl) {
-            try {
-              const fileUrl = await getFileUrl(msg.fileUrl);
-              console.log(
-                "[v0] Got file URL for old format:",
-                msg.fileUrl,
-                "->",
-                fileUrl
-              );
-              return {...msg, fileUrl};
-            } catch (error) {
-              console.error("[v0] Error getting file URL:", error);
-              return msg;
-            }
-          }
+          // if (msg.fileUrl) {
+          //   try {
+          //     const fileUrl = await getFileUrl(msg.fileUrl);
+          //     console.log(
+          //       "[v0] Got file URL for old format:",
+          //       msg.fileUrl,
+          //       "->",
+          //       fileUrl
+          //     );
+          //     return {...msg, fileUrl};
+          //   }
+          //   catch (error) {
+          //     console.error("[v0] Error getting file URL:", error);
+          //     return msg;
+          //   }
+          // }
           return msg;
         })
       );
@@ -326,7 +326,6 @@ const Chat = () => {
 
     // Handle old single file format for backward compatibility
     if (msg.fileUrl && !attachments.length) {
-      // if (!isImageFile(null, msg.fileUrl)) {
       return (
         <img
           src={msg.fileUrl || "/placeholder.svg"}
@@ -334,25 +333,6 @@ const Chat = () => {
           alt="Message attachment"
         />
       );
-      // }
-      // return (
-      //   <div className="mt-2">
-      //     <div className="flex items-center gap-3 p-2 bg-white/10 rounded border">
-      //       <FileText className="w-6 h-6 text-current" />
-      //       <div className="flex-1 min-w-0">
-      //         <p className="text-sm font-medium truncate">Attachment</p>
-      //       </div>
-      //       <a
-      //         href={msg.fileUrl}
-      //         target="_blank"
-      //         rel="noopener noreferrer"
-      //         className="text-xs px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition-colors"
-      //       >
-      //         Open
-      //       </a>
-      //     </div>
-      //   </div>
-      // )
     }
 
     return (
@@ -360,7 +340,6 @@ const Chat = () => {
         {attachments.map((file, index) => {
           const fileUrl = attachmentUrls[index] || file.url || file.fileUrl;
 
-          // if (isImageFile(file.name, fileUrl)) {
           return (
             <img
               key={index}
@@ -369,32 +348,6 @@ const Chat = () => {
               alt={file.name || "Attachment"}
             />
           );
-          // } else {
-          //   return (
-          //     <div
-          //       key={index}
-          //       className="flex items-center gap-3 p-2 bg-white/10 rounded border"
-          //     >
-          //       <FileText className="w-6 h-6 text-current" />
-          //       <div className="flex-1 min-w-0">
-          //         <p className="text-sm font-medium truncate">{file.name}</p>
-          //         <p className="text-xs opacity-75">
-          //           {file.size ? `${(file.size / 1024).toFixed(1)} KB` : "File"}
-          //         </p>
-          //       </div>
-          //       {/* {fileUrl && (
-          //         <a
-          //           href={fileUrl}
-          //           target="_blank"
-          //           rel="noopener noreferrer"
-          //           className="text-xs px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition-colors"
-          //         >
-          //           Open
-          //         </a>
-          //       )} */}
-          //     </div>
-          //   );
-          // }
         })}
       </div>
     );
@@ -410,13 +363,56 @@ const Chat = () => {
     setPollOptions(newOptions);
   };
 
+  const handleGifSelect = async (gif) => {
+    setLoadingState("gif");
+    setIsLoading(true);
+
+    const gifUrl = gif.images.original.url;
+    const gifTitle = gif.title || "GIF";
+
+    const newMessage = {
+      type: "gif",
+      content: gifTitle,
+      fileUrl: gifUrl,
+      attachments: [],
+      attachmentUrls: [],
+      files: [],
+      timestamp: new Date().toISOString(),
+      senderId: authUerId,
+      sender: {name: authUser?.name || "You"},
+    };
+
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("sendMessage", {
+        tripId,
+        senderId: authUerId,
+        content: gifTitle,
+        type: "gif",
+        fileUrl: gifUrl,
+        timestamp: new Date().toISOString(),
+        attachments: [],
+      });
+    } else {
+      console.warn("Socket not connected yet");
+    }
+
+    setMessages((prev) => [...prev, newMessage]);
+    setIsLoading(false);
+    setLoadingState(null);
+    setIsOpenGif(false);
+  };
+
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
     <main className="flex flex-col h-screen">
       {/* Header */}
       <ChatHeader />
-      <ModalChatGIF open={isOpen} onOpenChange={setIsOpenGif} />
+      <ModalChatGIF
+        open={isOpen}
+        onOpenChange={setIsOpenGif}
+        onSelectGif={handleGifSelect}
+      />
 
       {/* Messages Container with ref */}
       <div
@@ -553,6 +549,61 @@ const Chat = () => {
                   </div>
                 )}
 
+                {msg.type === "gif" && (
+                  <div
+                    className={`flex ${
+                      msg.senderId === authUerId
+                        ? "justify-end"
+                        : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-start gap-2 ${
+                        msg.senderId === authUerId
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      {/* Show profile picture only for others' messages (left side) */}
+                      {msg.senderId !== authUerId && (
+                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                          <User className="w-4 h-4" />
+                        </span>
+                      )}
+                      <div className="flex flex-col items-start">
+                        <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
+                          {/* Sender name (only for others' messages) */}
+                          {msg.senderId !== authUerId && (
+                            <p className="text-xs font-medium mb-1">
+                              {msg?.sender?.name || "Unknown"}
+                            </p>
+                          )}
+
+                          {/* GIF content */}
+                          <div className="rounded-lg overflow-hidden">
+                            <img
+                              src={msg.fileUrl || "/placeholder.svg"}
+                              alt={msg.content || "GIF"}
+                              className="max-w-full h-auto rounded-lg"
+                              style={{maxWidth: "200px", maxHeight: "200px"}}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-400 px-1 flex-shrink-0 mt-1">
+                          {formatTime(msg.timestamp)}
+                        </p>
+                      </div>
+
+                      {/* Show profile picture for current user messages (right side) */}
+                      {msg.senderId === authUerId && (
+                        <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                          <User className="w-4 h-4" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {msg.type === "text" && (
                   <div
                     className={`flex ${
@@ -582,7 +633,6 @@ const Chat = () => {
                         //   className="w-8 h-8 rounded-full object-cover"
                         // />
                         <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          {/* {"U"} */}
                           <User className="w-4 h-4" />
                         </span>
                       )}
@@ -623,7 +673,6 @@ const Chat = () => {
                         //   className="w-8 h-8 rounded-full object-cover"
                         // />
                         <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                          {/* {"U"} */}
                           <User className="w-4 h-4" />
                         </span>
                       )}
@@ -850,13 +899,17 @@ const Chat = () => {
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setIsOpenGif(true)}
-                  className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                >
-                  <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
+                {loadingState === "gif" ? (
+                  <ChatLoader />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsOpenGif(true)}
+                    className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  >
+                    <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                )}
                 {(authUser?.trip_role === "creator" ||
                   authUser?.trip_role === "co-admin") &&
                   (loadingState === "announcement" ? (
