@@ -100,5 +100,63 @@ export const uploadToS3 = async ({
   }
 };
 
+export const availableReactions = [
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "😡",
+  "👍",
+  "👎",
+  "🔥",
+];
+export const normalizePoll = (raw) => {
+    if (!raw) return null;
 
-  export const availableReactions = ["❤️", "😂", "😮", "😢", "😡", "👍", "👎", "🔥"];
+    // If server sends JSON string, try to parse
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return normalizePoll(parsed);
+      } catch {
+        // Treat as single label string
+        return [{label: String(raw), votes: 0}];
+      }
+    }
+
+    // If server sends an object like { options: [...] } or { poll: [...] }
+    if (!Array.isArray(raw) && typeof raw === "object") {
+      const arr =
+        raw.options ||
+        raw.poll ||
+        raw.choices ||
+        raw.choice ||
+        raw.data ||
+        raw.payload ||
+        null;
+      if (arr) return normalizePoll(arr);
+    }
+
+    // If it's an array
+    if (Array.isArray(raw)) {
+      // Array of strings -> convert to objects
+      if (raw.every((it) => typeof it === "string")) {
+        return raw.map((label) => ({label, votes: 0}));
+      }
+      // Array of objects -> coerce shape
+      if (raw.every((it) => typeof it === "object" && it !== null)) {
+        return raw.map((it) => ({
+          label:
+            it.label ??
+            it.text ??
+            it.option ??
+            (typeof it === "string" ? it : "") ??
+            "",
+          votes: Number(it.votes ?? 0),
+        }));
+      }
+    }
+
+    return null;
+  };
+

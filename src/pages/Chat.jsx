@@ -7,7 +7,7 @@ import {
   Send,
   Paperclip,
   ImageIcon,
-  CarIcon as ChartColumn,
+  ChartColumn,
   Check,
   FileText,
   User,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import {useSelector} from "react-redux";
 import {io} from "socket.io-client";
-import {formatTime} from "../utils/utils";
+import {formatTime, normalizePoll} from "../utils/utils";
 import {RenderAttachments} from "@/components/chat/ChatAttachments";
 import WelcomeChat from "@/components/chat/WelcomeChat";
 import {
@@ -26,6 +26,7 @@ import {
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatLoader from "@/components/chat/ChatLoader";
 import ModalChatGIF from "@/components/chat/ModalChatGIF";
+import {ChatAnnouncement} from "@/components/chat/ChatAnnouncement";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -47,7 +48,7 @@ const Chat = () => {
   const authUerId = authUser?.id;
   const BASE_URL = import.meta.env.VITE_API_URL;
   const [isLoading, setIsLoading] = useState(false);
-
+  console.log(authUser, "k");
   const socketRef = useRef(null);
 
   // Scroll to bottom function
@@ -121,12 +122,50 @@ const Chat = () => {
     return counts;
   };
 
+  const normalizeMessage = (m) => {
+    const msg = {...m};
+    let rawPoll =
+      msg.poll ??
+      msg.pollOptions ??
+      msg.options ??
+      msg.choice ??
+      msg.poll_data ??
+      msg.data?.poll ??
+      msg.data?.options ??
+      msg.meta?.poll ??
+      msg.meta?.options ??
+      msg.metadata?.poll ??
+      msg.metadata?.options ??
+      null;
+
+    // If still missing, try to parse JSON embedded in content
+    if (!rawPoll && typeof msg.content === "string") {
+      try {
+        const parsed = JSON.parse(msg.content);
+        rawPoll =
+          parsed?.poll ??
+          parsed?.pollOptions ??
+          parsed?.options ??
+          parsed?.choices ??
+          null;
+      } catch {
+        // content isn't JSON - ignore
+      }
+    }
+
+    const normalized = normalizePoll(rawPoll);
+    if (normalized) msg.poll = normalized;
+    return msg;
+  };
+  console.log(authUerId, "id");
   useEffect(() => {
     if (!tripId || !token) return;
 
     const processMessages = async (msgs) => {
       const processed = await Promise.all(
-        msgs.map(async (msg) => {
+        msgs.map(async (orig) => {
+          const msg = normalizeMessage(orig);
+
           if (msg.reactions && msg.reactions.length > 0) {
             setReactions((prev) => ({
               ...prev,
@@ -139,8 +178,7 @@ const Chat = () => {
               const attachmentUrls = await Promise.all(
                 msg.attachments.map(async (attachment) => {
                   const fileUrl = await getFileUrl(attachment);
-
-                  return fileUrl; // Fixed undeclared variable urls
+                  return fileUrl;
                 })
               );
               const processedMsg = {
@@ -184,7 +222,8 @@ const Chat = () => {
     });
 
     s.on("messages", processMessages);
-    s.on("newMessage", async (msg) => {
+    s.on("newMessage", async (incoming) => {
+      const msg = normalizeMessage(incoming);
       console.log("[v0] Received new message:", msg);
       if (msg.reactions && msg.reactions.length > 0) {
         setReactions((prev) => ({
@@ -192,7 +231,6 @@ const Chat = () => {
           [msg.id]: msg.reactions,
         }));
       } else {
-        // Initialize empty reactions array for new messages
         setReactions((prev) => ({
           ...prev,
           [msg.id]: [],
@@ -232,10 +270,10 @@ const Chat = () => {
       }
     });
 
-    s.on("messageDelivered", async (serverMsg) => {
+    s.on("messageDelivered", async (delivered) => {
+      const serverMsg = normalizeMessage(delivered);
       console.log("[v0] Message delivered from server:", serverMsg);
 
-      // Initialize reactions for the delivered message
       if (serverMsg.reactions && serverMsg.reactions.length > 0) {
         setReactions((prev) => ({
           ...prev,
@@ -248,14 +286,51 @@ const Chat = () => {
         }));
       }
 
-      // Update the message in the list with the server version (which has the proper ID)
+      // Resolve signed URLs for attachments so images/files render immediately
+      let processedDelivered = serverMsg;
+      if (serverMsg.attachments && serverMsg.attachments.length > 0) {
+        try {
+          const attachmentUrls = await Promise.all(
+            serverMsg.attachments.map(async (attachment) => {
+              const fileUrl = await getFileUrl(attachment);
+              return fileUrl;
+            })
+          );
+
+          processedDelivered = {
+            ...serverMsg,
+            attachmentUrls: attachmentUrls.filter((url) => url !== null),
+            files:
+              serverMsg.files && serverMsg.files.length > 0
+                ? serverMsg.files
+                : serverMsg.attachments.map((attachment, index) => ({
+                    name: `attachment-${index + 1}`,
+                    type: "application/octet-stream",
+                    url: attachmentUrls[index],
+                    key: attachment,
+                  })),
+          };
+        } catch (error) {
+          console.error(
+            "[v0] Error processing delivered message attachments:",
+            error
+          );
+        }
+      }
+
       setMessages((prev) => {
-        // Find the temporary message (without ID or with temporary ID) and replace it
         const lastIndex = prev.length - 1;
         if (lastIndex >= 0 && !prev[lastIndex].id) {
-          // Replace the last message (temporary one) with the server message
           const updated = [...prev];
-          updated[lastIndex] = serverMsg;
+          const tempMsg = updated[lastIndex];
+          // Preserve any client-side poll data, and keep client files/URLs if server didn't include them
+          updated[lastIndex] = normalizeMessage({
+            ...processedDelivered,
+            poll: processedDelivered.poll ?? tempMsg.poll,
+            files: processedDelivered.files ?? tempMsg.files,
+            attachmentUrls:
+              processedDelivered.attachmentUrls ?? tempMsg.attachmentUrls,
+          });
           return updated;
         }
         return prev;
@@ -270,6 +345,15 @@ const Chat = () => {
       }));
     });
 
+    s.on("pollUpdated", ({messageId, poll}) => {
+      console.log("[v0] Poll updated:", {messageId, poll});
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? normalizeMessage({...m, poll}) : m
+        )
+      );
+    });
+
     s.on("disconnect", (reason) => {
       console.log("socket disconnect:", reason);
     });
@@ -279,6 +363,7 @@ const Chat = () => {
       s.off("newMessage");
       s.off("messageDelivered"); // Clean up messageDelivered listener
       s.off("reactionUpdated"); // Clean up reaction listener
+      s.off("pollUpdated");
       s.disconnect();
       socketRef.current = null;
     };
@@ -307,7 +392,6 @@ const Chat = () => {
       return;
 
     const uploadedFiles = [];
-
     if (selectedFiles.length > 0) {
       for (const file of selectedFiles) {
         const uploaded = await uploadToS3({
@@ -316,11 +400,20 @@ const Chat = () => {
           token,
           folder: "chat-uploads",
         });
-        if (uploaded) {
-          uploadedFiles.push(uploaded);
-        }
+        if (uploaded) uploadedFiles.push(uploaded);
       }
     }
+
+    // normalize poll options on send
+    const normalizedOutgoingPoll =
+      mode === "poll"
+        ? normalizePoll(
+            pollOptions.map((o) => ({
+              label: o.label ?? "",
+              votes: Number(o.votes ?? 0),
+            }))
+          ) ?? []
+        : null;
 
     const newMessage = {
       type: mode || "text",
@@ -334,11 +427,11 @@ const Chat = () => {
         url: file.url,
         key: file.key,
       })),
-      poll: mode === "poll" ? pollOptions : null,
+      poll: normalizedOutgoingPoll,
       timestamp: new Date().toISOString(),
       senderId: authUerId,
       sender: {name: authUser?.name || "You"},
-      reactions: [], // Initialize empty reactions array
+      reactions: [],
     };
 
     if (socketRef.current && socketRef.current.connected) {
@@ -356,6 +449,7 @@ const Chat = () => {
           type: file.type,
           size: file.size,
         })),
+        poll: normalizedOutgoingPoll,
       });
     } else {
       console.warn("Socket not connected yet");
@@ -450,10 +544,20 @@ const Chat = () => {
       console.warn("Socket not connected yet");
     }
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, normalizeMessage(newMessage)]);
     setIsLoading(false);
     setLoadingState(null);
     setIsOpenGif(false);
+  };
+
+  const handleVote = (messageId, optionIndex) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("voteOnPoll", {
+        messageId,
+        userId: authUerId,
+        optionIndex, // server also supports optionId, but index maps to rendered order
+      });
+    }
   };
 
   const renderReactions = (messageId) => {
@@ -531,154 +635,189 @@ const Chat = () => {
           <>
             {Object.entries(groupedMessages).map(([date, dateMessages]) => (
               <div key={date}>
-                {/* Date separator */}
                 <div className="flex justify-center my-4">
                   <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
                     {date}
                   </div>
                 </div>
 
-                {/* Messages for this date */}
                 {dateMessages.map((msg, idx) => (
                   <div key={idx} className="w-full max-w-full mb-3">
                     {msg.type === "announcement" && (
-                      <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-l-4 border-amber-500 shadow-lg">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
-                            <Megaphone className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-bold text-amber-800">
-                              📢 Announcement
-                            </p>
-                            <p className="text-xs text-amber-600">
-                              from {msg?.sender?.name}
-                            </p>
-                          </div>
-                        </div>
-                        <RenderAttachments msg={msg} />
-
-                        {msg.content && (
-                          <p className="text-slate-800 font-semibold text-base">
-                            {msg.content}
-                          </p>
-                        )}
-
-                        <p className="text-xs text-amber-500 mt-2 text-right">
-                          {formatTime(msg.timestamp)}
-                        </p>
-                      </div>
+                      <ChatAnnouncement msg={msg} />
                     )}
 
                     {msg.type === "poll" && (
-                      <div className="max-w-[80%] md:max-w-xs lg:max-w-md items-end flex flex-col min-w-0 ml-auto">
-                        <div className="rounded-2xl px-3 py-2 relative group/message shadow-sm w-full bg-blue-500 text-white rounded-br-md">
-                          <p className="text-sm leading-relaxed break-words">
-                            {msg.content}
-                          </p>
-                          <div className="max-w-full overflow-hidden" />
-                          <div className="max-w-full">
-                            <div className="rounded-lg border text-card-foreground shadow-sm mt-3 border-blue-200 bg-blue-50/50">
-                              <div className="flex flex-col space-y-1.5 p-6 pb-3">
-                                <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
-                                  <ChartColumn className="w-4 h-4 text-blue-600" />
-                                  {msg.content}
-                                </h3>
-                                <p className="text-xs text-slate-500">
-                                  {msg?.poll?.reduce((a, b) => a + b.votes, 0)}{" "}
-                                  vote
-                                  <span className="ml-2">
-                                    • Click any option to change your vote
-                                  </span>
-                                </p>
-                              </div>
+                      <div
+                        key={msg.id}
+                        className={`flex ${
+                          msg.senderId === authUerId
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`flex items-start gap-2 ${
+                            msg.senderId === authUerId
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
+                        >
+                          {/* Show profile picture only for others' messages (left side) */}
+                          {msg.senderId !== authUerId &&
+                            (msg?.sender?.Profile?.profile_photo_url ? (
+                              <img
+                                src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
+                                alt={msg?.sender?.name || "User"}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                                <User className="w-4 h-4" />
+                              </span>
+                            ))}
 
-                              <div className="p-6 pt-0 space-y-2">
-                                {msg?.poll?.map((opt, i) => {
-                                  const percent =
-                                    (opt.votes /
-                                      msg.poll.reduce(
-                                        (a, b) => a + b.votes,
+                          <div
+                            className={`flex flex-col ${
+                              msg.senderId === authUerId
+                                ? "items-end"
+                                : "items-start"
+                            }`}
+                          >
+                            <div className="max-w-[80%] md:max-w-xs lg:max-w-md relative group/message shadow-sm w-full rounded-2xl px-4 py-3 bg-blue-500 text-white rounded-br-md">
+                              {/* Keep poll bubble UI unchanged */}
+                              <p className="text-sm font-medium leading-relaxed break-words mb-3">
+                                {"📊 "}
+                                {msg.content}
+                              </p>
+
+                              <div className="max-w-full">
+                                <div className="rounded-lg bg-blue-100/80 backdrop-blur-sm p-4">
+                                  <div className="mb-3">
+                                    <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base text-slate-800 mb-1">
+                                      <ChartColumn className="w-4 h-4 text-blue-600" />
+                                      {msg.content}
+                                    </h3>
+                                    <p className="text-xs text-slate-600">
+                                      {msg?.poll?.reduce(
+                                        (a, b) => a + (Number(b.votes) || 0),
                                         0
-                                      )) *
-                                    100;
-                                  return (
-                                    <div key={i} className="space-y-1">
-                                      <button
-                                        className={`inline-flex items-center justify-between text-left w-full p-3 h-auto transition-all rounded-md border
-                                      ${
-                                        opt.votes > 0
-                                          ? "border-blue-500 bg-blue-100 hover:bg-blue-200"
-                                          : "border-slate-200 bg-white hover:bg-slate-50"
-                                      }`}
-                                      >
-                                        <div className="flex-1">
-                                          <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-medium flex items-center gap-2">
-                                              {opt.label}
-                                              {opt.votes > 0 && (
-                                                <Check className="w-4 h-4 text-blue-600" />
-                                              )}
-                                            </span>
-                                            <span className="text-xs text-slate-500">
-                                              {opt.votes} ({Math.round(percent)}
-                                              %)
-                                            </span>
-                                          </div>
-                                          <div
-                                            role="progressbar"
-                                            aria-valuemin={0}
-                                            aria-valuemax={100}
-                                            className="relative w-full overflow-hidden rounded-full bg-secondary h-2"
+                                      )}{" "}
+                                      vote
+                                      {msg?.poll?.reduce(
+                                        (a, b) => a + (Number(b.votes) || 0),
+                                        0
+                                      ) !== 1
+                                        ? "s"
+                                        : ""}
+                                      <span className="mx-1">•</span>
+                                      Click any option to change your vote
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    {(Array.isArray(msg?.poll)
+                                      ? msg.poll
+                                      : []
+                                    ).map((opt, i, arr) => {
+                                      const totalVotes = arr.reduce(
+                                        (a, b) => a + (Number(b.votes) || 0),
+                                        0
+                                      );
+                                      const percent =
+                                        totalVotes > 0
+                                          ? ((Number(opt.votes) || 0) /
+                                              totalVotes) *
+                                            100
+                                          : 0;
+                                      const hasVotes =
+                                        (Number(opt.votes) || 0) > 0;
+
+                                      return (
+                                        <div key={i}>
+                                          <button
+                                            onClick={() =>
+                                              handleVote(msg.id, i)
+                                            }
+                                            className={`w-full p-3 rounded-lg border transition-all text-left ${
+                                              hasVotes
+                                                ? "border-blue-300 bg-blue-50"
+                                                : "border-slate-200 bg-white hover:bg-slate-50"
+                                            }`}
                                           >
-                                            <div
-                                              className="h-full w-full flex-1 bg-primary transition-all"
-                                              style={{
-                                                transform: `translateX(${
-                                                  100 - percent
-                                                }%)`,
-                                              }}
-                                            />
-                                          </div>
+                                            <div className="flex justify-between items-center mb-2">
+                                              <span className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                                                {opt.label}
+                                                {hasVotes && (
+                                                  <Check className="w-4 h-4 text-blue-600" />
+                                                )}
+                                              </span>
+                                              <span className="text-xs text-slate-600">
+                                                {Number(opt.votes) || 0} (
+                                                {Math.round(percent)}%)
+                                              </span>
+                                            </div>
+                                            <div className="relative w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                              <div
+                                                className="absolute left-0 top-0 h-full bg-slate-800 rounded-full transition-all duration-300"
+                                                style={{width: `${percent}%`}}
+                                              />
+                                            </div>
+                                          </button>
                                         </div>
-                                      </button>
-                                    </div>
-                                  );
-                                })}
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 mt-2 w-full">
-                          {msg.senderId !== authUerId && (
-                            <p className="text-xs text-slate-400 flex-shrink-0">
-                              {formatTime(msg.timestamp)}
-                            </p>
-                          )}
-
-                          <div className="relative flex items-center gap-1">
-                            {renderReactions(msg.id)}
-                            {renderReactionPicker(
-                              msg.id,
-                              msg.senderId === authUerId
-                            )}
-                            <button
-                              onClick={() =>
-                                setShowReactionPicker(
-                                  showReactionPicker === msg.id ? null : msg.id
-                                )
-                              }
-                              className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-2 mt-2">
+                              {msg.senderId !== authUerId && (
+                                <p className="text-xs text-slate-400 flex-shrink-0">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              )}
+                              <div className="relative flex items-center gap-1">
+                                {renderReactions(msg.id)}
+                                {renderReactionPicker(
+                                  msg.id,
+                                  msg.senderId === authUerId
+                                )}
+                                <button
+                                  onClick={() =>
+                                    setShowReactionPicker(
+                                      showReactionPicker === msg.id
+                                        ? null
+                                        : msg.id
+                                    )
+                                  }
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-slate-100 transition-colors"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
+                              </div>
+                              {msg.senderId === authUerId && (
+                                <p className="text-xs text-slate-400 flex-shrink-0">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          {msg.senderId === authUerId && (
-                            <p className="text-xs text-slate-400 flex-shrink-0">
-                              {formatTime(msg.timestamp)}
-                            </p>
-                          )}
+
+                          {/* Show profile picture for current user messages (right side) */}
+                          {msg.senderId === authUerId &&
+                            (msg?.sender?.Profile?.profile_photo_url ? (
+                              <img
+                                src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
+                                alt={msg?.sender?.name || "User"}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                                <User className="w-4 h-4" />
+                              </span>
+                            ))}
                         </div>
                       </div>
                     )}
@@ -699,7 +838,7 @@ const Chat = () => {
                           }`}
                         >
                           {/* Show profile picture only for others' messages (left side) */}
-                          {msg.senderId !== authUerId && (
+                          {msg.senderId !== authUerId &&
                             (msg?.sender?.Profile?.profile_photo_url ? (
                               <img
                                 src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
@@ -710,8 +849,7 @@ const Chat = () => {
                               <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
                                 <User className="w-4 h-4" />
                               </span>
-                            ))
-                          )}
+                            ))}
                           <div
                             className={`flex flex-col ${
                               msg.senderId === authUerId
@@ -776,7 +914,7 @@ const Chat = () => {
                           </div>
 
                           {/* Show profile picture for current user messages (right side) */}
-                           {msg.senderId === authUerId && (
+                          {msg.senderId === authUerId &&
                             (msg?.sender?.Profile?.profile_photo_url ? (
                               <img
                                 src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
@@ -787,8 +925,7 @@ const Chat = () => {
                               <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
                                 <User className="w-4 h-4" />
                               </span>
-                            ))
-                          )}
+                            ))}
                         </div>
                       </div>
                     )}
@@ -909,7 +1046,7 @@ const Chat = () => {
 
       {/* Input Section */}
       <div className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
-        <div className="bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
+        <div className="bg-white  p-2 md:p-4 space-y-3 w-full">
           {/* Announcement Mode */}
           {mode === "announcement" && (
             <div className="bg-amber-100 text-amber-800 border border-amber-200 rounded-md p-2 flex items-center gap-2 w-full max-w-full overflow-hidden">
@@ -961,7 +1098,7 @@ const Chat = () => {
           )}
 
           {/* Poll Mode */}
-          {/* {mode === "poll" && (
+          {mode === "poll" && (
             <div className="bg-white border rounded-lg shadow-sm w-full max-w-md mx-auto p-4">
               <div className="flex flex-col space-y-2">
                 <h3 className="font-semibold tracking-tight flex items-center gap-2 text-lg">
@@ -1032,7 +1169,7 @@ const Chat = () => {
                 </div>
               </div>
             </div>
-          )} */}
+          )}
 
           {/* Default Input */}
           {mode !== "poll" && (
@@ -1147,18 +1284,21 @@ const Chat = () => {
                       <Megaphone className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                   ))}
-                {/* <button
+                <button
                   type="button"
                   onClick={() => {
                     setMode("poll");
                     if (pollOptions.length === 0) {
-                      setPollOptions([{label: ""}, {label: ""}]);
+                      setPollOptions([
+                        {label: "", votes: 0},
+                        {label: "", votes: 0},
+                      ]);
                     }
                   }}
                   className="inline-flex items-center justify-center gap-2 h-8 w-8 md:w-10 md:h-10 rounded-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 >
                   <ChartColumn className="w-4 h-4 md:w-5 md:h-5" />
-                </button> */}
+                </button>
               </div>
             </div>
           )}
