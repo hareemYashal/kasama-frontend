@@ -114,7 +114,7 @@ export default function ExpenseList({
               variant="outline"
               className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-green-50 text-green-700 border-green-200 ml-2 text-xs sm:text-sm flex-shrink-0"
             >
-              ${totalAmount} total
+              ${totalAmount.toFixed(2)} total
             </Badge>
           )}
         </div>

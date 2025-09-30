@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import React, {useState, useEffect} from "react";
+import {useNavigate} from "react-router-dom";
+import {createPageUrl} from "@/utils";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Textarea} from "@/components/ui/textarea";
+import {Label} from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {
   ArrowLeft,
   Settings,
@@ -20,10 +20,10 @@ import {
   Image as ImageIcon,
   SaveIcon,
 } from "lucide-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useSelector } from "react-redux";
-import { updateTripService, getTripByIdService } from "@/services/trip";
-import { toast } from "sonner";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {useSelector} from "react-redux";
+import {updateTripService, getTripByIdService} from "@/services/trip";
+import {toast} from "sonner";
 
 export default function ManageTrip() {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ export default function ManageTrip() {
   const token = useSelector((state) => state.user.token);
 
   // 🔹 Fetch trip details
-  const { data: tripData, isLoading } = useQuery({
+  const {data: tripData, isLoading} = useQuery({
     queryKey: ["trip", tripId],
     queryFn: () => getTripByIdService(tripId, token),
     enabled: !!tripId && !!token,
@@ -73,8 +73,8 @@ export default function ManageTrip() {
   console.log("tripData", tripData);
   console.log("formData", formData);
   // 🔹 Update trip mutation
-  const { mutate, isLoading: isMutating } = useMutation({
-    mutationFn: ({ formDataToSend, tripId, token }) =>
+  const {mutate, isLoading: isMutating} = useMutation({
+    mutationFn: ({formDataToSend, tripId, token}) =>
       updateTripService(formDataToSend, tripId, token),
     onSuccess: (data) => {
       console.log("Trip Updated Successfully", data);
@@ -89,7 +89,7 @@ export default function ManageTrip() {
   });
 
   const updateFormData = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({...prev, [field]: value}));
   };
 
   const handleImageChange = (e) => {
@@ -134,7 +134,7 @@ export default function ManageTrip() {
       formDataToSend.append("image", tripImageFile);
     }
 
-    mutate({ formDataToSend, tripId, token });
+    mutate({formDataToSend, tripId, token});
   };
 
   if (isLoading) {
@@ -199,12 +199,19 @@ export default function ManageTrip() {
                   </div>
                   <div className="flex-1">
                     <Label htmlFor="trip_image">Upload Trip Image</Label>
-                    <Input
+                    {/* <Input
                       id="trip_image"
                       type="file"
                       onChange={handleImageChange}
                       accept="image/jpeg,image/jpg,image/png,image/webp"
                       className="mt-2"
+                    /> */}
+                    <input
+                      type="file"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base cursor-pointer ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1 file:text-primary"
+                      onChange={handleImageChange}
+                      id="profile_photo"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       Supported formats: JPG, PNG, WebP (max 5MB)
@@ -314,7 +321,8 @@ export default function ManageTrip() {
                 disabled={saving || isMutating}
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground h-10 px-8 py-3 bg-blue-600 hover:bg-blue-700"
               >
-                <SaveIcon /> {saving || isMutating ? "Saving..." : "Save Changes"}
+                <SaveIcon />{" "}
+                {saving || isMutating ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

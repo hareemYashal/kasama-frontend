@@ -126,7 +126,7 @@ export default function LoginPage({ onNavigate }) {
           access_token: tokenResponse.access_token,
         });
 
-        console.log('GOOGLEresp',resp)
+        console.log('GOOGLEresp', resp)
         // success flow identical to your current loginService success:
         toast.success(resp.data.message || "Login Successful");
         dispatch(setToken(resp.data.data.token));
@@ -217,21 +217,16 @@ export default function LoginPage({ onNavigate }) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-md p-8 sm:p-10 md:pt-12 md:pb-10 md:px-10 text-card-foreground relative overflow-hidden border-0 shadow-2xl bg-white/95 backdrop-blur-sm rounded-2xl">
         <div className="text-center pb-8">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-8">
-            <div className="relative group">
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 rounded-full blur-xl
-             opacity-30 group-hover:opacity-40 transition-opacity duration-300"
-              ></div>
-              <span className="flex shrink-0 overflow-hidden rounded-full relative h-20 w-20 sm:h-24 sm:w-24 shadow-lg ring-4 ring-white/50 group-hover:shadow-xl transition-all duration-300">
-                <img
-                  className="aspect-square h-full w-full object-cover"
-                  alt="Kasama (Copy) logo"
-                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/d920fbafd_fa5be6e8-a9dd-4d0c-bc53-217d1bdfa693.png"
-                />
-              </span>
-            </div>{" "}
-          </div>
+          {/* <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-8"> */}
+          <div className="flex items-center justify-center">
+
+            <img
+              src="/assets/kasama-logo1.jpg"
+              alt="Kasama Logo"
+              className="w-50 h-16 rounded-full"
+            />
+          </div>{" "}
+          {/* </div> */}
           <div className="space-y-2 sm:space-y-3">
             <CardTitle className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               Welcome to Kasama
@@ -356,11 +351,10 @@ export default function LoginPage({ onNavigate }) {
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className={`pr-10 ${
-                      errors.password
+                    className={`pr-10 ${errors.password
                         ? "border-destructive focus:ring-destructive"
                         : ""
-                    }`}
+                      }`}
                   />
                   <button
                     type="button"

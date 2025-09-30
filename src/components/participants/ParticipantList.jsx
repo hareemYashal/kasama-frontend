@@ -3,15 +3,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Crown, Phone, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button"; // ✅ using your shadcn/ui button
 import { useSelector } from "react-redux";
+import { useQuery } from "@tanstack/react-query";
+import { getAllTripsWithRole } from "@/services/trip";
 
 export default function ParticipantList({
   participants,
   isAdmin,
   onMakeAdmin,
+  tripId,
 }) {
   const [participantToRemove, setParticipantToRemove] = useState(null);
+  const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
-  console.log("participantsMAKEADMIN", participants);
+
+  const { data: tripsData } = useQuery({
+    queryKey: ["getAllTripsWithRoleQuery", token],
+    queryFn: () => getAllTripsWithRole(token),
+    enabled: !!token,
+  });
+
+  const activeTrip = tripsData?.data?.trips?.find((t) => t.id === tripId);
+  const creatorId = activeTrip?.creatorId;
+
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
       <CardHeader className="pb-4">
@@ -25,6 +38,7 @@ export default function ParticipantList({
         {participants?.length > 0 ? (
           participants.map((participant) => {
             const profile = participant?.user?.Profile;
+
             return (
               <div
                 key={participant.id}
@@ -41,11 +55,11 @@ export default function ParticipantList({
                         onError={(e) => {
                           e.target.style.display = "none";
                           e.target.parentNode.innerHTML = `
-                              <span class='w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold'>
-                                ${(
-                                  participant?.user?.name?.[0] || "P"
-                                ).toUpperCase()}
-                              </span>`;
+                            <span class='w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold'>
+                              ${(
+                              participant?.user?.name?.[0] || "P"
+                            ).toUpperCase()}
+                            </span>`;
                         }}
                       />
                     ) : (
@@ -57,7 +71,6 @@ export default function ParticipantList({
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-y-2">
                       <div className="flex items-center gap-x-3 flex-wrap">
                         <h3 className="font-bold text-card-foreground text-base truncate">
@@ -66,25 +79,24 @@ export default function ParticipantList({
 
                         {/* Badges */}
                         <div className="flex items-center gap-x-1.5">
-                          {/* Admin badge */}
-                          {participant?.user?.email === user?.email &&
-                            user?.trip_role === "creator" && (
-                              <div className="inline-flex items-center rounded-full border px-2.5 transition-colors bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
-                                <Crown className="w-3 h-3 mr-1" />
-                                Admin
-                              </div>
-                            )}
+                          {/* Crown badge only for creator */}
+                          {participant?.userId === creatorId  && (
+                            <div className="inline-flex items-center rounded-full border px-2.5 bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
+                              <Crown className="w-3 h-3 mr-1" />
+                              Admin
+                            </div>
+                          )}
 
                           {/* Co-Admin badge */}
-                          {participant.isHelperAdmin &&(
-                              <div className="inline-flex items-center rounded-full border px-2.5 bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
-                                <Crown className="w-3 h-3 mr-1" />
-                                Co-Admin
-                              </div>
-                            )}
+                          {participant.isHelperAdmin && (
+                            <div className="inline-flex items-center rounded-full border px-2.5 bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
+                              {/* <Crown className="w-3 h-3 mr-1" /> */}
+                              Co-Admin
+                            </div>
+                          )}
 
                           {/* “You” badge */}
-                          {participant?.user?.email === user?.email && (
+                          {participant?.user?.id === user?.id && (
                             <div className="inline-flex items-center rounded-full border px-2.5 font-semibold text-foreground text-xs py-0.5">
                               You
                             </div>
@@ -92,17 +104,16 @@ export default function ParticipantList({
                         </div>
                       </div>
 
-                      {/* 👉 Make Admin button (only visible to existing admins, 
-                            not for yourself, not for current admins) */}
+                      {/* 👉 Make Co-Admin button (only creator can assign) */}
                       {isAdmin &&
-                        user?.trip_role === "creator" &&
-                        participant?.user?.email !== user?.email && (
+                        user?.id === creatorId &&
+                        participant?.user?.id !== user?.id && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => onMakeAdmin?.(participant)}
                           >
-                            <Crown className="w-4 h-4 mr-1 text-amber-600" />
+                            {/* <Crown className="w-4 h-4 mr-1 text-amber-600" /> */}
                             {participant.isHelperAdmin
                               ? "Remove Co-Admin"
                               : "Make Co-Admin"}
@@ -125,13 +136,13 @@ export default function ParticipantList({
                         <span className="truncate">
                           {profile?.birthday
                             ? new Date(profile?.birthday).toLocaleDateString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                }
-                              )
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )
                             : "Not provided"}
                         </span>
                       </div>
@@ -144,8 +155,8 @@ export default function ParticipantList({
                         <span className="font-medium">Emergency Contact:</span>
                         <div className="break-words text-xs leading-relaxed">
                           {profile?.emergency_contact_name ||
-                          profile?.emergency_contact_phone ||
-                          profile?.emergency_contact_relationship ? (
+                            profile?.emergency_contact_phone ||
+                            profile?.emergency_contact_relationship ? (
                             <>
                               {profile?.emergency_contact_name || "N/A"} •{" "}
                               {profile?.emergency_contact_phone || "N/A"} •{" "}
@@ -160,28 +171,47 @@ export default function ParticipantList({
 
                     {/* Travel Document */}
                     {isAdmin && (
-                      <div className="mt-3 pt-3 border-t border-border/60">
-                        {profile?.passport_country &&
-                        profile?.passport_expiration &&
-                        profile?.passport_number ? (
-                          <div className="space-y-1">
+                      <>
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          {profile?.passport_country &&
+                            profile?.passport_expiration &&
+                            profile?.passport_number ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-400 italic">
+                                {profile?.travelDocument ||
+                                  "Travel document details available"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-medium">
+                                  Passport Number:
+                                </span>{" "}
+                                {profile?.passport_number}
+                              </p>
+                            </div>
+                          ) : (
                             <p className="text-xs text-slate-400 italic">
-                              {profile?.travelDocument ||
-                                "Travel document details available"}
+                              No travel document submitted.
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              <span className="font-medium">
-                                Passport Number:
-                              </span>{" "}
-                              {profile?.passport_number}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-400 italic">
-                            No travel document submitted.
-                          </p>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {profile?.passport_expiration &&
+                            profile?.passport_number && (
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-medium">
+                                  Passport Expiry:
+                                </span>{" "}
+                                {new Date(
+                                  profile?.passport_expiration
+                                ).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
+                              </p>
+                            )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

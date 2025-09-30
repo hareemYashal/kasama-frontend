@@ -332,6 +332,7 @@ export default function Participants() {
               onRemove={handleRemoveParticipant}
               isAdmin={isAdmin}
               onMakeAdmin={handleMakeAdmin}
+              tripId={tripId}
             />
           )}
         </div>

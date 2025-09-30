@@ -12,7 +12,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Loader2, Save, UserCircle, ArrowLeft, AlertTriangle } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  UserCircle,
+  ArrowLeft,
+  AlertTriangle,
+} from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { getProfileService, saveProfileService } from "@/services/profile";
 import { toast } from "sonner";
@@ -143,7 +149,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
-   
       <div className="max-w-3xl mx-auto space-y-8">
         <Button
           variant="outline"
@@ -181,12 +186,19 @@ export default function Profile() {
                 />
                 <div className="flex-1">
                   <Label htmlFor="profile_photo">Profile Photo</Label>
-                  <Input
+                  {/* <Input
                     id="profile_photo"
                     type="file"
                     onChange={handleFileChange}
                     accept="image/*"
                     className="mt-1"
+                  /> */}
+                  <input
+                    type="file"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base cursor-pointer ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1 file:text-primary"
+                    onChange={handleFileChange}
+                    id="profile_photo"
+                    accept="image/*"
                   />
                   <p className="text-xs text-slate-500 mt-1">
                     Upload a new photo to update your avatar.
