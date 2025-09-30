@@ -700,9 +700,17 @@ const Chat = () => {
                         >
                           {/* Show profile picture only for others' messages (left side) */}
                           {msg.senderId !== authUerId && (
-                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                              <User className="w-4 h-4" />
-                            </span>
+                            (msg?.sender?.Profile?.profile_photo_url ? (
+                              <img
+                                src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
+                                alt={msg?.sender?.name || "User"}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                                <User className="w-4 h-4" />
+                              </span>
+                            ))
                           )}
                           <div
                             className={`flex flex-col ${
@@ -768,10 +776,18 @@ const Chat = () => {
                           </div>
 
                           {/* Show profile picture for current user messages (right side) */}
-                          {msg.senderId === authUerId && (
-                            <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
-                              <User className="w-4 h-4" />
-                            </span>
+                           {msg.senderId === authUerId && (
+                            (msg?.sender?.Profile?.profile_photo_url ? (
+                              <img
+                                src={`${BASE_URL}${msg?.sender?.Profile.profile_photo_url}`}
+                                alt={msg?.sender?.name || "User"}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-slate-600 font-semibold text-sm leading-none bg-gray-300 p-3 rounded-full flex items-center justify-center w-10 h-10">
+                                <User className="w-4 h-4" />
+                              </span>
+                            ))
                           )}
                         </div>
                       </div>
