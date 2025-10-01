@@ -277,30 +277,41 @@ export default function Payments() {
     setProcessingOneTimePayment(true);
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:4000/payment/create-checkout-session",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            userId: authUerId,
-            tripId: authTripId,
-            baseAmount: parsedAmount,
-            totalCharge,
-            paymentType: "self",
-            hasAdminAcess: hasAdminAcess,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (data?.url) {
-        window.location.href = data.url;
+      // If ACH is selected, process via ACH (Plaid/Stripe bank account) flow
+      if (paymentMethod?.type === "ach") {
+        await processAchPayment({
+          amount: parsedAmount,
+          authToken,
+          customerEmail: (authUser && authUser.email) || "",
+          customerName: (authUser && (authUser.name || authUser.fullName)) || "",
+        });
       } else {
-        throw new Error("No checkout URL returned");
+        // Default: existing card checkout flow
+        const response = await fetch(
+          "http://127.0.0.1:4000/payment/create-checkout-session",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({
+              userId: authUerId,
+              tripId: authTripId,
+              baseAmount: parsedAmount,
+              totalCharge,
+              paymentType: "self",
+              hasAdminAcess: hasAdminAcess,
+            }),
+          }
+        );
+
+        const data = await response.json();
+        if (data?.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error("No checkout URL returned");
+        }
       }
     } catch (error) {
       console.error("Error creating one-time payment session:", error);
@@ -324,30 +335,39 @@ export default function Payments() {
     setProcessingFriendPayment(true);
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:4000/payment/create-checkout-session",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            paidBy: authUerId, // the actual payer
-            userId: selectedFriend, // the credited participant (receiver)
-            tripId: authTripId, // trip reference
-            baseAmount: parseFloat(friendPaymentAmount), // original amount
-            totalCharge, // after any fees/charges
-            paymentType: "participant", // "self" or "participant"
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (data?.url) {
-        window.location.href = data.url; // redirect to Stripe Checkout
+      if (paymentMethod?.type === "ach") {
+        await processAchPayment({
+          amount: parseFloat(friendPaymentAmount),
+          authToken,
+          customerEmail: (authUser && authUser.email) || "",
+          customerName: (authUser && (authUser.name || authUser.fullName)) || "",
+        });
       } else {
-        throw new Error("No checkout URL returned");
+        const response = await fetch(
+          "http://127.0.0.1:4000/payment/create-checkout-session",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({
+              paidBy: authUerId, // the actual payer
+              userId: selectedFriend, // the credited participant (receiver)
+              tripId: authTripId, // trip reference
+              baseAmount: parseFloat(friendPaymentAmount), // original amount
+              totalCharge, // after any fees/charges
+              paymentType: "participant", // "self" or "participant"
+            }),
+          }
+        );
+
+        const data = await response.json();
+        if (data?.url) {
+          window.location.href = data.url; // redirect to Stripe Checkout
+        } else {
+          throw new Error("No checkout URL returned");
+        }
       }
     } catch (err) {
       console.error("Error creating friend payment session:", err);
@@ -358,16 +378,27 @@ export default function Payments() {
   };
 
   const handleAddPaymentMethod = () => {
-    const defaultCard = {
-      brand: "Visa",
-      last4: "4242",
-      type: "card",
-    };
-    setPaymentMethod(defaultCard);
+    let defaultPaymentMethod;
+
+    if (methodType === "ach") {
+      defaultPaymentMethod = {
+        brand: "Bank Account",
+        last4: "6789",
+        type: "ach",
+      };
+    } else {
+      defaultPaymentMethod = {
+        brand: "Visa",
+        last4: "4242",
+        type: "card",
+      };
+    }
+
+    setPaymentMethod(defaultPaymentMethod);
     setShowPaymentModal(false);
     localStorage.setItem(
       `kasama_payment_method_${authTripId}`,
-      JSON.stringify(defaultCard)
+      JSON.stringify(defaultPaymentMethod)
     );
   };
 
@@ -378,6 +409,82 @@ export default function Payments() {
     } else {
       // Card: 2.9% + 30¢
       return amount * 0.029 + 0.3;
+    }
+  };
+
+  // --- ACH (Plaid/Stripe US Bank Account) helpers ---
+  const STRIPE_PUBLISHABLE_KEY = "pk_test_51S7hKeHFhVZ9uprZzkiHLQT6O5lWwtAO71T7mZfnkVcDvYbKvQGEjecGdZRKYV3iFkSrLoPdt5PcTRr4ELGN4iyt00NP7RBBjS";
+
+  const ensureStripeJsLoaded = () => {
+    return new Promise((resolve, reject) => {
+      if (window.Stripe) {
+        resolve();
+        return;
+      }
+      const existing = document.querySelector('script[src="https://js.stripe.com/v3/"]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve());
+        existing.addEventListener("error", () => reject(new Error("Failed to load Stripe.js")));
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://js.stripe.com/v3/";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load Stripe.js"));
+      document.body.appendChild(script);
+    });
+  };
+
+  const processAchPayment = async ({ amount, authToken, customerEmail, customerName }) => {
+    try {
+      await ensureStripeJsLoaded();
+      const stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+
+      // Create a PaymentIntent on the server sized to cents
+      const createPiResponse = await fetch("http://127.0.0.1:4000/payment/add-payment-intent", {
+        method: "POST",
+        headers: authToken
+          ? { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" }
+          : { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Math.round((amount || 0) * 100) }),
+      });
+
+      if (!createPiResponse.ok) {
+        throw new Error(`Server error: ${createPiResponse.status}`);
+      }
+
+      const { clientSecret } = await createPiResponse.json();
+
+      const { paymentIntent, error: collectError } = await stripe.collectBankAccountForPayment({
+        clientSecret,
+        params: {
+          payment_method_type: "us_bank_account",
+          payment_method_data: {
+            billing_details: {
+              name: customerName || "Customer",
+              email: customerEmail || "customer@example.com",
+            },
+          },
+        },
+      });
+
+      if (collectError) {
+        throw new Error(collectError.message);
+      }
+
+      if (paymentIntent?.status === "requires_confirmation") {
+        const { error: confirmError } = await stripe.confirmUsBankAccountPayment(clientSecret);
+        if (confirmError) {
+          throw new Error(confirmError.message);
+        }
+      }
+
+      toast.success("ACH payment initiated successfully. Check your email for confirmation.");
+    } catch (e) {
+      console.error("ACH payment error", e);
+      toast.error(e?.message || "Failed to process ACH payment");
+      throw e;
     }
   };
   const calculateOneTimePaymentBreakdown = () => {
@@ -401,11 +508,11 @@ export default function Payments() {
     }
 
     const platformFee = 1.0;
-    const stripeFee = 0.029 * amount + 0.3;
+    const stripeFee = calculateStripeFee(amount, paymentMethod?.type || "card");
     const totalCharge = amount + platformFee + stripeFee;
 
     return { amount, stripeFee, totalCharge };
-  }, [friendPaymentAmount]);
+  }, [friendPaymentAmount, paymentMethod?.type]);
 
   const { data: tripData, isLoading: isLoadingTripData } = useQuery({
     queryKey: ["getTripService", tripId],
@@ -420,8 +527,8 @@ export default function Payments() {
       frequency === "weekly"
         ? 4 // e.g., next 4 weeks
         : frequency === "biweekly"
-        ? 2 // next 2 biweekly periods
-        : 1; // monthly -> 1 installment
+          ? 2 // next 2 biweekly periods
+          : 1; // monthly -> 1 installment
 
     return parseFloat((remaining / installments).toFixed(2));
   };
@@ -472,11 +579,10 @@ export default function Payments() {
             <button
               onClick={handleRequest}
               disabled={isPending}
-              className={`mt-6 px-6 py-2 rounded-xl transition text-white ${
-                isPending
+              className={`mt-6 px-6 py-2 rounded-xl transition text-white ${isPending
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-700"
-              }`}
+                }`}
             >
               {requestText}
             </button>
@@ -612,11 +718,10 @@ export default function Payments() {
                               <div className="space-y-4">
                                 {/* Credit/Debit Card */}
                                 <div
-                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
-                                    methodType === "card"
+                                  className={`p-4 border-2 rounded-xl cursor-pointer ${methodType === "card"
                                       ? "border-blue-500 bg-blue-50"
                                       : "border-gray-200 hover:border-blue-300"
-                                  }`}
+                                    }`}
                                   onClick={() => setMethodType("card")}
                                 >
                                   <div className="flex items-center gap-3">
@@ -627,6 +732,27 @@ export default function Payments() {
                                       </h4>
                                       <p className="text-sm text-slate-500">
                                         2.9% + 30¢ per transaction
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ACH Bank Transfer */}
+                                <div
+                                  className={`p-4 border-2 rounded-xl cursor-pointer ${methodType === "ach"
+                                      ? "border-blue-500 bg-blue-50"
+                                      : "border-gray-200 hover:border-blue-300"
+                                    }`}
+                                  onClick={() => setMethodType("ach")}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Banknote className="w-5 h-5 text-slate-600" />
+                                    <div>
+                                      <h4 className="font-semibold">
+                                        Bank Transfer (ACH)
+                                      </h4>
+                                      <p className="text-sm text-slate-500">
+                                        0.8% fee (capped at $5)
                                       </p>
                                     </div>
                                   </div>
@@ -644,7 +770,10 @@ export default function Payments() {
                                   onClick={handleAddPaymentMethod}
                                   className="bg-blue-600 hover:bg-blue-700"
                                 >
-                                  Add Card
+                                  Add{" "}
+                                  {methodType === "ach"
+                                    ? "Bank Account"
+                                    : "Card"}
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
@@ -657,8 +786,10 @@ export default function Payments() {
                               <Check className="w-5 h-5 text-green-600" />
                               <div>
                                 <p className="font-medium">
-                                  {paymentMethod.brand} ****{" "}
-                                  {paymentMethod.last4}
+                                  {paymentMethod.brand}
+                                  {paymentMethod.type !== "ach" && (
+                                    <> **** {paymentMethod.last4}</>
+                                  )}
                                 </p>
                                 <p className="text-sm text-slate-500">
                                   {paymentMethod.type === "ach"
@@ -726,7 +857,7 @@ export default function Payments() {
                             {oneTimeAmount &&
                               (parseFloat(oneTimeAmount) <= 0 ||
                                 parseFloat(oneTimeAmount) >
-                                  paymentDetailData.remainings) && (
+                                paymentDetailData.remainings) && (
                                 <p className="text-xs text-red-500 mt-1">
                                   {parseFloat(oneTimeAmount) <= 0
                                     ? "Please enter a valid positive amount."
@@ -797,7 +928,7 @@ export default function Payments() {
                             !oneTimeAmount ||
                             parseFloat(oneTimeAmount) <= 0 ||
                             parseFloat(oneTimeAmount) >
-                              paymentDetailData.remainings ||
+                            paymentDetailData.remainings ||
                             processingOneTimePayment
                           }
                           className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -807,12 +938,12 @@ export default function Payments() {
                           )}
                           Pay $
                           {oneTimeAmount &&
-                          parseFloat(oneTimeAmount) > 0 &&
-                          parseFloat(oneTimeAmount) <=
+                            parseFloat(oneTimeAmount) > 0 &&
+                            parseFloat(oneTimeAmount) <=
                             paymentDetailData.remainings
                             ? calculateOneTimePaymentBreakdown().totalCharge.toFixed(
-                                2
-                              )
+                              2
+                            )
                             : "0.00"}
                         </Button>
                       </CardContent>
@@ -937,8 +1068,8 @@ export default function Payments() {
                       </SelectTrigger>
                       <SelectContent>
                         {totalParticipant &&
-                        totalParticipant.filter((p) => p.userId !== authUerId)
-                          .length > 0 ? (
+                          totalParticipant.filter((p) => p.userId !== authUerId)
+                            .length > 0 ? (
                           totalParticipant
                             .filter((p) => p.userId !== authUerId)
                             .map((p) => {
@@ -1047,7 +1178,9 @@ export default function Payments() {
                             <span>${friendBreakdown.stripeFee.toFixed(2)}</span>
                           </div>
                           <div className="text-xs text-slate-500">
-                            ("2.9% + 30¢" for card)
+                            {paymentMethod?.type === "ach"
+                              ? "0.8% (capped at $5) for ACH"
+                              : "2.9% + 30¢ for card"}
                           </div>
                           <hr className="my-2" />
                           <div className="flex justify-between font-bold text-purple-600">
@@ -1069,8 +1202,8 @@ export default function Payments() {
                       (selectedFriendContribution?.paymentInfo?.remainings ||
                         0) <= 0 || // ✅ use remainings
                       parseFloat(friendPaymentAmount) >
-                        (selectedFriendContribution?.paymentInfo?.remainings ||
-                          0) ||
+                      (selectedFriendContribution?.paymentInfo?.remainings ||
+                        0) ||
                       processingFriendPayment
                     }
                     className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
