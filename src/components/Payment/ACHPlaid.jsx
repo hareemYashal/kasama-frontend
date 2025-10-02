@@ -1,3 +1,101 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { Elements, useStripe, useElements } from "@stripe/react-stripe-js"
+import { loadStripe } from "@stripe/stripe-js"
+import { useSelector } from "react-redux"
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+
+const formStyles = {
+  container: {
+    maxWidth: "500px",
+    margin: "0 auto",
+    padding: "2rem",
+    backgroundColor: "#ffffff",
+    borderRadius: "12px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+  },
+  title: {
+    fontSize: "1.5rem",
+    fontWeight: "600",
+    marginBottom: "1.5rem",
+    color: "#1a202c",
+    textAlign: "center",
+  },
+  formGroup: {
+    marginBottom: "1.5rem",
+  },
+  label: {
+    display: "block",
+    marginBottom: "0.5rem",
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    color: "#4a5568",
+  },
+  input: {
+    width: "100%",
+    padding: "0.75rem",
+    fontSize: "1rem",
+    border: "1px solid #cbd5e0",
+    borderRadius: "8px",
+    transition: "border-color 0.2s",
+    outline: "none",
+  },
+  inputFocus: {
+    borderColor: "#4299e1",
+    boxShadow: "0 0 0 3px rgba(66, 153, 225, 0.1)",
+  },
+  button: {
+    width: "100%",
+    padding: "0.875rem",
+    fontSize: "1rem",
+    fontWeight: "600",
+    color: "#ffffff",
+    backgroundColor: "#4299e1",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    marginTop: "1rem",
+  },
+  buttonHover: {
+    backgroundColor: "#3182ce",
+    transform: "translateY(-1px)",
+  },
+  buttonDisabled: {
+    backgroundColor: "#a0aec0",
+    cursor: "not-allowed",
+    opacity: 0.6,
+  },
+  infoText: {
+    marginTop: "1rem",
+    fontSize: "0.75rem",
+    color: "#718096",
+    textAlign: "center" ,
+  },
+  error: {
+    marginTop: "1rem",
+    padding: "0.75rem",
+    backgroundColor: "#fed7d7",
+    color: "#c53030",
+    borderRadius: "8px",
+    fontSize: "0.875rem",
+  },
+  success: {
+    marginTop: "1rem",
+    padding: "0.75rem",
+    backgroundColor: "#c6f6d5",
+    color: "#22543d",
+    borderRadius: "8px",
+    fontSize: "0.875rem",
+  },
+  loading: {
+    color: "#4299e1",
+    fontSize: "0.875rem",
+    textAlign: "center" ,
+  },
+}
 
 // Inner form component that uses Stripe hooks
 const ACHPaymentFormInner = () => {
@@ -32,13 +130,11 @@ const ACHPaymentFormInner = () => {
       return
     }
 
-    // Validate form inputs
     if (!customerName || !customerEmail) {
       setError("Please fill in all required fields")
       return
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(customerEmail)) {
       setError("Please enter a valid email address")
@@ -50,7 +146,6 @@ const ACHPaymentFormInner = () => {
     setSuccess(false)
 
     try {
-      // 1. Create a PaymentIntent on your server
       const endpoint = `${BASE_URL}/payment/add-payment-intent`
       const response = await fetch(endpoint, {
         method: "POST",
@@ -60,7 +155,7 @@ const ACHPaymentFormInner = () => {
               "Content-Type": "application/json",
             }
           : { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 2000 }), // $20.00
+        body: JSON.stringify({ amount: 2000 }),
       })
 
       if (!response.ok) {
@@ -69,7 +164,6 @@ const ACHPaymentFormInner = () => {
 
       const { clientSecret } = await response.json()
 
-      // 2. Collect bank account details
       const { paymentIntent, error: collectError } = await stripe.collectBankAccountForPayment({
         clientSecret: clientSecret,
         params: {
@@ -89,16 +183,13 @@ const ACHPaymentFormInner = () => {
         return
       }
 
-      // 3. Confirm the payment if required
       if (paymentIntent.status === "requires_confirmation") {
         const { error: confirmError } = await stripe.confirmUsBankAccountPayment(clientSecret)
 
         if (confirmError) {
           setError(confirmError.message)
         } else {
-          // Payment is processing
           setSuccess(true)
-          // Reset form
           setCustomerName("")
           setCustomerEmail("")
         }
@@ -211,7 +302,6 @@ const ACHPaymentForm = () => {
     setMounted(true)
   }, [])
 
-  // Prevent hydration issues by only rendering on client
   if (!mounted) {
     return (
       <div style={formStyles.container}>
@@ -223,7 +313,7 @@ const ACHPaymentForm = () => {
   }
 
   return (
-    <Elements stripe={stripePromise} >
+    <Elements stripe={stripePromise}>
       <ACHPaymentFormInner />
     </Elements>
   )

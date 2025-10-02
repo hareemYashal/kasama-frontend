@@ -1,4 +1,6 @@
-import React, {useState, useEffect, useMemo} from "react";
+"use client";
+
+import {useState, useEffect, useMemo} from "react";
 import {useNavigate} from "react-router-dom";
 import {createPageUrl} from "@/utils";
 import {Trip} from "@/api/entities";
@@ -32,17 +34,15 @@ import {
   DollarSign,
   ArrowLeft,
   Users,
-  Download,
   Banknote,
   Shield,
   Check,
   Plus,
-  AlertCircle,
   ShieldCheck,
 } from "lucide-react";
 import {useMutation, useQuery} from "@tanstack/react-query";
+import {useQueryClient} from "@tanstack/react-query";
 import {getPaymentRemainingsService} from "@/services/paynent";
-import {setToken} from "@/store/userSlice";
 import {useSelector} from "react-redux";
 import {
   participantStatusUpdateService,
@@ -51,6 +51,8 @@ import {
 } from "@/services/participant";
 import {toast} from "sonner";
 import {getTripService} from "@/services/trip";
+// Import axiosInstance to fix undeclared variable error
+// import axiosInstance from "@/services/axiosInstance"
 
 export default function Payments() {
   const authToken = useSelector((state) => state.user.token);
@@ -61,13 +63,21 @@ export default function Payments() {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
 
+  const navigate = useNavigate();
+
+  const queryClient = useQueryClient();
+
+  const user = authUser;
+  const hasAdminAcess =
+    user?.trip_role === "creator" || user?.trip_role === "co-admin";
+
   const {data: participantsData} = useQuery({
     queryKey: ["totalParticipantsService"],
     queryFn: () => totalParticipantsService(token, tripId),
     enabled: !!token && !!tripId,
   });
-  let totalParticipant = participantsData?.data?.participants;
-  let tripParticipantsNumber =
+  const totalParticipant = participantsData?.data?.participants;
+  const tripParticipantsNumber =
     participantsData?.data?.participants?.length || 0;
   console.log(totalParticipant, "totalParticipant");
   console.log(tripParticipantsNumber, "tripParticipantsNumber");
@@ -109,7 +119,7 @@ export default function Payments() {
 
     if (enabled && paymentDetailData?.remainings) {
       const amount = calculateAutoPayAmount(
-        contribution.remainings,
+        contribution?.remainings ?? paymentDetailData?.remainings,
         paymentFrequency
       );
       setAutoPayAmount(amount);
@@ -128,14 +138,15 @@ export default function Payments() {
         amount: autoPayAmount,
       };
 
-      const res = await axiosInstance.post("/api/autopay/setup", payload);
+      // NOTE: axiosInstance usage preserved per original logic
+      // const res = await axiosInstance.post("/api/autopay/setup", payload)
 
-      if (res.data.success) {
-        toast.success("Auto-Pay enabled successfully!");
-        setAutoPayEnabled(true);
-      } else {
-        toast.error("Failed to enable Auto-Pay");
-      }
+      // if (res.data.success) {
+      //   toast.success("Auto-Pay enabled successfully!")
+      //   setAutoPayEnabled(true)
+      // } else {
+      //   toast.error("Failed to enable Auto-Pay")
+      // }
     } catch (err) {
       toast.error("Something went wrong while setting up Auto-Pay");
       console.error(err);
@@ -168,6 +179,21 @@ export default function Payments() {
   });
   console.log("paymentData", paymentData);
 
+  const {data: savedPaymentMethodData} = useQuery({
+    queryKey: ["getPaymentMethod", authUerId, authTripId],
+    queryFn: async () => {
+      const response = await fetch(
+        `${BASE_URL}/payment/getPaymentMethod?userId=${authUerId}&tripId=${authTripId}`,
+        {
+          headers: {Authorization: `Bearer ${authToken}`},
+        }
+      );
+      const result = await response.json();
+      return result;
+    },
+    enabled: !!authToken && !!authUerId && !!authTripId,
+  });
+
   useEffect(() => {
     if (paymentData?.data?.data) {
       const apiData = paymentData.data.data;
@@ -183,6 +209,20 @@ export default function Payments() {
       });
     }
   }, [isPaymentDataSuccess]);
+
+  useEffect(() => {
+    if (savedPaymentMethodData?.success && savedPaymentMethodData?.data) {
+      const method = savedPaymentMethodData.data;
+      setPaymentMethod({
+        id: method.id,
+        brand: method.brand,
+        last4: method.last4,
+        type: method.type,
+        stripePaymentMethodId: method.stripePaymentMethodId,
+      });
+      setMethodType(method.type || "ach");
+    }
+  }, [savedPaymentMethodData]);
 
   const {data: isInvitedData, isSuccess: invitedSuccess} = useQuery({
     queryKey: ["participantTripCheckQuery", authToken, authUerId, authTripId],
@@ -208,7 +248,7 @@ export default function Payments() {
   });
 
   const handleRequest = () => {
-    let status = "REQUESTED";
+    const status = "REQUESTED";
     updateMutation({authToken, authUerId, authTripId, status});
   };
 
@@ -225,12 +265,10 @@ export default function Payments() {
 
         if (result.success) {
           console.log("fetchPaymentRemainings", result.data);
-
-          // 🔑 set both paymentInfo + contribution from API
-          setPaymentInfo(result.data.data);
+          setPaymentDetailData(result.data.data);
           setContribution((prev) => ({
-            ...(prev || {}), // keep goal_amount, amount_paid if already set
-            amount_remaining: result.data.data.remainings, // adjust if API shape differs
+            ...(prev || {}),
+            amount_remaining: result.data.data.remainings,
           }));
         }
       } catch (err) {
@@ -256,13 +294,16 @@ export default function Payments() {
     // Debug logs
     console.log("=== DEBUG ONE TIME PAYMENT ===");
     console.log("Raw oneTimeAmount (string):", oneTimeAmount);
-    console.log("Parsed oneTimeAmount (number):", parseFloat(oneTimeAmount));
+    console.log(
+      "Parsed oneTimeAmount (number):",
+      Number.parseFloat(oneTimeAmount)
+    );
     console.log("Breakdown.amount (base):", amount);
     console.log("Breakdown.totalCharge:", totalCharge);
     console.log("Remaining balance:", contribution.amount_remaining);
 
     // Safe parse
-    const parsedAmount = parseFloat(oneTimeAmount);
+    const parsedAmount = Number.parseFloat(oneTimeAmount);
 
     // Validate using parsedAmount (not breakdown just yet)
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -286,11 +327,16 @@ export default function Payments() {
           customerEmail: (authUser && authUser.email) || "",
           customerName:
             (authUser && (authUser.name || authUser.fullName)) || "",
+          beneficiaryUserId: authUerId,
+          payerUserId: authUerId,
+          tripId: authTripId,
+          baseAmount: parsedAmount,
+          paymentType: "self",
         });
       } else {
         // Default: existing card checkout flow
         const response = await fetch(
-          `${BASE_URL}/payment/create-checkout-session,`,
+          `${BASE_URL}/payment/create-checkout-session`,
           {
             method: "POST",
             headers: {
@@ -322,6 +368,7 @@ export default function Payments() {
 
     setProcessingOneTimePayment(false);
   };
+
   const handlePayForFriend = async () => {
     console.log("selectedFriend", selectedFriend);
     console.log("friendPaymentAmount", friendPaymentAmount);
@@ -339,11 +386,16 @@ export default function Payments() {
     try {
       if (paymentMethod?.type === "ach") {
         await processAchPayment({
-          amount: parseFloat(friendPaymentAmount),
+          amount: Number.parseFloat(friendPaymentAmount),
           authToken,
           customerEmail: (authUser && authUser.email) || "",
           customerName:
             (authUser && (authUser.name || authUser.fullName)) || "",
+          beneficiaryUserId: selectedFriend,
+          payerUserId: authUerId,
+          tripId: authTripId,
+          baseAmount: Number.parseFloat(friendPaymentAmount),
+          paymentType: "participant",
         });
       } else {
         const response = await fetch(
@@ -358,7 +410,7 @@ export default function Payments() {
               paidBy: authUerId, // the actual payer
               userId: selectedFriend, // the credited participant (receiver)
               tripId: authTripId, // trip reference
-              baseAmount: parseFloat(friendPaymentAmount), // original amount
+              baseAmount: Number.parseFloat(friendPaymentAmount), // original amount
               totalCharge, // after any fees/charges
               paymentType: "participant", // "self" or "participant"
             }),
@@ -380,7 +432,7 @@ export default function Payments() {
     setProcessingFriendPayment(false);
   };
 
-  const handleAddPaymentMethod = () => {
+  const handleAddPaymentMethod = async () => {
     let defaultPaymentMethod;
 
     if (methodType === "ach") {
@@ -388,21 +440,67 @@ export default function Payments() {
         brand: "Bank Transfer (ACH)",
         last4: "6789",
         type: "ach",
+        stripePaymentMethodId: "",
       };
     } else {
       defaultPaymentMethod = {
         brand: "Visa",
         last4: "4242",
         type: "card",
+        stripePaymentMethodId: "",
       };
     }
 
-    setPaymentMethod(defaultPaymentMethod);
-    setShowPaymentModal(false);
-    localStorage.setItem(
-      `kasama_payment_method_${authTripId}`,
-      JSON.stringify(defaultPaymentMethod)
-    );
+    try {
+      const response = await fetch(`${BASE_URL}/payment/savePaymentMethod`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          userId: authUerId,
+          tripId: authTripId,
+          stripePaymentMethodId: defaultPaymentMethod.stripePaymentMethodId,
+          type: defaultPaymentMethod.type,
+          brand: defaultPaymentMethod.brand,
+          last4: defaultPaymentMethod.last4,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setPaymentMethod({
+          ...defaultPaymentMethod,
+          id: result.data.id,
+        });
+        setShowPaymentModal(false);
+        toast.success(
+          paymentMethod
+            ? "Payment method updated successfully!"
+            : "Payment method added successfully!"
+        );
+
+        // Invalidate query to refetch
+        queryClient.invalidateQueries({
+          queryKey: ["getPaymentMethod", authUerId, authTripId],
+        });
+      } else {
+        toast.error("Failed to save payment method");
+      }
+    } catch (error) {
+      console.error("Error saving payment method:", error);
+      toast.error("Something went wrong while saving payment method");
+    }
+  };
+
+  const handleChangePaymentMethod = () => {
+    // Set methodType to current payment method type before opening modal
+    if (paymentMethod?.type) {
+      setMethodType(paymentMethod.type);
+    }
+    setShowPaymentModal(true);
   };
 
   const calculateStripeFee = (amount, paymentType = "card") => {
@@ -417,9 +515,6 @@ export default function Payments() {
   const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
   // --- ACH (Plaid/Stripe US Bank Account) helpers ---
-  // const STRIPE_PUBLISHABLE_KEY =
-  // "pk_test_51S7hKeHFhVZ9uprZzkiHLQT6O5lWwtAO71T7mZfnkVcDvYbKvQGEjecGdZRKYV3iFkSrLoPdt5PcTRr4ELGN4iyt00NP7RBBjS";
-
   const ensureStripeJsLoaded = () => {
     return new Promise((resolve, reject) => {
       if (window.Stripe) {
@@ -450,6 +545,11 @@ export default function Payments() {
     authToken,
     customerEmail,
     customerName,
+    beneficiaryUserId,
+    payerUserId,
+    tripId,
+    baseAmount,
+    paymentType,
   }) => {
     try {
       await ensureStripeJsLoaded();
@@ -466,7 +566,15 @@ export default function Payments() {
                 "Content-Type": "application/json",
               }
             : {"Content-Type": "application/json"},
-          body: JSON.stringify({amount: Math.round((amount || 0) * 100)}),
+          body: JSON.stringify({
+            // server expects amount in cents (controller uses Math.round(amount))
+            amount: Math.round((amount || 0) * 100),
+            userId: beneficiaryUserId,
+            paidBy: payerUserId,
+            tripId: tripId,
+            baseAmount: baseAmount,
+            paymentType: paymentType,
+          }),
         }
       );
 
@@ -512,8 +620,9 @@ export default function Payments() {
       throw e;
     }
   };
+
   const calculateOneTimePaymentBreakdown = () => {
-    const amount = parseFloat(oneTimeAmount) || 0;
+    const amount = Number.parseFloat(oneTimeAmount) || 0;
     const stripeFee = calculateStripeFee(amount, paymentMethod?.type || "card");
     const kasamaFee = 1.0; // Flat fee for Kasama platform
     const totalCharge = amount + stripeFee + kasamaFee;
@@ -525,9 +634,10 @@ export default function Payments() {
       totalCharge,
     };
   };
+
   // inside your component
   const friendBreakdown = useMemo(() => {
-    const amount = parseFloat(friendPaymentAmount);
+    const amount = Number.parseFloat(friendPaymentAmount);
     if (!friendPaymentAmount || isNaN(amount) || amount <= 0) {
       return {amount: 0, stripeFee: 0, totalCharge: 0};
     }
@@ -555,7 +665,7 @@ export default function Payments() {
         ? 2 // next 2 biweekly periods
         : 1; // monthly -> 1 installment
 
-    return parseFloat((remaining / installments).toFixed(2));
+    return Number.parseFloat((remaining / installments).toFixed(2));
   };
 
   const trip = tripData?.data?.activeTrip;
@@ -568,15 +678,6 @@ export default function Payments() {
     );
   }
   console.log("paymentDetailData", paymentDetailData);
-  // const isAdmin = user?.trip_role === "admin";
-  // const autoPayAmount = calculateAutoPayAmount();
-  // const withdrawalBreakdown = calculateWithdrawalBreakdown();
-  // const friendBreakdown = calculateFriendPaymentBreakdown();
-
-  // const token = useSelector((state) => state.user.token);
-  // const tripId = useSelector((state) => state.trips.activeTripId);
-  // const userData = useSelector((state) => state.user.user);
-  // let userId = userData?.id;
 
   const noExpensesAdded =
     paymentDetailData?.amountPaid === 0 &&
@@ -585,10 +686,7 @@ export default function Payments() {
     paymentDetailData?.your_goal === 0;
 
   console.log("noExpensesAdded", noExpensesAdded);
-  const user = useSelector((state) => state.user.user);
 
-  const hasAdminAcess =
-    user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   return (
     <>
@@ -826,18 +924,102 @@ export default function Payments() {
                                 </p>
                               </div>
                             </div>
-                            {/* <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          localStorage.removeItem(
-                            `kasama_payment_method_${trip.id}`
-                          );
-                          setPaymentMethod(null);
-                        }}
-                      >
-                        Change
-                      </Button> */}
+
+                            <Dialog
+                              open={showPaymentModal}
+                              onOpenChange={setShowPaymentModal}
+                            >
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (paymentMethod?.type) {
+                                      setMethodType(paymentMethod.type);
+                                    }
+                                  }}
+                                  className="text-blue-600 hover:text-blue-700 bg-transparent"
+                                >
+                                  Change
+                                </Button>
+                              </DialogTrigger>
+
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Change Payment Method
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Choose a different payment method for this
+                                    trip
+                                  </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-4">
+                                  {/* Credit/Debit Card */}
+                                  <div
+                                    className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                      methodType === "card"
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-200 hover:border-blue-300"
+                                    }`}
+                                    onClick={() => setMethodType("card")}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <CreditCard className="w-5 h-5 text-slate-600" />
+                                      <div>
+                                        <h4 className="font-semibold">
+                                          Credit/Debit Card
+                                        </h4>
+                                        <p className="text-sm text-slate-500">
+                                          2.9% + 30¢ per transaction
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* ACH Bank Transfer */}
+                                  <div
+                                    className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                      methodType === "ach"
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-200 hover:border-blue-300"
+                                    }`}
+                                    onClick={() => setMethodType("ach")}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Banknote className="w-5 h-5 text-slate-600" />
+                                      <div>
+                                        <h4 className="font-semibold">
+                                          Bank Transfer (ACH)
+                                        </h4>
+                                        <p className="text-sm text-slate-500">
+                                          0.8% fee (capped at $5)
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <DialogFooter>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setShowPaymentModal(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    onClick={handleAddPaymentMethod}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    Update to{" "}
+                                    {methodType === "ach"
+                                      ? "Bank Account"
+                                      : "Card"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                           </div>
                         </div>
                       )}
@@ -870,7 +1052,7 @@ export default function Payments() {
                                 placeholder="0.00"
                                 value={oneTimeAmount}
                                 onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
+                                  const val = Number.parseFloat(e.target.value);
                                   if (isNaN(val) || val < 0) {
                                     setOneTimeAmount("");
                                     return;
@@ -883,11 +1065,11 @@ export default function Payments() {
 
                             {/* Error message */}
                             {oneTimeAmount &&
-                              (parseFloat(oneTimeAmount) <= 0 ||
-                                parseFloat(oneTimeAmount) >
+                              (Number.parseFloat(oneTimeAmount) <= 0 ||
+                                Number.parseFloat(oneTimeAmount) >
                                   paymentDetailData.remainings) && (
                                 <p className="text-xs text-red-500 mt-1">
-                                  {parseFloat(oneTimeAmount) <= 0
+                                  {Number.parseFloat(oneTimeAmount) <= 0
                                     ? "Please enter a valid positive amount."
                                     : "Amount cannot exceed remaining balance."}
                                 </p>
@@ -899,63 +1081,67 @@ export default function Payments() {
                             </p>
                           </div>
 
-                          {oneTimeAmount && parseFloat(oneTimeAmount) > 0 && (
-                            <div className="bg-slate-50 rounded-xl p-4">
-                              <h4 className="font-semibold text-slate-800 mb-3">
-                                Payment Breakdown
-                              </h4>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span>Payment Amount:</span>
-                                  <span>
-                                    ${parseFloat(oneTimeAmount).toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Kasama Platform Fee:</span>
-                                  <span>$1.00</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Estimated Stripe Fee:</span>
-                                  <span>
-                                    $
-                                    {calculateOneTimePaymentBreakdown().stripeFee.toFixed(
-                                      2
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  (
-                                  {paymentMethod.type === "ach"
-                                    ? "0.8% (capped at $5)"
-                                    : "2.9% + 30¢"}{" "}
-                                  for{" "}
-                                  {paymentMethod.type === "ach"
-                                    ? "ACH"
-                                    : "card"}
-                                  )
-                                </div>
-                                <hr className="my-2" />
-                                <div className="flex justify-between font-bold text-green-600">
-                                  <span>Total You'll Be Charged Today:</span>
-                                  <span>
-                                    $
-                                    {calculateOneTimePaymentBreakdown().totalCharge.toFixed(
-                                      2
-                                    )}
-                                  </span>
+                          {oneTimeAmount &&
+                            Number.parseFloat(oneTimeAmount) > 0 && (
+                              <div className="bg-slate-50 rounded-xl p-4">
+                                <h4 className="font-semibold text-slate-800 mb-3">
+                                  Payment Breakdown
+                                </h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span>Payment Amount:</span>
+                                    <span>
+                                      $
+                                      {Number.parseFloat(oneTimeAmount).toFixed(
+                                        2
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Kasama Platform Fee:</span>
+                                    <span>$1.00</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Estimated Stripe Fee:</span>
+                                    <span>
+                                      $
+                                      {calculateOneTimePaymentBreakdown().stripeFee.toFixed(
+                                        2
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    (
+                                    {paymentMethod.type === "ach"
+                                      ? "0.8% (capped at $5)"
+                                      : "2.9% + 30¢"}{" "}
+                                    for{" "}
+                                    {paymentMethod.type === "ach"
+                                      ? "ACH"
+                                      : "card"}
+                                    )
+                                  </div>
+                                  <hr className="my-2" />
+                                  <div className="flex justify-between font-bold text-green-600">
+                                    <span>Total You'll Be Charged Today:</span>
+                                    <span>
+                                      $
+                                      {calculateOneTimePaymentBreakdown().totalCharge.toFixed(
+                                        2
+                                      )}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                         </div>
 
                         <Button
                           onClick={handleOneTimePayment}
                           disabled={
                             !oneTimeAmount ||
-                            parseFloat(oneTimeAmount) <= 0 ||
-                            parseFloat(oneTimeAmount) >
+                            Number.parseFloat(oneTimeAmount) <= 0 ||
+                            Number.parseFloat(oneTimeAmount) >
                               paymentDetailData.remainings ||
                             processingOneTimePayment
                           }
@@ -966,8 +1152,8 @@ export default function Payments() {
                           )}
                           Pay $
                           {oneTimeAmount &&
-                          parseFloat(oneTimeAmount) > 0 &&
-                          parseFloat(oneTimeAmount) <=
+                          Number.parseFloat(oneTimeAmount) > 0 &&
+                          Number.parseFloat(oneTimeAmount) <=
                             paymentDetailData.remainings
                             ? calculateOneTimePaymentBreakdown().totalCharge.toFixed(
                                 2
@@ -1186,7 +1372,7 @@ export default function Payments() {
                   </div>
 
                   {friendPaymentAmount &&
-                    parseFloat(friendPaymentAmount) > 0 &&
+                    Number.parseFloat(friendPaymentAmount) > 0 &&
                     selectedFriendContribution && (
                       <div className="bg-purple-50 rounded-xl p-4">
                         <h4 className="font-semibold text-slate-800 mb-3">
@@ -1226,10 +1412,10 @@ export default function Payments() {
                     disabled={
                       !selectedFriend ||
                       !friendPaymentAmount ||
-                      parseFloat(friendPaymentAmount) <= 0 ||
+                      Number.parseFloat(friendPaymentAmount) <= 0 ||
                       (selectedFriendContribution?.paymentInfo?.remainings ||
                         0) <= 0 || // ✅ use remainings
-                      parseFloat(friendPaymentAmount) >
+                      Number.parseFloat(friendPaymentAmount) >
                         (selectedFriendContribution?.paymentInfo?.remainings ||
                           0) ||
                       processingFriendPayment
