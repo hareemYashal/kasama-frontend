@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { Trip } from "@/api/entities";
-import { User } from "@/api/entities";
-import { Contribution } from "@/api/entities";
-import { TripActivity } from "@/api/entities";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import React, {useState, useEffect, useMemo} from "react";
+import {useNavigate} from "react-router-dom";
+import {createPageUrl} from "@/utils";
+import {Trip} from "@/api/entities";
+import {User} from "@/api/entities";
+import {Contribution} from "@/api/entities";
+import {TripActivity} from "@/api/entities";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Badge} from "@/components/ui/badge";
+import {Switch} from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -40,17 +40,17 @@ import {
   AlertCircle,
   ShieldCheck,
 } from "lucide-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { getPaymentRemainingsService } from "@/services/paynent";
-import { setToken } from "@/store/userSlice";
-import { useSelector } from "react-redux";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {getPaymentRemainingsService} from "@/services/paynent";
+import {setToken} from "@/store/userSlice";
+import {useSelector} from "react-redux";
 import {
   participantStatusUpdateService,
   participantTripCheck,
   totalParticipantsService,
 } from "@/services/participant";
-import { toast } from "sonner";
-import { getTripService } from "@/services/trip";
+import {toast} from "sonner";
+import {getTripService} from "@/services/trip";
 
 export default function Payments() {
   const authToken = useSelector((state) => state.user.token);
@@ -61,7 +61,7 @@ export default function Payments() {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
 
-  const { data: participantsData } = useQuery({
+  const {data: participantsData} = useQuery({
     queryKey: ["totalParticipantsService"],
     queryFn: () => totalParticipantsService(token, tripId),
     enabled: !!token && !!tripId,
@@ -71,6 +71,7 @@ export default function Payments() {
     participantsData?.data?.participants?.length || 0;
   console.log(totalParticipant, "totalParticipant");
   console.log(tripParticipantsNumber, "tripParticipantsNumber");
+  const BASE_URL = import.meta.env.VITE_API_URL;
 
   console.log("authUser", authUser);
   const [requestText, setRequestText] = useState("Request");
@@ -159,7 +160,7 @@ export default function Payments() {
 
   const [processingOneTimePayment, setProcessingOneTimePayment] =
     useState(false);
-  const { data: paymentData, isSuccess: isPaymentDataSuccess } = useQuery({
+  const {data: paymentData, isSuccess: isPaymentDataSuccess} = useQuery({
     queryKey: ["getPaymentRemainingsQuery", authTripId, authUerId],
     queryFn: () =>
       getPaymentRemainingsService(authToken, authTripId, authUerId),
@@ -183,7 +184,7 @@ export default function Payments() {
     }
   }, [isPaymentDataSuccess]);
 
-  const { data: isInvitedData, isSuccess: invitedSuccess } = useQuery({
+  const {data: isInvitedData, isSuccess: invitedSuccess} = useQuery({
     queryKey: ["participantTripCheckQuery", authToken, authUerId, authTripId],
     queryFn: () => participantTripCheck(authToken, authUerId, authTripId),
     enabled: !!authToken && !!authTripId && !!authUerId,
@@ -195,8 +196,8 @@ export default function Payments() {
     }
   }, [invitedSuccess, isInvitedData]);
 
-  const { mutate: updateMutation, isPending } = useMutation({
-    mutationFn: ({ authToken, authUerId, authTripId, status }) =>
+  const {mutate: updateMutation, isPending} = useMutation({
+    mutationFn: ({authToken, authUerId, authTripId, status}) =>
       participantStatusUpdateService(authToken, authUerId, authTripId, status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -208,7 +209,7 @@ export default function Payments() {
 
   const handleRequest = () => {
     let status = "REQUESTED";
-    updateMutation({ authToken, authUerId, authTripId, status });
+    updateMutation({authToken, authUerId, authTripId, status});
   };
 
   // -----------------------------
@@ -217,8 +218,8 @@ export default function Payments() {
     const fetchPaymentRemainings = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:4000/payment/getPaymentRemainings?tripId=${authTripId}&userId=${authUerId}`,
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          `${BASE_URL}/payment/getPaymentRemainings?tripId=${authTripId}&userId=${authUerId}`,
+          {headers: {Authorization: `Bearer ${authToken}`}}
         );
         const result = await response.json();
 
@@ -250,7 +251,7 @@ export default function Payments() {
       return;
     }
 
-    const { amount, totalCharge } = calculateOneTimePaymentBreakdown();
+    const {amount, totalCharge} = calculateOneTimePaymentBreakdown();
 
     // Debug logs
     console.log("=== DEBUG ONE TIME PAYMENT ===");
@@ -283,12 +284,13 @@ export default function Payments() {
           amount: parsedAmount,
           authToken,
           customerEmail: (authUser && authUser.email) || "",
-          customerName: (authUser && (authUser.name || authUser.fullName)) || "",
+          customerName:
+            (authUser && (authUser.name || authUser.fullName)) || "",
         });
       } else {
         // Default: existing card checkout flow
         const response = await fetch(
-          "http://127.0.0.1:4000/payment/create-checkout-session",
+          `${BASE_URL}/payment/create-checkout-session,`,
           {
             method: "POST",
             headers: {
@@ -330,7 +332,7 @@ export default function Payments() {
       return;
     }
 
-    const { totalCharge } = friendBreakdown;
+    const {totalCharge} = friendBreakdown;
 
     setProcessingFriendPayment(true);
 
@@ -340,11 +342,12 @@ export default function Payments() {
           amount: parseFloat(friendPaymentAmount),
           authToken,
           customerEmail: (authUser && authUser.email) || "",
-          customerName: (authUser && (authUser.name || authUser.fullName)) || "",
+          customerName:
+            (authUser && (authUser.name || authUser.fullName)) || "",
         });
       } else {
         const response = await fetch(
-          "http://127.0.0.1:4000/payment/create-checkout-session",
+          `${BASE_URL}/payment/create-checkout-session`,
           {
             method: "POST",
             headers: {
@@ -382,7 +385,7 @@ export default function Payments() {
 
     if (methodType === "ach") {
       defaultPaymentMethod = {
-        brand: "Bank Account",
+        brand: "Bank Transfer (ACH)",
         last4: "6789",
         type: "ach",
       };
@@ -411,9 +414,11 @@ export default function Payments() {
       return amount * 0.029 + 0.3;
     }
   };
+  const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
   // --- ACH (Plaid/Stripe US Bank Account) helpers ---
-  const STRIPE_PUBLISHABLE_KEY = "pk_test_51S7hKeHFhVZ9uprZzkiHLQT6O5lWwtAO71T7mZfnkVcDvYbKvQGEjecGdZRKYV3iFkSrLoPdt5PcTRr4ELGN4iyt00NP7RBBjS";
+  // const STRIPE_PUBLISHABLE_KEY =
+  // "pk_test_51S7hKeHFhVZ9uprZzkiHLQT6O5lWwtAO71T7mZfnkVcDvYbKvQGEjecGdZRKYV3iFkSrLoPdt5PcTRr4ELGN4iyt00NP7RBBjS";
 
   const ensureStripeJsLoaded = () => {
     return new Promise((resolve, reject) => {
@@ -421,10 +426,14 @@ export default function Payments() {
         resolve();
         return;
       }
-      const existing = document.querySelector('script[src="https://js.stripe.com/v3/"]');
+      const existing = document.querySelector(
+        'script[src="https://js.stripe.com/v3/"]'
+      );
       if (existing) {
         existing.addEventListener("load", () => resolve());
-        existing.addEventListener("error", () => reject(new Error("Failed to load Stripe.js")));
+        existing.addEventListener("error", () =>
+          reject(new Error("Failed to load Stripe.js"))
+        );
         return;
       }
       const script = document.createElement("script");
@@ -436,51 +445,67 @@ export default function Payments() {
     });
   };
 
-  const processAchPayment = async ({ amount, authToken, customerEmail, customerName }) => {
+  const processAchPayment = async ({
+    amount,
+    authToken,
+    customerEmail,
+    customerName,
+  }) => {
     try {
       await ensureStripeJsLoaded();
       const stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
 
       // Create a PaymentIntent on the server sized to cents
-      const createPiResponse = await fetch("http://127.0.0.1:4000/payment/add-payment-intent", {
-        method: "POST",
-        headers: authToken
-          ? { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" }
-          : { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Math.round((amount || 0) * 100) }),
-      });
+      const createPiResponse = await fetch(
+        `${BASE_URL}/payment/add-payment-intent`,
+        {
+          method: "POST",
+          headers: authToken
+            ? {
+                Authorization: `Bearer ${authToken}`,
+                "Content-Type": "application/json",
+              }
+            : {"Content-Type": "application/json"},
+          body: JSON.stringify({amount: Math.round((amount || 0) * 100)}),
+        }
+      );
 
       if (!createPiResponse.ok) {
         throw new Error(`Server error: ${createPiResponse.status}`);
       }
 
-      const { clientSecret } = await createPiResponse.json();
+      const {clientSecret} = await createPiResponse.json();
 
-      const { paymentIntent, error: collectError } = await stripe.collectBankAccountForPayment({
-        clientSecret,
-        params: {
-          payment_method_type: "us_bank_account",
-          payment_method_data: {
-            billing_details: {
-              name: customerName || "Customer",
-              email: customerEmail || "customer@example.com",
+      const {paymentIntent, error: collectError} =
+        await stripe.collectBankAccountForPayment({
+          clientSecret,
+          params: {
+            payment_method_type: "us_bank_account",
+            payment_method_data: {
+              billing_details: {
+                name: customerName || "Customer",
+                email: customerEmail || "customer@example.com",
+              },
             },
           },
-        },
-      });
+        });
 
       if (collectError) {
         throw new Error(collectError.message);
       }
 
       if (paymentIntent?.status === "requires_confirmation") {
-        const { error: confirmError } = await stripe.confirmUsBankAccountPayment(clientSecret);
+        const {error: confirmError} = await stripe.confirmUsBankAccountPayment(
+          clientSecret
+        );
         if (confirmError) {
           throw new Error(confirmError.message);
         }
       }
 
-      toast.success("ACH payment initiated successfully. Check your email for confirmation.");
+      toast.success(
+        "ACH payment initiated successfully. Check your email for confirmation."
+      );
     } catch (e) {
       console.error("ACH payment error", e);
       toast.error(e?.message || "Failed to process ACH payment");
@@ -504,17 +529,17 @@ export default function Payments() {
   const friendBreakdown = useMemo(() => {
     const amount = parseFloat(friendPaymentAmount);
     if (!friendPaymentAmount || isNaN(amount) || amount <= 0) {
-      return { amount: 0, stripeFee: 0, totalCharge: 0 };
+      return {amount: 0, stripeFee: 0, totalCharge: 0};
     }
 
     const platformFee = 1.0;
     const stripeFee = calculateStripeFee(amount, paymentMethod?.type || "card");
     const totalCharge = amount + platformFee + stripeFee;
 
-    return { amount, stripeFee, totalCharge };
+    return {amount, stripeFee, totalCharge};
   }, [friendPaymentAmount, paymentMethod?.type]);
 
-  const { data: tripData, isLoading: isLoadingTripData } = useQuery({
+  const {data: tripData, isLoading: isLoadingTripData} = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -527,8 +552,8 @@ export default function Payments() {
       frequency === "weekly"
         ? 4 // e.g., next 4 weeks
         : frequency === "biweekly"
-          ? 2 // next 2 biweekly periods
-          : 1; // monthly -> 1 installment
+        ? 2 // next 2 biweekly periods
+        : 1; // monthly -> 1 installment
 
     return parseFloat((remaining / installments).toFixed(2));
   };
@@ -579,10 +604,11 @@ export default function Payments() {
             <button
               onClick={handleRequest}
               disabled={isPending}
-              className={`mt-6 px-6 py-2 rounded-xl transition text-white ${isPending
+              className={`mt-6 px-6 py-2 rounded-xl transition text-white ${
+                isPending
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-700"
-                }`}
+              }`}
             >
               {requestText}
             </button>
@@ -718,10 +744,11 @@ export default function Payments() {
                               <div className="space-y-4">
                                 {/* Credit/Debit Card */}
                                 <div
-                                  className={`p-4 border-2 rounded-xl cursor-pointer ${methodType === "card"
+                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                    methodType === "card"
                                       ? "border-blue-500 bg-blue-50"
                                       : "border-gray-200 hover:border-blue-300"
-                                    }`}
+                                  }`}
                                   onClick={() => setMethodType("card")}
                                 >
                                   <div className="flex items-center gap-3">
@@ -739,10 +766,11 @@ export default function Payments() {
 
                                 {/* ACH Bank Transfer */}
                                 <div
-                                  className={`p-4 border-2 rounded-xl cursor-pointer ${methodType === "ach"
+                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                    methodType === "ach"
                                       ? "border-blue-500 bg-blue-50"
                                       : "border-gray-200 hover:border-blue-300"
-                                    }`}
+                                  }`}
                                   onClick={() => setMethodType("ach")}
                                 >
                                   <div className="flex items-center gap-3">
@@ -857,7 +885,7 @@ export default function Payments() {
                             {oneTimeAmount &&
                               (parseFloat(oneTimeAmount) <= 0 ||
                                 parseFloat(oneTimeAmount) >
-                                paymentDetailData.remainings) && (
+                                  paymentDetailData.remainings) && (
                                 <p className="text-xs text-red-500 mt-1">
                                   {parseFloat(oneTimeAmount) <= 0
                                     ? "Please enter a valid positive amount."
@@ -928,7 +956,7 @@ export default function Payments() {
                             !oneTimeAmount ||
                             parseFloat(oneTimeAmount) <= 0 ||
                             parseFloat(oneTimeAmount) >
-                            paymentDetailData.remainings ||
+                              paymentDetailData.remainings ||
                             processingOneTimePayment
                           }
                           className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -938,12 +966,12 @@ export default function Payments() {
                           )}
                           Pay $
                           {oneTimeAmount &&
-                            parseFloat(oneTimeAmount) > 0 &&
-                            parseFloat(oneTimeAmount) <=
+                          parseFloat(oneTimeAmount) > 0 &&
+                          parseFloat(oneTimeAmount) <=
                             paymentDetailData.remainings
                             ? calculateOneTimePaymentBreakdown().totalCharge.toFixed(
-                              2
-                            )
+                                2
+                              )
                             : "0.00"}
                         </Button>
                       </CardContent>
@@ -1068,8 +1096,8 @@ export default function Payments() {
                       </SelectTrigger>
                       <SelectContent>
                         {totalParticipant &&
-                          totalParticipant.filter((p) => p.userId !== authUerId)
-                            .length > 0 ? (
+                        totalParticipant.filter((p) => p.userId !== authUerId)
+                          .length > 0 ? (
                           totalParticipant
                             .filter((p) => p.userId !== authUerId)
                             .map((p) => {
@@ -1202,8 +1230,8 @@ export default function Payments() {
                       (selectedFriendContribution?.paymentInfo?.remainings ||
                         0) <= 0 || // ✅ use remainings
                       parseFloat(friendPaymentAmount) >
-                      (selectedFriendContribution?.paymentInfo?.remainings ||
-                        0) ||
+                        (selectedFriendContribution?.paymentInfo?.remainings ||
+                          0) ||
                       processingFriendPayment
                     }
                     className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
