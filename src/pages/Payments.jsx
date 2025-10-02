@@ -553,7 +553,14 @@ export default function Payments() {
   }) => {
     try {
       await ensureStripeJsLoaded();
+      console.log(STRIPE_PUBLISHABLE_KEY, "STRIPE_PUBLISHABLE_KEY");
       const stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+      console.log(
+        stripe,
+        "stripe",
+        STRIPE_PUBLISHABLE_KEY,
+        "STRIPE_PUBLISHABLE_KEY"
+      );
 
       // Create a PaymentIntent on the server sized to cents
       const createPiResponse = await fetch(
@@ -614,7 +621,7 @@ export default function Payments() {
       toast.success(
         "ACH payment initiated successfully. Check your email for confirmation."
       );
-      navigate("/dashboard")
+      navigate("/dashboard");
     } catch (e) {
       console.error("ACH payment error", e);
       toast.error(e?.message || "Failed to process ACH payment");
@@ -687,7 +694,6 @@ export default function Payments() {
     paymentDetailData?.your_goal === 0;
 
   console.log("noExpensesAdded", noExpensesAdded);
-
 
   return (
     <>
