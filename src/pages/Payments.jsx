@@ -614,6 +614,7 @@ export default function Payments() {
       toast.success(
         "ACH payment initiated successfully. Check your email for confirmation."
       );
+      navigate("/dashboard")
     } catch (e) {
       console.error("ACH payment error", e);
       toast.error(e?.message || "Failed to process ACH payment");
