@@ -513,6 +513,7 @@ export default function Payments() {
     }
   };
   const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  console.log(STRIPE_PUBLISHABLE_KEY, "STRIPE_PUBLISHABLE_KEY");
 
   // --- ACH (Plaid/Stripe US Bank Account) helpers ---
   const ensureStripeJsLoaded = () => {
