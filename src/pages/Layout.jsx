@@ -44,14 +44,7 @@ import {
   Briefcase,
   Lightbulb, // Added Briefcase icon
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import {useDispatch} from "react-redux";
 import {setUserRed} from "./../store/userSlice";
 import {useSelector} from "react-redux";
@@ -64,6 +57,12 @@ import BackButton from "@/components/ui/BackButton";
 import {getNotificationsService} from "@/services/notification";
 import {addNotification} from "@/store/notificationSlice";
 import {io} from "socket.io-client";
+import {
+  setNotifications,
+  markAsRead,
+  deleteNotification,
+} from "@/store/notificationSlice";
+import MobileNotifications from "@/components/dashboard/MobileNotifications";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Layout({children, currentPageName}) {
@@ -74,10 +73,12 @@ export default function Layout({children, currentPageName}) {
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
+  const tripId = useSelector((state) => state.trips.activeTripId);
+  // Optional: local fetch for recent notifications (fallback if store does not hold list)
 
   const location = useLocation();
   const navigate = useNavigate();
-  const tripId = useSelector((state) => state.trips.activeTripId);
+
   const token = useSelector((state) => state.user.token);
 
   const {data: tripData, isLoading: isLoadingTripData} = useQuery({
@@ -168,6 +169,7 @@ export default function Layout({children, currentPageName}) {
 
     setLoading(false);
   };
+
   console.log("userProfileData", userProfileData);
   const hasAdminAccess =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
@@ -204,7 +206,19 @@ export default function Layout({children, currentPageName}) {
     {title: "Make a Payment", url: createPageUrl("Payments"), icon: Send},
     {title: "Notifications", url: createPageUrl("Notifications"), icon: Bell},
   ];
-
+  const {data: notificationsData} = useQuery({
+    queryKey: ["notifications", tripId, token],
+    queryFn: () => getNotificationsService(token, tripId),
+    enabled: !!token && !!tripId,
+  });
+  useEffect(() => {
+    if (notificationsData?.notifications) {
+      dispatch(setNotifications(notificationsData.notifications));
+    }
+  }, [notificationsData, dispatch]);
+  const notifications =
+    notificationsData?.notifications || notificationsData?.data || [];
+  console.log(notificationsData, "sjsjsj");
   const commonNavItems = [
     {
       title: "Tips for Using Kasama",
@@ -608,6 +622,10 @@ export default function Layout({children, currentPageName}) {
                 <h1 className="text-xl font-bold text-slate-800">Kasama</h1>
               </div>
 
+              <MobileNotifications
+                notifications={notifications}
+                unreadCount={unreadCount}
+              />
               {location.pathname === createPageUrl("Profile") && (
                 <button
                   onClick={handleLogout}
