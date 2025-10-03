@@ -3,10 +3,9 @@
 import {useState, useEffect, useMemo} from "react";
 import {useNavigate} from "react-router-dom";
 import {createPageUrl} from "@/utils";
-import {Trip} from "@/api/entities";
-import {User} from "@/api/entities";
-import {Contribution} from "@/api/entities";
-import {TripActivity} from "@/api/entities";
+import {loadStripe} from "@stripe/stripe-js";
+import {Elements} from "@stripe/react-stripe-js";
+
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
@@ -51,6 +50,9 @@ import {
 } from "@/services/participant";
 import {toast} from "sonner";
 import {getTripService} from "@/services/trip";
+import PaymentsForm from "@/components/Payment/AutoPayment";
+import ACHPaymentsModal from "@/components/Payment/ACHManual";
+
 // Import axiosInstance to fix undeclared variable error
 // import axiosInstance from "@/services/axiosInstance"
 
@@ -59,6 +61,7 @@ export default function Payments() {
   const authUser = useSelector((state) => state.user.user);
   const authTripId = useSelector((state) => state.trips.activeTripId);
   const authUerId = authUser?.id;
+  const [setUpIntent, setSetupIntent] = useState(undefined);
 
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
@@ -91,6 +94,11 @@ export default function Payments() {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [methodType, setMethodType] = useState("ach"); // Default to ACH (cheaper)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isOpenACH, setIsACHOpen] = useState(false);
+
+  const [autoSavePayload, setAutoSavePayloadData] = useState("");
+
   const [loading, setLoading] = useState(null);
   const [oneTimeAmount, setOneTimeAmount] = useState("");
   const [selectedFriend, setSelectedFriend] = useState(null);
@@ -111,45 +119,261 @@ export default function Payments() {
   const [paymentFrequency, setPaymentFrequency] = useState("");
   const [recurringPaymentDay, setRecurringPaymentDay] = useState("");
   const [autoPayAmount, setAutoPayAmount] = useState(0);
+  const [autoPaymentData, setAutoPaymentData] = useState(null);
+  const [isAutoPaymentLoading, setIsAutoPaymentLoading] = useState(false);
+  const [autoPaymentMethodType, setAutoPaymentMethodType] = useState("card");
 
-  // Example handlers
-  const handleAutoPayToggle = (enabled) => {
-    setAutoPayEnabled(enabled);
-    setShowPaymentModal(false);
-
-    if (enabled && paymentDetailData?.remainings) {
-      const amount = calculateAutoPayAmount(
-        contribution?.remainings ?? paymentDetailData?.remainings,
-        paymentFrequency
-      );
-      setAutoPayAmount(amount);
+  // Auto payment handlers
+  const handleAutoPayToggle = async (enabled) => {
+    if (!enabled && autoPaymentData) {
+      // If disabling and auto payment exists, cancel it
+      await handleCancelAutoPay();
     } else {
-      setAutoPayAmount(0);
+      setAutoPayEnabled(enabled);
+      setShowPaymentModal(false);
+
+      if (enabled && paymentDetailData?.remainings) {
+        const amount = calculateAutoPayAmount(
+          contribution?.remainings ?? paymentDetailData?.remainings,
+          paymentFrequency
+        );
+        setAutoPayAmount(amount);
+      } else {
+        setAutoPayAmount(0);
+      }
+    }
+  };
+
+  const handleCancelAutoPay = async () => {
+    if (!autoPaymentData) return;
+
+    setIsAutoPaymentLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/payment/cancel-auto-payment`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          userId: authUerId,
+          tripId: authTripId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Auto-Pay cancelled successfully!");
+        setAutoPayEnabled(false);
+        setAutoPaymentData(null);
+        setPaymentFrequency("");
+        setRecurringPaymentDay("");
+        setAutoPayAmount(0);
+
+        // Invalidate and refetch auto payment data
+        queryClient.invalidateQueries({
+          queryKey: ["getAutoPayment", authUerId, authTripId],
+        });
+      } else {
+        toast.error(result.message || "Failed to cancel Auto-Pay");
+      }
+    } catch (err) {
+      toast.error("Something went wrong while cancelling Auto-Pay");
+      console.error(err);
+    } finally {
+      setIsAutoPaymentLoading(false);
+    }
+  };
+
+  // Create a new payment method
+  const handleCreatePaymentMethod = async (type) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/payment/create-payment-method`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            userId: authUerId,
+            tripId: authTripId,
+            type: type, // "card" or "ach"
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log("Setup Intent created:", result.setupIntent);
+        // Store the setup intent for Stripe Elements integration
+        localStorage.setItem(
+          "currentSetupIntent",
+          JSON.stringify(result.setupIntent)
+        );
+
+        // In a real app, you'd integrate Stripe Elements here
+        alert(
+          `Setup Intent created!\n\nID: ${result.setupIntent.id}\nClient Secret: ${result.setupIntent.clientSecret}\n\nUse Stripe Elements to collect payment method details and call confirmPaymentMethod with the payment method ID.`
+        );
+
+        return result.setupIntent;
+      } else {
+        toast.error(result.message || "Failed to create payment method");
+        return null;
+      }
+    } catch (err) {
+      toast.error("Something went wrong while creating payment method");
+      console.error(err);
+      return null;
+    }
+  };
+
+  // Confirm payment method after Stripe Elements collection
+  const handleConfirmPaymentMethod = async (
+    setupIntentId,
+    stripePaymentMethodId,
+    type
+  ) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/payment/confirm-payment-method`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            setupIntentId: setupIntentId,
+            userId: authUerId,
+            tripId: authTripId,
+            type: type,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Payment method saved successfully!");
+        localStorage.removeItem("currentSetupIntent");
+
+        // Refresh payment methods
+        queryClient.invalidateQueries({
+          queryKey: ["getPaymentMethod", authUerId, authTripId],
+        });
+
+        return result.data;
+      } else {
+        toast.error(result.message || "Failed to confirm payment method");
+        return null;
+      }
+    } catch (err) {
+      toast.error("Something went wrong while confirming payment method");
+      console.error(err);
+      return null;
+    }
+  };
+
+  // Helper function to complete setup intent (for testing)
+  const handleCompleteSetupIntent = async () => {
+    const setupData = JSON.parse(
+      localStorage.getItem("autoPaymentSetup") || "{}"
+    );
+
+    if (!setupData.setupIntentId || !setupData.autoPaymentData) {
+      toast.error("No setup intent data found");
+      return;
+    }
+
+    setIsAutoPaymentLoading(true);
+    try {
+      const response = await fetch(
+        `${BASE_URL}/payment/complete-setup-intent-and-enable-auto-payment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            setupIntentId: setupData.setupIntentId,
+            userId: setupData.autoPaymentData.userId,
+            tripId: setupData.autoPaymentData.tripId,
+            frequency: setupData.autoPaymentData.frequency,
+            recurringDay: setupData.autoPaymentData.recurringDay,
+            amount: setupData.autoPaymentData.amount,
+            paymentMethodType: setupData.autoPaymentData.paymentMethodType,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Auto-Pay enabled successfully!");
+        setAutoPayEnabled(true);
+        localStorage.removeItem("autoPaymentSetup");
+
+        // Invalidate and refetch auto payment data
+        queryClient.invalidateQueries({
+          queryKey: ["getAutoPayment", authUerId, authTripId],
+        });
+      } else {
+        toast.error(result.message || "Failed to complete auto-pay setup");
+      }
+    } catch (err) {
+      toast.error("Something went wrong while completing auto-pay setup");
+      console.error(err);
+    } finally {
+      setIsAutoPaymentLoading(false);
     }
   };
 
   const handleSaveAutoPay = async () => {
+    if (!paymentFrequency || !recurringPaymentDay || autoPayAmount <= 0) {
+      toast.error("Please fill in all auto payment details");
+      return;
+    }
+
+    setIsAutoPaymentLoading(true);
     try {
+      // Step 1: Create setup intent
       const payload = {
-        tripId: trip?.id, // or contributionId, depending on your schema
-        paymentMethodId: paymentMethod?.id,
+        userId: authUerId,
+        tripId: authTripId,
         frequency: paymentFrequency,
-        day: recurringPaymentDay,
+        recurringDay: Number(recurringPaymentDay),
         amount: autoPayAmount,
+        paymentMethodType: paymentMethod?.type,
       };
+      setAutoSavePayloadData(payload);
+      const response = await fetch(`${BASE_URL}/payment/setup-auto-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
 
-      // NOTE: axiosInstance usage preserved per original logic
-      // const res = await axiosInstance.post("/api/autopay/setup", payload)
-
-      // if (res.data.success) {
-      //   toast.success("Auto-Pay enabled successfully!")
-      //   setAutoPayEnabled(true)
-      // } else {
-      //   toast.error("Failed to enable Auto-Pay")
-      // }
+      if (result) {
+        setSetupIntent(result.data.clientSecret);
+        if (paymentMethod?.type === "ach") {
+          setIsACHOpen(true);
+        } else {
+          setIsOpen(true);
+        }
+      }
     } catch (err) {
       toast.error("Something went wrong while setting up Auto-Pay");
       console.error(err);
+      setIsAutoPaymentLoading(false);
     }
   };
 
@@ -194,6 +418,22 @@ export default function Payments() {
     enabled: !!authToken && !!authUerId && !!authTripId,
   });
 
+  const {data: autoPaymentDataResponse} = useQuery({
+    queryKey: ["getAutoPayment", authUerId, authTripId],
+    queryFn: async () => {
+      const response = await fetch(
+        `${BASE_URL}/payment/get-auto-payment?userId=${authUerId}&tripId=${authTripId}`,
+        {
+          headers: {Authorization: `Bearer ${authToken}`},
+        }
+      );
+      const result = await response.json();
+      return result;
+    },
+    enabled:
+      !!authToken && !!authUerId && !!authTripId,
+  });
+
   useEffect(() => {
     if (paymentData?.data?.data) {
       const apiData = paymentData.data.data;
@@ -223,6 +463,20 @@ export default function Payments() {
       setMethodType(method.type || "ach");
     }
   }, [savedPaymentMethodData]);
+
+  useEffect(() => {
+    if (autoPaymentDataResponse?.success && autoPaymentDataResponse?.data) {
+      const autoPayment = autoPaymentDataResponse.data;
+      setAutoPaymentData(autoPayment);
+      setAutoPayEnabled(true);
+      setPaymentFrequency(autoPayment.frequency);
+      setRecurringPaymentDay(autoPayment.recurringDay.toString());
+      setAutoPayAmount(autoPayment.amount);
+    } else if (autoPaymentDataResponse?.success === false) {
+      setAutoPaymentData(null);
+      setAutoPayEnabled(false);
+    }
+  }, [autoPaymentDataResponse]);
 
   const {data: isInvitedData, isSuccess: invitedSuccess} = useQuery({
     queryKey: ["participantTripCheckQuery", authToken, authUerId, authTripId],
@@ -693,6 +947,7 @@ export default function Payments() {
     paymentDetailData?.overpaid === 0 &&
     paymentDetailData?.remainings === 0 &&
     paymentDetailData?.your_goal === 0;
+  const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
   console.log("noExpensesAdded", noExpensesAdded);
 
@@ -1178,94 +1433,187 @@ export default function Payments() {
             {paymentMethod &&
               paymentDetailData &&
               paymentDetailData.remainings > 0 && (
-                <div className="mt-6 p-6 bg-blue-50 rounded-2xl border border-blue-200 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-800">
-                        Enable Auto-Pay
-                      </h3>
-                      <p className="text-sm text-slate-600">
-                        Set up automatic recurring payments until your balance
-                        is paid.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={autoPayEnabled}
-                      onCheckedChange={handleAutoPayToggle}
-                    />
-                  </div>
-
-                  {autoPayEnabled && (
-                    <div className="space-y-4">
-                      {/* Frequency Select */}
-                      <div>
-                        <Label>Payment Frequency</Label>
-                        <Select
-                          value={paymentFrequency}
-                          onValueChange={handleFrequencyChange}
-                        >
-                          <SelectTrigger className="w-full mt-2">
-                            <SelectValue placeholder="Select frequency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="biweekly">Bi-Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Recurring Day */}
-                      {paymentFrequency && (
-                        <div>
-                          <Label>Recurring Day</Label>
-                          <Select
-                            value={recurringPaymentDay}
-                            onValueChange={handleRecurringDayChange}
+                <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-blue-600" />
+                      Auto-Pay Setup
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Auto Payment Status */}
+                    {autoPaymentData ? (
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <Check className="w-5 h-5 text-green-600" />
+                            <h4 className="font-semibold text-green-700">
+                              Auto-Pay Active
+                            </h4>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelAutoPay}
+                            disabled={isAutoPaymentLoading}
+                            className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                           >
-                            <SelectTrigger className="w-full mt-2">
-                              <SelectValue placeholder="Choose a day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[...Array(28).keys()].map((d) => (
-                                <SelectItem
-                                  key={d + 1}
-                                  value={(d + 1).toString()}
+                            {isAutoPaymentLoading ? "Cancelling..." : "Cancel"}
+                          </Button>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-slate-600">
+                              <strong>Frequency:</strong>{" "}
+                              {autoPaymentData.frequency}
+                            </p>
+                            <p className="text-slate-600">
+                              <strong>Amount:</strong> $
+                              {autoPaymentData.amount.toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-600">
+                              <strong>Recurring Day:</strong>{" "}
+                              {autoPaymentData.recurringDay}
+                            </p>
+                            <p className="text-slate-600">
+                              <strong>Next Payment:</strong>{" "}
+                              {new Date(
+                                autoPaymentData.nextPaymentDate
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-semibold text-slate-800">
+                              Enable Auto-Pay
+                            </h3>
+                            <p className="text-sm text-slate-600">
+                              Set up automatic recurring payments until your
+                              balance is paid.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={autoPayEnabled}
+                            onCheckedChange={handleAutoPayToggle}
+                            disabled={isAutoPaymentLoading}
+                          />
+                        </div>
+
+                        {autoPayEnabled && (
+                          <div className="space-y-4">
+                            {/* Frequency Select */}
+                            <div>
+                              <Label>Payment Frequency</Label>
+                              <Select
+                                value={paymentFrequency}
+                                onValueChange={handleFrequencyChange}
+                              >
+                                <SelectTrigger className="w-full mt-2">
+                                  <SelectValue placeholder="Select frequency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="weekly">Weekly</SelectItem>
+                                  <SelectItem value="biweekly">
+                                    Bi-Weekly
+                                  </SelectItem>
+                                  <SelectItem value="monthly">
+                                    Monthly
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Recurring Day */}
+                            {paymentFrequency && (
+                              <div>
+                                <Label>
+                                  {paymentFrequency === "monthly"
+                                    ? "Day of Month (1-28)"
+                                    : "Day of Week"}
+                                </Label>
+                                <Select
+                                  value={recurringPaymentDay}
+                                  onValueChange={handleRecurringDayChange}
                                 >
-                                  Day {d + 1}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+                                  <SelectTrigger className="w-full mt-2">
+                                    <SelectValue placeholder="Choose a day" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {paymentFrequency === "monthly"
+                                      ? [...Array(28).keys()].map((d) => (
+                                          <SelectItem
+                                            key={d + 1}
+                                            value={(d + 1).toString()}
+                                          >
+                                            Day {d + 1}
+                                          </SelectItem>
+                                        ))
+                                      : [
+                                          {value: "1", label: "Monday"},
+                                          {value: "2", label: "Tuesday"},
+                                          {value: "3", label: "Wednesday"},
+                                          {value: "4", label: "Thursday"},
+                                          {value: "5", label: "Friday"},
+                                          {value: "6", label: "Saturday"},
+                                          {value: "7", label: "Sunday"},
+                                        ].map((day) => (
+                                          <SelectItem
+                                            key={day.value}
+                                            value={day.value}
+                                          >
+                                            {day.label}
+                                          </SelectItem>
+                                        ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
 
-                      {/* Auto-Pay Amount */}
-                      {autoPayAmount > 0 && (
-                        <div className="bg-white rounded-xl p-4 border text-sm">
-                          <p className="text-slate-600">
-                            Each payment will be:{" "}
-                            <span className="font-bold text-green-600">
-                              ${autoPayAmount.toFixed(2)}
-                            </span>
-                          </p>
-                          <p className="text-slate-500 mt-1">
-                            Based on your remaining balance of $
-                            {paymentDetailData.remainings.toFixed(2)}.
-                          </p>
-                        </div>
-                      )}
+                            {/* Auto-Pay Amount */}
+                            {autoPayAmount > 0 && (
+                              <div className="bg-white rounded-xl p-4 border text-sm">
+                                <p className="text-slate-600">
+                                  Each payment will be:{" "}
+                                  <span className="font-bold text-green-600">
+                                    ${autoPayAmount.toFixed(2)}
+                                  </span>
+                                </p>
+                                <p className="text-slate-500 mt-1">
+                                  Based on your remaining balance of $
+                                  {paymentDetailData.remainings.toFixed(2)}.
+                                </p>
+                              </div>
+                            )}
 
-                      {/* Save Button */}
-                      <Button
-                        onClick={handleSaveAutoPay}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        Save Auto-Pay Settings
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                            {/* Save Button */}
+                            <Button
+                              onClick={handleSaveAutoPay}
+                              disabled={
+                                isAutoPaymentLoading ||
+                                !paymentFrequency ||
+                                !recurringPaymentDay ||
+                                autoPayAmount <= 0
+                              }
+                              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                              {isAutoPaymentLoading && (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              )}
+                              Save Auto-Pay Settings
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
             {/* 4. Pay for a Friend - Enhanced with real-time data and cost breakdown */}
@@ -1460,6 +1808,26 @@ export default function Payments() {
           </div>
         </div>
       )}
+      <Elements stripe={stripePromise}>
+        <div className="hidden">
+          <PaymentsForm
+            isOpen={isOpen}
+            setIsOpen={setIsOpen}
+            clientSecret={setUpIntent}
+            payload={autoSavePayload}
+                       setIsAutoPaymentLoading={setIsAutoPaymentLoading}
+
+          />
+          <ACHPaymentsModal
+            isOpen={isOpenACH}
+            setIsOpen={setIsACHOpen}
+            clientSecret={setUpIntent}
+            payload={autoSavePayload}
+           setIsAutoPaymentLoading={setIsAutoPaymentLoading}
+
+          />
+        </div>
+      </Elements>
     </>
   );
 }

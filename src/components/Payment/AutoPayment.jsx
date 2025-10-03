@@ -1,7 +1,7 @@
 "use client";
 
 import {useState} from "react";
-import {useStripe} from "@stripe/react-stripe-js";
+import {useStripe, useElements, CardElement} from "@stripe/react-stripe-js";
 import {
   Dialog,
   DialogTrigger,
@@ -16,7 +16,7 @@ import {Input} from "@/components/ui/input";
 import {useSelector} from "react-redux";
 import {toast} from "sonner";
 
-const ACHPaymentsModal = ({
+const PaymentsModal = ({
   clientSecret,
   isOpen,
   setIsOpen,
@@ -24,46 +24,42 @@ const ACHPaymentsModal = ({
   setIsAutoPaymentLoading,
 }) => {
   const stripe = useStripe();
+  const elements = useElements();
   const authToken = useSelector((state) => state.user.token);
   const BASE_URL = import.meta.env.VITE_API_URL;
 
-  const [accountHolderName, setAccountHolderName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [routingNumber, setRoutingNumber] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSaveACH = async (e) => {
+  const handleSaveCard = async (e) => {
     e.preventDefault();
-    if (!stripe) return;
+    if (!stripe || !elements) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Confirm SetupIntent with manual ACH info
-      const {setupIntent, error: stripeError} =
-        await stripe.confirmUsBankAccountSetup(clientSecret, {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error("CardElement not found");
+
+      const {setupIntent, error: stripeError} = await stripe.confirmCardSetup(
+        clientSecret,
+        {
           payment_method: {
-            us_bank_account: {
-              account_number: accountNumber,
-              routing_number: routingNumber,
-              account_holder_type: "individual",
-            },
-            billing_details: {
-              name: accountHolderName,
-              email: payload.email,
-            },
+            card: cardElement,
+            billing_details: {name: customerName, email: customerEmail},
           },
-        });
+        }
+      );
 
       if (stripeError) {
         setError(stripeError.message);
         return;
       }
 
-      // Notify backend to enable auto-payment
       const response = await fetch(
         `${BASE_URL}/payment/complete-setup-intent-and-enable-auto-payment`,
         {
@@ -76,17 +72,13 @@ const ACHPaymentsModal = ({
         }
       );
       const result = await response.json();
-
       if (result) {
-        toast.success(
-          "Bank account saved! Please verify micro-deposits to enable ACH payments."
-        );
+        toast.success("Card saved and auto payment enabled!");
         setIsOpen(false);
       } else {
-        toast.error("Failed to enable ACH auto-payment.");
+        toast.error("Failed to enable auto payment.");
       }
-
-      console.log("ACH setup successful!", setupIntent);
+      console.log("Card setup successful!", setupIntent);
       setSuccess(true);
     } catch (err) {
       setError(err.message);
@@ -100,45 +92,43 @@ const ACHPaymentsModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>Save Bank Account / Add ACH</Button>
+        <Button>Save Card / Add Payment Method</Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Save a Bank Account</DialogTitle>
+          <DialogTitle>Save a Payment Method</DialogTitle>
           <DialogDescription>
-            Enter your bank details to save for future ACH payments.
+            Enter your card details to save it for future payments.
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4 mt-4" onSubmit={handleSaveACH}>
+        <form className="space-y-4 mt-4" onSubmit={handleSaveCard}>
           <Input
-            placeholder="Account Holder Name"
-            value={accountHolderName}
-            onChange={(e) => setAccountHolderName(e.target.value)}
+            placeholder="Full Name"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
             required
           />
           <Input
-            placeholder="Routing Number"
-            value={routingNumber}
-            onChange={(e) => setRoutingNumber(e.target.value)}
+            type="email"
+            placeholder="Email"
+            value={customerEmail}
+            onChange={(e) => setCustomerEmail(e.target.value)}
             required
           />
-          <Input
-            placeholder="Account Number"
-            value={accountNumber}
-            onChange={(e) => setAccountNumber(e.target.value)}
-            required
-          />
+          <div className="p-4 border rounded-md bg-gray-50">
+            <CardElement options={{hidePostalCode: true}} />
+          </div>
 
           {error && <p className="text-red-600">{error}</p>}
           {success && (
-            <p className="text-green-600">Bank account saved successfully!</p>
+            <p className="text-green-600">Card saved successfully!</p>
           )}
 
           <DialogFooter className="flex justify-end">
             <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Bank Account"}
+              {loading ? "Saving..." : "Save Card"}
             </Button>
           </DialogFooter>
         </form>
@@ -147,4 +137,4 @@ const ACHPaymentsModal = ({
   );
 };
 
-export default ACHPaymentsModal;
+export default PaymentsModal;
