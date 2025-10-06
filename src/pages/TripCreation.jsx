@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import React, {useState} from "react";
+import {useNavigate} from "react-router-dom";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Textarea} from "@/components/ui/textarea";
+import {Label} from "@/components/ui/label";
+import {uploadToS3} from "@/utils/utils";
 import {
   Select,
   SelectContent,
@@ -11,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,14 +21,16 @@ import {
   MessageSquare,
   CheckCircle,
 } from "lucide-react";
-import { addWeeks, format } from "date-fns";
-import { useMutation } from "@tanstack/react-query";
-import { createTripService } from "@/services/trip";
-import { useSelector } from "react-redux";
-import { toast } from "sonner";
+import {addWeeks, format} from "date-fns";
+import {useMutation} from "@tanstack/react-query";
+import {createTripService} from "@/services/trip";
+import {useSelector} from "react-redux";
+import {toast} from "sonner";
 
 export default function TripCreation() {
   const navigate = useNavigate();
+  const BASE_URL = import.meta.env.VITE_API_URL;
+
   const token = useSelector((state) => state.user.token);
   console.log(token, "Hey I am the Token of Redux");
   const [currentStep, setCurrentStep] = useState(1);
@@ -41,38 +44,68 @@ export default function TripCreation() {
     image: null,
   });
   const [previewUrl, setPreviewUrl] = useState(""); // preview image
-  console.log("Hey I am the Create Trip form Data", formData);
+  const [imgkey, setImgkey] = useState("");
+  const [imgLoading, setImageLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
   const updateFormData = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({...prev, [field]: value}));
   };
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-      ];
+  const handleImageChange = async (e) => {
+    setImageLoading(true);
+    const file = e.target.files[0];
+    console.log(file, "");
+    if (!file) return;
 
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Please select a valid image file (JPG, PNG, or WebP)");
-        e.target.value = "";
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please select a valid image file (JPG, PNG, or WebP)");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be less than 5MB");
+      e.target.value = "";
+      return;
+    }
+
+    setPreviewUrl(URL.createObjectURL(file));
+    console.log(file, "ss");
+    try {
+      const uploadResult = await uploadToS3({
+        file: file,
+        BASE_URL,
+        token,
+        folder: "trip-images",
+      });
+
+      if (!uploadResult?.key) {
+        toast.error("Failed to upload image.");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image file size must be less than 5MB");
-        e.target.value = "";
-        return;
-      }
+      console.log(uploadResult, "I am the upload result");
+      setImgkey(uploadResult.key);
+      formData.image = uploadResult.key;
 
-      updateFormData("image", file);
-      setPreviewUrl(URL.createObjectURL(file));
+      const signedUrl = await getFileUrl(uploadResult.key);
+      if (signedUrl) {
+        setPreviewUrl(signedUrl);
+
+        toast.success("Image uploaded successfully!");
+      } else {
+        toast.error("Failed to generate signed URL.");
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error("Error uploading image.");
+    } finally {
+      setImageLoading(false);
     }
   };
+
   const generateInviteCode = () => {
     return (
       Math.random().toString(36).substring(2, 15) +
@@ -80,7 +113,7 @@ export default function TripCreation() {
     );
   };
 
-  const { mutate, isLoading } = useMutation({
+  const {mutate, isLoading} = useMutation({
     mutationFn: (formData) => createTripService(formData, token),
     onSuccess: (data) => {
       console.log("Trip Created Successfully:", data);
@@ -123,11 +156,36 @@ export default function TripCreation() {
   };
 
   const steps = [
-    { number: 1, title: "Trip Basics", icon: MapPin },
-    { number: 2, title: "Dates", icon: Calendar },
-    { number: 3, title: "Deadline", icon: CheckCircle },
-    { number: 4, title: "Welcome", icon: MessageSquare },
+    {number: 1, title: "Trip Basics", icon: MapPin},
+    {number: 2, title: "Dates", icon: Calendar},
+    {number: 3, title: "Deadline", icon: CheckCircle},
+    {number: 4, title: "Welcome", icon: MessageSquare},
   ];
+  // useEffect(async () => {
+  //   if (imgkey) {
+  //     const getImage = await getFileUrl(imgkey);
+  //     setPreviewUrl(getImage);
+  //   }
+  // }, [imgkey]);
+
+  const getFileUrl = async (fileKey) => {
+    const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
+
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const json = await res.json();
+
+    if (json?.success && json?.data?.url) {
+      const result = json.data.url;
+      return result;
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
@@ -360,7 +418,7 @@ export default function TripCreation() {
               {currentStep < 4 ? (
                 <Button
                   onClick={nextStep}
-                  disabled={!canProceed()}
+                  disabled={!canProceed() || imgLoading}
                   className="px-6 md:px-8 py-3 text-sm md:text-base bg-blue-600 hover:bg-blue-700 order-1 sm:order-2"
                 >
                   Next

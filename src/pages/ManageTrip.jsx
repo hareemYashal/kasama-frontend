@@ -24,8 +24,11 @@ import {useMutation, useQuery} from "@tanstack/react-query";
 import {useSelector} from "react-redux";
 import {updateTripService, getTripByIdService} from "@/services/trip";
 import {toast} from "sonner";
+import {uploadToS3} from "@/utils/utils";
 
 export default function ManageTrip() {
+  const BASE_URL = import.meta.env.VITE_API_URL;
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     occasion: "",
@@ -37,6 +40,7 @@ export default function ManageTrip() {
   });
   const [tripImageFile, setTripImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
   const tripId = useSelector((state) => state.trips.activeTripId);
@@ -63,8 +67,10 @@ export default function ManageTrip() {
         booking_deadline_weeks: tripData?.booking_deadline?.toString() || "",
         welcome_message: tripData?.welcome_message || "",
       });
+      console.log(tripData.image, "the image");
 
       if (tripData?.image) {
+        console.log(tripData.image, "the image");
         setPreviewUrl(tripData?.image);
       }
     }
@@ -91,33 +97,93 @@ export default function ManageTrip() {
   const updateFormData = (field, value) => {
     setFormData((prev) => ({...prev, [field]: value}));
   };
+  const getFileUrl = async (fileKey) => {
+    const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-      ];
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const json = await res.json();
+    console.log(json, "skssk");
 
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Please select a valid image file (JPG, PNG, or WebP)");
-        e.target.value = "";
+    if (json?.success && json?.data?.url) {
+      const result = json.data.url;
+      console.log(result, "the result");
+      return result;
+    }
+    return null;
+  };
+  const handleImageChange = async (e) => {
+    setImageLoading(true);
+    const file = e.target.files[0];
+    console.log(file, "");
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please select a valid image file (JPG, PNG, or WebP)");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be less than 5MB");
+      e.target.value = "";
+      return;
+    }
+
+    setUrl(URL.createObjectURL(file));
+    try {
+      const uploadResult = await uploadToS3({
+        file: file,
+        BASE_URL,
+        token,
+        folder: "trip-images",
+      });
+
+      if (!uploadResult?.key) {
+        toast.error("Failed to upload image.");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image file size must be less than 5MB");
+      setTripImageFile(uploadResult.key);
+      formData.image = uploadResult.key;
 
-        e.target.value = "";
-        return;
+      const signedUrl = await getFileUrl(uploadResult.key);
+      if (signedUrl) {
+        setPreviewUrl(signedUrl);
+
+        toast.success("Image uploaded successfully!");
+      } else {
+        toast.error("Failed to generate signed URL.");
       }
-
-      setTripImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error("Error uploading image.");
+    } finally {
+      setImageLoading(false);
     }
   };
+  useEffect(() => {
+    if (!previewUrl) return;
+
+    const fetchFileUrl = async () => {
+      try {
+        const ur = await getFileUrl(previewUrl);
+        setUrl(ur)
+        console.log(ur);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchFileUrl();
+  }, [previewUrl]);
+  console.log(url, "the url",previewUrl);
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -131,7 +197,7 @@ export default function ManageTrip() {
     formDataToSend.append("welcome_message", formData.welcome_message);
 
     if (tripImageFile) {
-      formDataToSend.append("image", tripImageFile);
+      formDataToSend.append("image", previewUrl);
     }
 
     mutate({formDataToSend, tripId, token});
@@ -186,7 +252,7 @@ export default function ManageTrip() {
                   <div className="w-32 h-24 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
                     {previewUrl ? (
                       <img
-                        src={previewUrl}
+                        src={url}
                         alt="Trip preview"
                         className="w-full h-full object-cover rounded-lg"
                       />
