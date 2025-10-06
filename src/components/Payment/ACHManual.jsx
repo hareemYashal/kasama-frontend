@@ -26,6 +26,7 @@ const ACHPaymentsModal = ({
   const stripe = useStripe();
   const authToken = useSelector((state) => state.user.token);
   const BASE_URL = import.meta.env.VITE_API_URL;
+  const authUser = useSelector((state) => state.user.user);
 
   const [accountHolderName, setAccountHolderName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -52,8 +53,8 @@ const ACHPaymentsModal = ({
               account_holder_type: "individual",
             },
             billing_details: {
-              name: accountHolderName,
-              email: payload.email,
+              name: authUser?.name || "",
+              email: authUser?.email || "",
             },
           },
         });
@@ -78,6 +79,8 @@ const ACHPaymentsModal = ({
       const result = await response.json();
 
       if (result) {
+        window.open(result.verification_url, "_blank");
+
         toast.success(
           "Bank account saved! Please verify micro-deposits to enable ACH payments."
         );
@@ -137,8 +140,20 @@ const ACHPaymentsModal = ({
           )}
 
           <DialogFooter className="flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Bank Account"}
+            <Button
+              type="submit"
+              disabled={
+                loading ||
+                !accountHolderName ||
+                !accountNumber ||
+                !routingNumber
+              }
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {loading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              )}
+              {"Save Bank Account"}
             </Button>
           </DialogFooter>
         </form>

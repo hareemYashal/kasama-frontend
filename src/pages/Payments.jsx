@@ -86,7 +86,6 @@ export default function Payments() {
   console.log(tripParticipantsNumber, "tripParticipantsNumber");
   const BASE_URL = import.meta.env.VITE_API_URL;
 
-  console.log("authUser", authUser);
   const [requestText, setRequestText] = useState("Request");
   const [isInvited, setIsInvited] = useState(false); // ✅ default false
   const [paymentDetailData, setPaymentDetailData] = useState(null);
@@ -121,7 +120,6 @@ export default function Payments() {
   const [autoPayAmount, setAutoPayAmount] = useState(0);
   const [autoPaymentData, setAutoPaymentData] = useState(null);
   const [isAutoPaymentLoading, setIsAutoPaymentLoading] = useState(false);
-  const [autoPaymentMethodType, setAutoPaymentMethodType] = useState("card");
 
   // Auto payment handlers
   const handleAutoPayToggle = async (enabled) => {
@@ -350,6 +348,7 @@ export default function Payments() {
         recurringDay: Number(recurringPaymentDay),
         amount: autoPayAmount,
         paymentMethodType: paymentMethod?.type,
+        methodId: paymentMethod.id,
       };
       setAutoSavePayloadData(payload);
       const response = await fetch(`${BASE_URL}/payment/setup-auto-payment`, {
@@ -430,8 +429,7 @@ export default function Payments() {
       const result = await response.json();
       return result;
     },
-    enabled:
-      !!authToken && !!authUerId && !!authTripId,
+    enabled: !!authToken && !!authUerId && !!authTripId,
   });
 
   useEffect(() => {
@@ -767,7 +765,6 @@ export default function Payments() {
     }
   };
   const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-  console.log(STRIPE_PUBLISHABLE_KEY, "STRIPE_PUBLISHABLE_KEY");
 
   // --- ACH (Plaid/Stripe US Bank Account) helpers ---
   const ensureStripeJsLoaded = () => {
@@ -940,7 +937,6 @@ export default function Payments() {
       </div>
     );
   }
-  console.log("paymentDetailData", paymentDetailData);
 
   const noExpensesAdded =
     paymentDetailData?.amountPaid === 0 &&
@@ -1192,20 +1188,22 @@ export default function Payments() {
                               open={showPaymentModal}
                               onOpenChange={setShowPaymentModal}
                             >
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (paymentMethod?.type) {
-                                      setMethodType(paymentMethod.type);
-                                    }
-                                  }}
-                                  className="text-blue-600 hover:text-blue-700 bg-transparent"
-                                >
-                                  Change
-                                </Button>
-                              </DialogTrigger>
+                              {!autoPaymentData && (
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (paymentMethod?.type) {
+                                        setMethodType(paymentMethod.type);
+                                      }
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700 bg-transparent"
+                                  >
+                                    Change
+                                  </Button>
+                                </DialogTrigger>
+                              )}
 
                               <DialogContent className="sm:max-w-md">
                                 <DialogHeader>
@@ -1815,16 +1813,14 @@ export default function Payments() {
             setIsOpen={setIsOpen}
             clientSecret={setUpIntent}
             payload={autoSavePayload}
-                       setIsAutoPaymentLoading={setIsAutoPaymentLoading}
-
+            setIsAutoPaymentLoading={setIsAutoPaymentLoading}
           />
           <ACHPaymentsModal
             isOpen={isOpenACH}
             setIsOpen={setIsACHOpen}
             clientSecret={setUpIntent}
             payload={autoSavePayload}
-           setIsAutoPaymentLoading={setIsAutoPaymentLoading}
-
+            setIsAutoPaymentLoading={setIsAutoPaymentLoading}
           />
         </div>
       </Elements>

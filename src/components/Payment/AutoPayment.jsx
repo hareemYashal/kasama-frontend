@@ -127,8 +127,15 @@ const PaymentsModal = ({
           )}
 
           <DialogFooter className="flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Card"}
+            <Button
+              type="submit"
+              disabled={loading || !customerEmail ||!customerEmail}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {loading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              )}
+              {"Save Card"}
             </Button>
           </DialogFooter>
         </form>

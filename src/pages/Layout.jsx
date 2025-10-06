@@ -218,7 +218,6 @@ export default function Layout({children, currentPageName}) {
   }, [notificationsData, dispatch]);
   const notifications =
     notificationsData?.notifications || notificationsData?.data || [];
-  console.log(notificationsData, "sjsjsj");
   const commonNavItems = [
     {
       title: "Tips for Using Kasama",
