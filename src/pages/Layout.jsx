@@ -208,7 +208,7 @@ export default function Layout({children, currentPageName}) {
   ];
   const {data: notificationsData} = useQuery({
     queryKey: ["notifications", tripId, token],
-    queryFn: () => getNotificationsService(tripId,token ),
+    queryFn: () => getNotificationsService(token, tripId),
     enabled: !!token && !!tripId,
   });
   useEffect(() => {
@@ -403,11 +403,10 @@ export default function Layout({children, currentPageName}) {
                             className="flex items-center gap-3 px-4 py-3"
                           >
                             <div className="relative">
-                              {/* <item.icon className="w-4 h-4" /> */}
+                              <item.icon className="w-4 h-4" />
                               {item.title === "Notifications" &&
                                 unreadCount > 0 && (
-                                  <div className="relative"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-bell w-4 h-4" data-source-location="layout:299:30" data-dynamic-content="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span className="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 border border-white"></span></div>
-
+                                  <span className="absolute -top-[2px] right-[1.5px] w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                                 )}
                             </div>
                             <span className="font-medium">{item.title}</span>
@@ -497,7 +496,7 @@ export default function Layout({children, currentPageName}) {
                           <span className="font-medium">About Kasama</span>
                         </SidebarMenuButton>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg bg-white max-h-[80vh] overflow-y-auto">
+                      <DialogContent className="sm:max-w-lg bg-white">
                         <DialogHeader>
                           <DialogTitle className="text-2xl font-bold text-slate-800">
                             Why We Created Kasama
