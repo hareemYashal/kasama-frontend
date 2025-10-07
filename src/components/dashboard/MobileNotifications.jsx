@@ -3,7 +3,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {Bell} from "lucide-react";
 import React, {useEffect} from "react";
 import {ActivityIcon, History, Trash2} from "lucide-react";
 import {useSelector, useDispatch} from "react-redux";
@@ -29,6 +28,14 @@ const MobileNotifications = () => {
   const user = useSelector((state) => state.user.user);
   const notifications = useSelector((state) => state.notifications.list);
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
+  const handleDelete = async (notifId) => {
+    try {
+      await deleteNotificationService(notifId, token);
+      dispatch(deleteNotification(notifId));
+    } catch (error) {
+      console.error("Error deleting notification", error);
+    }
+  };
 
   // Fetch notifications from API
   const {data} = useQuery({
@@ -111,9 +118,9 @@ const MobileNotifications = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            {/* <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-600">
               <Bell className="w-3 h-3" />
-            </span>
+            </span> */}
             <span className="text-sm font-medium text-slate-800">
               Recent Activity
             </span>
@@ -124,32 +131,43 @@ const MobileNotifications = () => {
                 <div
                   key={n.id || idx}
                   onClick={() => handleMarkRead(n.id)}
-                  className={`flex items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${
+                  className={`flex justify-between items-start p-4 rounded-lg border transition-colors cursor-pointer ${
                     !n.isRead
                       ? "bg-slate-100 border-slate-200"
                       : "bg-white border-slate-100 hover:border-slate-200"
                   }`}
                 >
+                  {/* Left section: icon + message */}
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                       <ActivityIcon className="w-4 h-4 text-blue-600" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p
-                        className={`text-sm font-medium ${
+                        className={`text-xs font-medium ${
                           !n.isRead ? "text-slate-600" : "text-slate-800"
                         }`}
                       >
-                        {" "}
                         {n.message || n.title || n.text || "Notification"}
                       </p>
                       {(n.createdAt || n.created_at) && (
                         <p className="text-xs text-slate-500 mt-1">
-                          {timeAgo(n.createdAt)}
+                          {timeAgo(n.createdAt || n.created_at)}
                         </p>
                       )}
                     </div>
                   </div>
+
+                  {/* Right section: delete button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent triggering mark-read
+                      handleDelete(n.id);
+                    }}
+                    className="text-red-500 hover:text-red-700 ml-4 flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))
             ) : (
