@@ -10,10 +10,7 @@ const MobileNotifications = ({notifications, unreadCount}) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="relative inline-flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors">
-            <Bell className="w-4 h-4 text-slate-700" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-            )}
+              <div className="relative"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-bell w-4 h-4" data-source-location="layout:299:30" data-dynamic-content="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span className="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 border border-white"></span></div>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">

@@ -2,18 +2,18 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  DollarSign, 
+import {
+  Users,
+  DollarSign,
   User,
   Target
 } from "lucide-react";
 
-export default function ContributionOverview({ 
-  contributions, 
-  participants, 
-  myContribution, 
-  totalAmount 
+export default function ContributionOverview({
+  contributions,
+  participants,
+  myContribution,
+  totalAmount
 }) {
   const getParticipantName = (userId) => {
     const participant = participants.find(p => p.id === userId);
@@ -71,8 +71,8 @@ export default function ContributionOverview({
                 ${myContribution.goal_amount }
               </span>
             </div>
-            <Progress 
-              value={getProgressPercentage(myContribution)} 
+            <Progress
+              value={getProgressPercentage(myContribution)}
               className="h-3"
             />
             <div className="flex justify-between items-center text-sm">
@@ -97,11 +97,11 @@ export default function ContributionOverview({
         </CardHeader>
         <CardContent className="space-y-4">
           {contributions.map((contribution, index) => (
-            <div 
+            <div
               key={contribution.id}
               className={`p-4 rounded-lg border ${
-                contribution.user_id === myContribution?.user_id 
-                  ? 'border-blue-200 bg-blue-50/50' 
+                contribution.user_id === myContribution?.user_id
+                  ? 'border-blue-200 bg-blue-50/50'
                   : 'border-slate-200 bg-slate-50/50'
               }`}
             >
@@ -122,19 +122,19 @@ export default function ContributionOverview({
                   </div>
                 </div>
               </div>
-              
-              <Progress 
-                value={getProgressPercentage(contribution)} 
+
+              <Progress
+                value={getProgressPercentage(contribution)}
                 className="h-2 mb-2"
               />
-              
+
               <div className="flex justify-between items-center text-xs text-slate-500">
                 <span>{getProgressPercentage(contribution) }% paid</span>
-                <span>${contribution.amount_remaining } remaining</span>
+                <span>${(contribution.amount_remaining).toFixed(2) } remaining</span>
               </div>
             </div>
           ))}
-          
+
           {contributions.length === 0 && (
             <div className="text-center py-8">
               <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />

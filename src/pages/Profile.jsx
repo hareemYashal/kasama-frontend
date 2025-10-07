@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, {useState, useEffect} from "react";
+import {useNavigate} from "react-router-dom";
+import {useDispatch, useSelector} from "react-redux";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -19,10 +19,10 @@ import {
   ArrowLeft,
   AlertTriangle,
 } from "lucide-react";
-import { createPageUrl } from "@/utils";
-import { getProfileService, saveProfileService } from "@/services/profile";
-import { toast } from "sonner";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import {createPageUrl} from "@/utils";
+import {getProfileService, saveProfileService} from "@/services/profile";
+import {toast} from "sonner";
+import {SidebarTrigger} from "@/components/ui/sidebar";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ export default function Profile() {
   const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
-  const { data: profileData, isLoading } = useQuery({
+  const {data: profileData, isLoading} = useQuery({
     queryKey: ["profile"],
     queryFn: () => getProfileService(token),
     enabled: !!token, // only fetch if token exists
@@ -81,7 +81,7 @@ export default function Profile() {
   // Save profile
   const queryClient = useQueryClient();
 
-  const { mutate, isLoading: saving } = useMutation({
+  const {mutate, isLoading: saving} = useMutation({
     mutationFn: (payload) => saveProfileService(payload, token),
     onSuccess: (res) => {
       toast.success(res.message || "Profile saved successfully");
@@ -105,8 +105,8 @@ export default function Profile() {
   };
 
   const handleFormChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    const {id, value} = e.target;
+    setFormData((prev) => ({...prev, [id]: value}));
   };
 
   const handleSubmit = (e) => {
@@ -139,13 +139,13 @@ export default function Profile() {
     dispatch(setActiveTripId(null));
     navigate("/");
   };
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+  //       <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
@@ -169,182 +169,189 @@ export default function Profile() {
               Update your personal information and emergency contacts.
             </CardDescription>
           </CardHeader>
-
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Profile Photo */}
-              <div className="flex items-center gap-6">
-                <img
-                  src={
-                    previewUrl ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      formData.full_name
-                    )}&background=random`
-                  }
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                />
-                <div className="flex-1">
-                  <Label htmlFor="profile_photo">Profile Photo</Label>
-                  {/* <Input
+          {isLoading ? (
+            <div className="h-[50vh] bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+              <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Profile Photo */}
+                <div className="flex items-center gap-6">
+                  <img
+                    src={
+                      previewUrl ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        formData.full_name
+                      )}&background=random`
+                    }
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="profile_photo">Profile Photo</Label>
+                    {/* <Input
                     id="profile_photo"
                     type="file"
                     onChange={handleFileChange}
                     accept="image/*"
                     className="mt-1"
                   /> */}
-                  <input
-                    type="file"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base cursor-pointer ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1 file:text-primary"
-                    onChange={handleFileChange}
-                    id="profile_photo"
-                    accept="image/*"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Upload a new photo to update your avatar.
-                  </p>
+                    <input
+                      type="file"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base cursor-pointer ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1 file:text-primary"
+                      onChange={handleFileChange}
+                      id="profile_photo"
+                      accept="image/*"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Upload a new photo to update your avatar.
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Full Name + Username */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="full_name">Full Name (Private)</Label>
-                  <Input
-                    id="full_name"
-                    value={formData.full_name || ""}
-                    onChange={handleFormChange}
-                  />
+                {/* Full Name + Username */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="full_name">Full Name (Private)</Label>
+                    <Input
+                      id="full_name"
+                      value={formData.full_name || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="username">Username (Public)</Label>
+                    <Input
+                      id="username"
+                      value={formData.username || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="username">Username (Public)</Label>
-                  <Input
-                    id="username"
-                    value={formData.username || ""}
-                    onChange={handleFormChange}
-                  />
-                </div>
-              </div>
 
-              {/* Phone + Birthday */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="phone_number">Phone Number</Label>
-                  <Input
-                    id="phone_number"
-                    type="tel" // ✅ phone input
-                    value={formData.phone_number || ""}
-                    onChange={handleFormChange}
-                  />
+                {/* Phone + Birthday */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="phone_number">Phone Number</Label>
+                    <Input
+                      id="phone_number"
+                      type="tel" // ✅ phone input
+                      value={formData.phone_number || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="birthday">Birthday</Label>
+                    <Input
+                      id="birthday"
+                      type="date" // ✅ date input
+                      value={formData.birthday || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="birthday">Birthday</Label>
-                  <Input
-                    id="birthday"
-                    type="date" // ✅ date input
-                    value={formData.birthday || ""}
-                    onChange={handleFormChange}
-                  />
+
+                {/* Emergency Contact Section */}
+                <div className="space-y-2 pt-4 border-t border-slate-200">
+                  <h3 className="font-semibold text-slate-700">
+                    Emergency Contact
+                  </h3>
                 </div>
-              </div>
 
-              {/* Emergency Contact Section */}
-              <div className="space-y-2 pt-4 border-t border-slate-200">
-                <h3 className="font-semibold text-slate-700">
-                  Emergency Contact
-                </h3>
-              </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="emergency_contact_name">
+                      Emergency Contact Name
+                    </Label>
+                    <Input
+                      id="emergency_contact_name"
+                      value={formData.emergency_contact_name || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="emergency_contact_phone">
+                      Emergency Contact Phone
+                    </Label>
+                    <Input
+                      id="emergency_contact_phone"
+                      type="number" // ✅ phone input
+                      value={formData.emergency_contact_phone || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="emergency_contact_name">
-                    Emergency Contact Name
+                  <Label htmlFor="emergency_contact_relationship">
+                    Relationship to Emergency Contact
                   </Label>
                   <Input
-                    id="emergency_contact_name"
-                    value={formData.emergency_contact_name || ""}
+                    id="emergency_contact_relationship"
+                    value={formData.emergency_contact_relationship || ""}
                     onChange={handleFormChange}
                   />
                 </div>
+
+                {/* Travel Documents Section */}
+                <div className="space-y-2 pt-4 border-t border-slate-200">
+                  <h3 className="font-semibold text-slate-700">
+                    Travel Documents
+                  </h3>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="passport_number">Passport Number</Label>
+                    <Input
+                      id="passport_number"
+                      type="text"
+                      value={formData.passport_number || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="passport_country">Country of Issue</Label>
+                    <Input
+                      id="passport_country"
+                      type="text"
+                      value={formData.passport_country || ""}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label htmlFor="emergency_contact_phone">
-                    Emergency Contact Phone
+                  <Label htmlFor="passport_expiration">
+                    Passport Expiration
                   </Label>
                   <Input
-                    id="emergency_contact_phone"
-                    type="number" // ✅ phone input
-                    value={formData.emergency_contact_phone || ""}
+                    id="passport_expiration"
+                    type="date"
+                    value={formData.passport_expiration || ""}
                     onChange={handleFormChange}
                   />
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="emergency_contact_relationship">
-                  Relationship to Emergency Contact
-                </Label>
-                <Input
-                  id="emergency_contact_relationship"
-                  value={formData.emergency_contact_relationship || ""}
-                  onChange={handleFormChange}
-                />
-              </div>
-
-              {/* Travel Documents Section */}
-              <div className="space-y-2 pt-4 border-t border-slate-200">
-                <h3 className="font-semibold text-slate-700">
-                  Travel Documents
-                </h3>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="passport_number">Passport Number</Label>
-                  <Input
-                    id="passport_number"
-                    type="text"
-                    value={formData.passport_number || ""}
-                    onChange={handleFormChange}
-                  />
+                {/* Save Button */}
+                <div className="flex justify-end pt-4">
+                  <Button
+                    type="submit"
+                    disabled={saving}
+                    className="px-8 bg-blue-600 hover:bg-blue-700"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Save Changes
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="passport_country">Country of Issue</Label>
-                  <Input
-                    id="passport_country"
-                    type="text"
-                    value={formData.passport_country || ""}
-                    onChange={handleFormChange}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="passport_expiration">Passport Expiration</Label>
-                <Input
-                  id="passport_expiration"
-                  type="date"
-                  value={formData.passport_expiration || ""}
-                  onChange={handleFormChange}
-                />
-              </div>
-
-              {/* Save Button */}
-              <div className="flex justify-end pt-4">
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="px-8 bg-blue-600 hover:bg-blue-700"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Changes
-                </Button>
-              </div>
-            </form>
-          </CardContent>
+              </form>
+            </CardContent>
+          )}
         </Card>
       </div>
     </div>

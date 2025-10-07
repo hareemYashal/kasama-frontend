@@ -152,7 +152,7 @@ export default function ContributionBreakdown({
               </div>
               <div className="text-right">
                 <div className="text-sm font-medium text-slate-600">
-                  ${contribution.amountPaid} / ${contribution.goal}
+                  ${contribution.amountPaid} / ${(contribution.goal).toFixed(2)}
                 </div>
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function ContributionBreakdown({
             <div className="flex justify-between items-center text-xs text-slate-500">
               <span>{getProgressPercentage(contribution)}% paid</span>
               <span>
-                ${contribution.goal - contribution.amountPaid} remaining
+                ${(contribution.goal - contribution.amountPaid).toFixed(2) } remaining
               </span>
             </div>
           </div>

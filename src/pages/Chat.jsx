@@ -38,6 +38,8 @@ const Chat = () => {
   const [loadingState, setLoadingState] = useState(null);
   const [reactions, setReactions] = useState({});
   const [showReactionPicker, setShowReactionPicker] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [readStatus, setReadStatus] = useState({});
   const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -67,6 +69,41 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Mark messages as read when they come into view
+  useEffect(() => {
+    const markMessagesAsRead = () => {
+      if (
+        messages.length > 0 &&
+        socketRef.current &&
+        socketRef.current.connected
+      ) {
+        const unreadMessageIds = messages
+          .filter((msg) => msg.senderId !== authUerId && !readStatus[msg.id])
+          .map((msg) => msg.id);
+
+        if (unreadMessageIds.length > 0) {
+          socketRef.current.emit("markMessagesAsRead", {
+            tripId,
+            userId: authUerId,
+            messageIds: unreadMessageIds,
+          });
+
+          // Update local read status
+          const newReadStatus = {...readStatus};
+          unreadMessageIds.forEach((id) => {
+            newReadStatus[id] = true;
+          });
+          setReadStatus(newReadStatus);
+        }
+      }
+    };
+
+    // Mark messages as read when component mounts or messages change
+    const timer = setTimeout(markMessagesAsRead, 1000); // Small delay to ensure messages are rendered
+
+    return () => clearTimeout(timer);
+  }, [messages, tripId, authUerId, readStatus]);
 
   const getFileUrl = async (fileKey) => {
     const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
@@ -210,6 +247,7 @@ const Chat = () => {
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("joinTripChat", {tripId, userId: authUerId});
       socketRef.current.emit("getMessages", {tripId});
+      socketRef.current.emit("getUnreadCount", {tripId, userId: authUerId});
       return;
     }
 
@@ -219,6 +257,7 @@ const Chat = () => {
     s.on("connect", () => {
       s.emit("joinTripChat", {tripId, userId: authUerId});
       s.emit("getMessages", {tripId});
+      s.emit("getUnreadCount", {tripId, userId: authUerId});
     });
 
     s.on("messages", processMessages);
@@ -358,12 +397,42 @@ const Chat = () => {
       console.log("socket disconnect:", reason);
     });
 
+    s.on("messageReadStatus", ({messageIds, readBy, readAt}) => {
+      console.log("[v0] Message read status updated:", {
+        messageIds,
+        readBy,
+        readAt,
+      });
+      // Update read status for messages
+      setReadStatus((prev) => {
+        const newStatus = {...prev};
+        messageIds.forEach((id) => {
+          newStatus[id] = true;
+        });
+        return newStatus;
+      });
+    });
+
+    s.on("unreadCount", ({unreadCount, tripId: countTripId}) => {
+      if (countTripId === tripId) {
+        console.log("[v0] Unread count updated:", unreadCount);
+        setUnreadCount(unreadCount);
+      }
+    });
+
+    s.on("unreadCountError", ({error}) => {
+      console.error("[v0] Error getting unread count:", error);
+    });
+
     return () => {
       s.off("messages");
       s.off("newMessage");
       s.off("messageDelivered"); // Clean up messageDelivered listener
       s.off("reactionUpdated"); // Clean up reaction listener
       s.off("pollUpdated");
+      s.off("messageReadStatus"); // Clean up read status listener
+      s.off("unreadCount"); // Clean up unread count listener
+      s.off("unreadCountError"); // Clean up unread count error listener
       s.disconnect();
       socketRef.current = null;
     };
@@ -627,7 +696,7 @@ const Chat = () => {
       {/* Messages Container with ref */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-auto p-4 space-y-4"
+        className="flex flex-col flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 space-y-4 bg-[#F1F5F9]"
       >
         {messages.length === 0 ? (
           <WelcomeChat />
