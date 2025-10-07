@@ -8,7 +8,6 @@ import {
   Delete,
   DeleteIcon,
 } from "lucide-react";
-import {getAllTripsWithRole} from "@/services/trip";
 import {useQueryClient} from "@tanstack/react-query";
 import {removeParticipantFromTrip} from "@/services/trip";
 import {useMutation} from "@tanstack/react-query";
@@ -17,8 +16,7 @@ import {useSelector} from "react-redux";
 import {toast} from "sonner";
 import {useState} from "react";
 import RemovePart from "./RemoveParticipant";
-import {QueryClient} from "@tanstack/react-query";
-const ActionItem = ({tripId, participant}) => {
+const ActionItem = ({tripId, participant,onMakeAdmin}) => {
   const token = useSelector((state) => state.user.token);
   const [isOpen, setIsOpen] = useState(false);
   const [partId, setPartId] = useState(null);

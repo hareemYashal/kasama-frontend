@@ -821,7 +821,7 @@ export default function ParticipantDashboard() {
                   ></span>
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">
-                      {unreadCount > 99 ? "99+" : unreadCount}
+                      {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
                 </>
