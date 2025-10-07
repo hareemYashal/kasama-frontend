@@ -100,8 +100,13 @@ const ACHPaymentsModal = ({
     }
   };
 
+  const onClose =async()=>{
+    setIsOpen(false)
+    setIsAutoPaymentLoading(false)
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogTrigger asChild>
         <Button>Save Bank Account / Add ACH</Button>
       </DialogTrigger>

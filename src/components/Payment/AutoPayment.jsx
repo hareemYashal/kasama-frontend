@@ -88,9 +88,13 @@ const PaymentsModal = ({
       setIsAutoPaymentLoading(false);
     }
   };
+const onClose =async()=>{
+    setIsOpen(false)
+    setIsAutoPaymentLoading(false)
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogTrigger asChild>
         <Button>Save Card / Add Payment Method</Button>
       </DialogTrigger>
