@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"; // ✅ using your shadcn/ui but
 import { useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
 import { getAllTripsWithRole } from "@/services/trip";
+import ActionItem from "./ActionItem";
 
 export default function ParticipantList({
   participants,
@@ -12,7 +13,6 @@ export default function ParticipantList({
   onMakeAdmin,
   tripId,
 }) {
-  const [participantToRemove, setParticipantToRemove] = useState(null);
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
 
@@ -108,16 +108,20 @@ export default function ParticipantList({
                       {isAdmin &&
                         user?.id === creatorId &&
                         participant?.user?.id !== user?.id && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onMakeAdmin?.(participant)}
-                          >
-                            {/* <Crown className="w-4 h-4 mr-1 text-amber-600" /> */}
-                            {participant.isHelperAdmin
-                              ? "Remove Co-Admin"
-                              : "Make Co-Admin"}
-                          </Button>
+                          // <Button
+                          //   size="sm"
+                          //   variant="outline"
+                          //   onClick={() => onMakeAdmin?.(participant)}
+                          // >
+                          //   {participant.isHelperAdmin
+                          //     ? "Remove Co-Admin"
+                          //     : "Make Co-Admin"}
+                          // </Button>
+                          <ActionItem
+                            tripId={tripId}
+                            participant={participant}
+                            onMakeAdmin={onMakeAdmin}
+                          />
                         )}
                     </div>
 

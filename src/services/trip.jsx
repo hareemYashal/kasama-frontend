@@ -117,6 +117,23 @@ export const getNotificationsService = async (tripId) => {
     throw err;
   }
 };
+const removeParticipantFromTrip = async (token, userId, tripId) => {
+  try {
+    const response = await axiosInstance.delete(
+      `/participant/deleteParticipant?userId=${userId}&tripId=${tripId}`,
+      {
+        headers: {Authorization: `Bearer ${token}`},
+      }
+    );
+
+    console.log("✅ AXIOS SUCCESS:", response);
+    return response.data; // this should resolve normally
+  } catch (error) {
+    console.log("❌ AXIOS ERROR:", error);
+    throw error;
+  }
+};
+
 export {
   createTripService,
   getAllTripsService,
@@ -124,4 +141,5 @@ export {
   getActiveTripService,
   updateTripService,
   deleteTripService,
+  removeParticipantFromTrip,
 };

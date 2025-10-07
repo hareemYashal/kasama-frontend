@@ -18,6 +18,8 @@ import {
   Trash2,
   Clock,
   UserCheck,
+  CrossIcon,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -44,6 +46,7 @@ import {setMyTrips, deleteTrip, setActiveTripId} from "@/store/tripSlice";
 import {useMutation} from "@tanstack/react-query";
 import {toast} from "sonner";
 import {setUserRed} from "@/store/userSlice";
+import {removeParticipantFromTrip} from "@/services/trip";
 import {participantStatusUpdateService} from "@/services/participant";
 
 export default function MyTrips() {
@@ -65,6 +68,15 @@ export default function MyTrips() {
   console.log("authUser", authUser);
   // Dummy Data
   const queryClient = useQueryClient();
+  const {mutate: removeParticipant} = useMutation({
+    mutationFn: ({token, userId, tripId}) =>
+      removeParticipantFromTrip(token, userId, tripId),
+    onSuccess: () => {
+      toast.success("Trip Removed!");
+      queryClient.invalidateQueries(["getAllTripsWithRoleQuery", token]);
+    },
+    onError: () => toast.error("Failed to Remove"),
+  });
 
   // const tripId = useSelector((state) => state.trips.activeTripId);
   const authToken = useSelector((state) => state.user.token);
@@ -427,6 +439,61 @@ export default function MyTrips() {
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                 ) : null} */}
                                   Delete Trip
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+
+                        {trip.role !== "creator" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8
+
+                            `}
+                              >
+                                <X color="red" className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Leave Trip</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to leave "
+                                  {trip.trip_occasion}"? This action cannot be
+                                  undone.
+                                  {/* {!isDeletable && (
+                                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <p className="text-red-800 font-medium">
+                                    ⚠️ This trip cannot be deleted because funds
+                                    have already been contributed.
+                                  </p>
+                                </div>
+                              )} */}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    removeParticipant({
+                                      token,
+                                      userId: authUser.id,
+                                      tripId: trip.id,
+                                    });
+                                  }}
+                                  // disabled={
+                                  //   !isDeletable || deletingTripId === trip.id
+                                  // }
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  {/* {deletingTripId === trip.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                ) : null} */}
+                                  Leave Trip
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
