@@ -208,7 +208,7 @@ export default function Layout({children, currentPageName}) {
   ];
   const {data: notificationsData} = useQuery({
     queryKey: ["notifications", tripId, token],
-    queryFn: () => getNotificationsService(token, tripId),
+    queryFn: () => getNotificationsService(tripId, token),
     enabled: !!token && !!tripId,
   });
   useEffect(() => {
