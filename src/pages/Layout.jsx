@@ -581,7 +581,7 @@ export default function Layout({children, currentPageName}) {
           <SidebarFooter className="border-t border-slate-200/60 p-4">
             <SidebarMenuButton
               asChild
-              className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl flex items-center gap-3 p-3 w-full text-left"
+              className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl flex items-center gap-3 px-3 py-5 w-full text-left"
             >
               <Link
                 to={createPageUrl("Profile")}
