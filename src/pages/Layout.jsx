@@ -579,10 +579,14 @@ export default function Layout({children, currentPageName}) {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-slate-200/60 p-4">
-            <Link
-              to={createPageUrl("Profile")}
-              className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-all duration-200"
+            <SidebarMenuButton
+              asChild
+              className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl flex items-center gap-3 p-3 w-full text-left"
             >
+              <Link
+                to={createPageUrl("Profile")}
+                className="flex items-center gap-3"
+              >
               {/* Avatar */}
               <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
                 {userProfileData?.profile_photo_url ? (
@@ -609,7 +613,8 @@ export default function Layout({children, currentPageName}) {
                 </p>
                 <p className="text-xs text-slate-500 truncate">My Profile</p>
               </div>
-            </Link>
+              </Link>
+            </SidebarMenuButton>
           </SidebarFooter>
         </Sidebar>
 

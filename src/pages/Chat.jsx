@@ -684,7 +684,10 @@ const Chat = () => {
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
-    <main className="flex flex-col h-screen">
+    <main
+      className="flex flex-col h-screen w-full max-w-full overflow-x-hidden"
+      style={{maxWidth: "100vw", overflowX: "hidden"}}
+    >
       {/* Header */}
       <ChatHeader />
       <ModalChatGIF
@@ -696,7 +699,8 @@ const Chat = () => {
       {/* Messages Container with ref */}
       <div
         ref={messagesContainerRef}
-        className="flex flex-col flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 space-y-4 bg-[#F1F5F9]"
+        className="flex flex-col flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-2 md:p-4 space-y-4 bg-[#F1F5F9] min-w-0"
+        style={{maxWidth: "100vw", overflowX: "hidden"}}
       >
         {messages.length === 0 ? (
           <WelcomeChat />
@@ -704,29 +708,39 @@ const Chat = () => {
           <>
             {Object.entries(groupedMessages).map(([date, dateMessages]) => (
               <div key={date}>
-                <div className="flex justify-center my-4">
-                  <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
+                <div className="flex justify-center my-4 w-full max-w-full">
+                  <div className="bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200 max-w-full truncate">
                     {date}
                   </div>
                 </div>
 
                 {dateMessages.map((msg, idx) => (
-                  <div key={idx} className="w-full max-w-full mb-3">
+                  <div
+                    key={idx}
+                    className="w-full max-w-full mb-3 px-1 min-w-0"
+                    style={{maxWidth: "100%", overflow: "hidden"}}
+                  >
                     {msg.type === "announcement" && (
-                      <ChatAnnouncement msg={msg} />
+                      <div
+                        className="w-full max-w-full overflow-hidden"
+                        style={{maxWidth: "100%", overflow: "hidden"}}
+                      >
+                        <ChatAnnouncement msg={msg} />
+                      </div>
                     )}
 
                     {msg.type === "poll" && (
                       <div
                         key={msg.id}
-                        className={`flex ${
+                        className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
                             : "justify-start"
                         }`}
+                        style={{maxWidth: "100%", overflow: "hidden"}}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
+                          className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
                             msg.senderId === authUerId
                               ? "justify-end"
                               : "justify-start"
@@ -753,15 +767,24 @@ const Chat = () => {
                                 : "items-start"
                             }`}
                           >
-                            <div className="max-w-[80%] md:max-w-xs lg:max-w-md relative group/message shadow-sm w-full rounded-2xl px-4 py-3 bg-blue-500 text-white rounded-br-md">
+                            <div
+                              className="max-w-[90%] sm:max-w-[85%] md:max-w-xs lg:max-w-md relative group/message shadow-sm w-full rounded-2xl px-4 py-3 bg-blue-500 text-white rounded-br-md min-w-0"
+                              style={{maxWidth: "90%", overflow: "hidden"}}
+                            >
                               {/* Keep poll bubble UI unchanged */}
                               <p className="text-sm font-medium leading-relaxed break-words mb-3">
                                 {"📊 "}
                                 {msg.content}
                               </p>
 
-                              <div className="max-w-full">
-                                <div className="rounded-lg bg-blue-100/80 backdrop-blur-sm p-4">
+                              <div
+                                className="w-full max-w-full min-w-0"
+                                style={{maxWidth: "100%", overflow: "hidden"}}
+                              >
+                                <div
+                                  className="rounded-lg bg-blue-100/80 backdrop-blur-sm p-4 w-full max-w-full min-w-0"
+                                  style={{maxWidth: "100%", overflow: "hidden"}}
+                                >
                                   <div className="mb-3">
                                     <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base text-slate-800 mb-1">
                                       <ChartColumn className="w-4 h-4 text-blue-600" />
@@ -784,7 +807,13 @@ const Chat = () => {
                                     </p>
                                   </div>
 
-                                  <div className="space-y-2">
+                                  <div
+                                    className="space-y-2 w-full max-w-full min-w-0"
+                                    style={{
+                                      maxWidth: "100%",
+                                      overflow: "hidden",
+                                    }}
+                                  >
                                     {(Array.isArray(msg?.poll)
                                       ? msg.poll
                                       : []
@@ -808,20 +837,26 @@ const Chat = () => {
                                             onClick={() =>
                                               handleVote(msg.id, i)
                                             }
-                                            className={`w-full p-3 rounded-lg border transition-all text-left ${
+                                            className={`w-full max-w-full p-3 rounded-lg border transition-all text-left min-w-0 ${
                                               hasVotes
                                                 ? "border-blue-300 bg-blue-50"
                                                 : "border-slate-200 bg-white hover:bg-slate-50"
                                             }`}
+                                            style={{
+                                              maxWidth: "100%",
+                                              overflow: "hidden",
+                                            }}
                                           >
-                                            <div className="flex justify-between items-center mb-2">
-                                              <span className="text-sm font-medium text-slate-800 flex items-center gap-2">
-                                                {opt.label}
+                                            <div className="flex justify-between items-center mb-2 w-full max-w-full min-w-0">
+                                              <span className="text-sm font-medium text-slate-800 flex items-center gap-2 min-w-0 flex-1">
+                                                <span className="truncate">
+                                                  {opt.label}
+                                                </span>
                                                 {hasVotes && (
-                                                  <Check className="w-4 h-4 text-blue-600" />
+                                                  <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
                                                 )}
                                               </span>
-                                              <span className="text-xs text-slate-600">
+                                              <span className="text-xs text-slate-600 flex-shrink-0 ml-2">
                                                 {Number(opt.votes) || 0} (
                                                 {Math.round(percent)}%)
                                               </span>
@@ -893,14 +928,15 @@ const Chat = () => {
 
                     {msg.type === "gif" && (
                       <div
-                        className={`flex ${
+                        className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
                             : "justify-start"
                         }`}
+                        style={{maxWidth: "100%", overflow: "hidden"}}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
+                          className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
                             msg.senderId === authUerId
                               ? "justify-end"
                               : "justify-start"
@@ -926,7 +962,10 @@ const Chat = () => {
                                 : "items-start"
                             }`}
                           >
-                            <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
+                            <div
+                              className="px-4 py-2 rounded-2xl max-w-[90%] sm:max-w-xs md:max-w-sm break-words bg-blue-500 text-white rounded-br-md min-w-0"
+                              style={{maxWidth: "90%", overflow: "hidden"}}
+                            >
                               {/* Sender name (only for others' messages) */}
                               {msg.senderId !== authUerId && (
                                 <p className="text-xs font-medium mb-1">
@@ -935,14 +974,20 @@ const Chat = () => {
                               )}
 
                               {/* GIF content */}
-                              <div className="rounded-lg overflow-hidden">
+                              <div
+                                className="rounded-lg overflow-hidden w-full max-w-full min-w-0"
+                                style={{maxWidth: "100%", overflow: "hidden"}}
+                              >
                                 <img
                                   src={msg.fileUrl || "/placeholder.svg"}
                                   alt={msg.content || "GIF"}
-                                  className="max-w-full h-auto rounded-lg"
+                                  className="w-full h-auto max-w-full rounded-lg"
                                   style={{
-                                    maxWidth: "200px",
+                                    maxWidth: "100%",
                                     maxHeight: "200px",
+                                    objectFit: "contain",
+                                    width: "100%",
+                                    height: "auto",
                                   }}
                                 />
                               </div>
@@ -1001,14 +1046,15 @@ const Chat = () => {
 
                     {msg.type === "text" && (
                       <div
-                        className={`flex ${
+                        className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
                             : "justify-start"
                         }`}
+                        style={{maxWidth: "100%", overflow: "hidden"}}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
+                          className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
                             msg.senderId === authUerId
                               ? "justify-end"
                               : "justify-start"
@@ -1035,7 +1081,11 @@ const Chat = () => {
                             }`}
                           >
                             <div
-                              className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                              className={`relative px-4 py-2 rounded-2xl break-words bg-blue-500 text-white ${
+                                msg.senderId === authUerId
+                                  ? "rounded-br-md"
+                                  : "rounded-bl-md"
+                              } w-auto max-w-[80vw] md:max-w-xl`}
                             >
                               {/* Sender name (only for others' messages) */}
                               {msg.senderId !== authUerId && (
@@ -1049,8 +1099,14 @@ const Chat = () => {
                                 <p className="text-sm">{msg.content}</p>
                               )}
 
-                              <RenderAttachments msg={msg} />
+                              {/* Attachments */}
+                              {msg.attachments && (
+                                <div className="mt-2 w-full">
+                                  <RenderAttachments msg={msg} />
+                                </div>
+                              )}
                             </div>
+
                             <div className="flex items-center gap-2 mt-2">
                               {msg.senderId !== authUerId && (
                                 <p className="text-xs text-slate-400 flex-shrink-0">
@@ -1114,8 +1170,14 @@ const Chat = () => {
       </div>
 
       {/* Input Section */}
-      <div className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
-        <div className="bg-white  p-2 md:p-4 space-y-3 w-full">
+      <div
+        className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full max-w-full overflow-hidden min-w-0"
+        style={{maxWidth: "100vw", overflowX: "hidden"}}
+      >
+        <div
+          className="bg-white p-2 md:p-4 space-y-3 w-full max-w-full overflow-hidden min-w-0"
+          style={{maxWidth: "100%", overflow: "hidden"}}
+        >
           {/* Announcement Mode */}
           {mode === "announcement" && (
             <div className="bg-amber-100 text-amber-800 border border-amber-200 rounded-md p-2 flex items-center gap-2 w-full max-w-full overflow-hidden">
@@ -1242,16 +1304,26 @@ const Chat = () => {
 
           {/* Default Input */}
           {mode !== "poll" && (
-            <form className="w-full">
-              <div className="flex items-end gap-2 md:gap-3 w-full">
-                <div className="flex-1 min-w-0">
+            <form
+              className="w-full max-w-full min-w-0"
+              style={{maxWidth: "100%", overflow: "hidden"}}
+            >
+              <div
+                className="flex items-end gap-2 md:gap-3 w-full max-w-full min-w-0"
+                style={{maxWidth: "100%", overflow: "hidden"}}
+              >
+                <div
+                  className="flex-1 min-w-0 max-w-full"
+                  style={{maxWidth: "100%", overflow: "hidden"}}
+                >
                   <textarea
-                    className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none w-full min-h-[40px] md:min-h-[48px] max-h-32 rounded-2xl transition-colors text-sm md:text-base
+                    className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none w-full max-w-full min-w-0 min-h-[40px] md:min-h-[48px] max-h-32 rounded-2xl transition-colors text-sm md:text-base
                       ${
                         mode === "announcement"
                           ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
                           : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
                       }`}
+                    style={{maxWidth: "100%", overflow: "hidden"}}
                     placeholder={
                       mode === "announcement"
                         ? "Share an important announcement..."
@@ -1297,8 +1369,14 @@ const Chat = () => {
 
           {/* Bottom icons */}
           {mode !== "poll" && (
-            <div className="flex justify-start items-center mt-2 w-full overflow-hidden">
-              <div className="flex items-center gap-1 flex-wrap">
+            <div
+              className="flex justify-start items-center mt-2 w-full max-w-full overflow-hidden min-w-0"
+              style={{maxWidth: "100%", overflow: "hidden"}}
+            >
+              <div
+                className="flex items-center gap-1 flex-wrap max-w-full min-w-0"
+                style={{maxWidth: "100%", overflow: "hidden"}}
+              >
                 <input
                   type="file"
                   multiple

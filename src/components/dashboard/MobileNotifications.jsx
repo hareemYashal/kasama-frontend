@@ -19,15 +19,13 @@ import {
   markAsRead,
   deleteNotification,
 } from "@/store/notificationSlice";
-const MobileNotifications = () => {
-  const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = import.meta.env.VITE_API_URL;
 
+const MobileNotifications = ({unreadCount}) => {
   const dispatch = useDispatch();
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
-  const user = useSelector((state) => state.user.user);
   const notifications = useSelector((state) => state.notifications.list);
-  const unreadCount = useSelector((state) => state.notifications.unreadCount);
   const handleDelete = async (notifId) => {
     try {
       await deleteNotificationService(notifId, token);
