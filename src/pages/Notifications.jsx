@@ -10,7 +10,11 @@ import {
   markAsReadService,
 } from "@/services/notification";
 import { io } from "socket.io-client";
-import { setNotifications, markAsRead, deleteNotification } from "@/store/notificationSlice";
+import {
+  setNotifications,
+  markAsRead,
+  deleteNotification,
+} from "@/store/notificationSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -20,6 +24,11 @@ const Notifications = () => {
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
   const notifications = useSelector((state) => state.notifications.list);
+  const { data: activeTripData } = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(tripId),
+  });
+  const activeTrip = activeTripData?.data?.activeTrip;
 
   const hasAdminAccess =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
@@ -44,8 +53,12 @@ const Notifications = () => {
     const socket = io(BASE_URL, { auth: { token } });
     socket.emit("joinTrip", tripId);
 
-    socket.on("newNotification", (notif) => dispatch(setNotifications([notif, ...notifications])));
-    socket.on("notificationDeleted", ({ id }) => dispatch(deleteNotification(id)));
+    socket.on("newNotification", (notif) =>
+      dispatch(setNotifications([notif, ...notifications]))
+    );
+    socket.on("notificationDeleted", ({ id }) =>
+      dispatch(deleteNotification(id))
+    );
 
     return () => socket.disconnect();
   }, [tripId, token, dispatch, notifications]);
@@ -93,6 +106,9 @@ const Notifications = () => {
               <h1 className="text-4xl font-bold text-slate-800 mb-2">
                 Trip Activity Log
               </h1>
+              <p className="text-xl text-slate-600">
+                All the latest updates for {activeTrip?.trip_occasion}{" "}
+              </p>
             </div>
           </div>
         </div>
@@ -108,20 +124,18 @@ const Notifications = () => {
               <div
                 key={item.id}
                 onClick={() => handleMarkRead(item.id)}
-                className={`flex items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${
-                  !item.isRead
+                className={`flex items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${!item.isRead
                     ? "bg-slate-100 border-slate-200"
                     : "bg-white border-slate-100 hover:border-slate-200"
-                }`}
+                  }`}
               >
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <ActivityIcon className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm font-medium ${
-                      !item.isRead ? "text-slate-600" : "text-slate-800"
-                    }`}
+                    className={`text-sm font-medium ${!item.isRead ? "text-slate-600" : "text-slate-800"
+                      }`}
                   >
                     {item.message}
                   </p>
@@ -130,12 +144,12 @@ const Notifications = () => {
                   </p>
                 </div>
                 {/* {hasAdminAccess && ( */}
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 {/* )} */}
               </div>
             ))
