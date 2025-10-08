@@ -8,6 +8,7 @@ import {ActivityIcon, History, Trash2} from "lucide-react";
 import {useSelector, useDispatch} from "react-redux";
 import {useQuery} from "@tanstack/react-query";
 import BackButton from "@/components/ui/BackButton";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getNotificationsService,
   deleteNotificationService,
@@ -25,6 +26,8 @@ const MobileNotifications = ({unreadCount}) => {
   const dispatch = useDispatch();
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
+    const queryClient = useQueryClient();
+
   const notifications = useSelector((state) => state.notifications.list);
   const handleDelete = async (notifId) => {
     try {
@@ -55,8 +58,13 @@ const MobileNotifications = ({unreadCount}) => {
     const socket = io(BASE_URL, {auth: {token}});
     socket.emit("joinTrip", tripId);
 
-    socket.on("newNotification", (notif) =>
-      dispatch(setNotifications([notif, ...notifications]))
+   socket.on(
+      "newNotification",
+      async (notif) =>
+        await queryClient.invalidateQueries({
+          queryKey: ["notifications"],
+        })
+      // dispatch(setNotifications([notif, ...notifications]))
     );
     socket.on("notificationDeleted", ({id}) =>
       dispatch(deleteNotification(id))

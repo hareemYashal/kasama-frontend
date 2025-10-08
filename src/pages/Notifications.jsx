@@ -1,15 +1,15 @@
 "use client";
-import React, { useEffect } from "react";
-import { ActivityIcon, History, Trash2 } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
-import { useQuery } from "@tanstack/react-query";
+import React, {useEffect} from "react";
+import {ActivityIcon, History, Trash2} from "lucide-react";
+import {useSelector, useDispatch} from "react-redux";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import BackButton from "@/components/ui/BackButton";
 import {
   getNotificationsService,
   deleteNotificationService,
   markAsReadService,
 } from "@/services/notification";
-import { io } from "socket.io-client";
+import {io} from "socket.io-client";
 import {
   setNotifications,
   markAsRead,
@@ -23,8 +23,9 @@ const Notifications = () => {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
+  const queryClient = useQueryClient();
   const notifications = useSelector((state) => state.notifications.list);
-  const { data: activeTripData } = useQuery({
+  const {data: activeTripData} = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -34,7 +35,7 @@ const Notifications = () => {
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   // Fetch notifications from API
-  const { data } = useQuery({
+  const {data} = useQuery({
     queryKey: ["notifications", tripId, token],
     queryFn: () => getNotificationsService(tripId, token),
     enabled: !!tripId && !!token,
@@ -47,16 +48,21 @@ const Notifications = () => {
   }, [data, dispatch]);
 
   // Socket for real-time notifications
-  useEffect(() => {
+  useEffect( () => {
     if (!tripId || !token) return;
 
-    const socket = io(BASE_URL, { auth: { token } });
+    const socket = io(BASE_URL, {auth: {token}});
     socket.emit("joinTrip", tripId);
 
-    socket.on("newNotification", (notif) =>
-      dispatch(setNotifications([notif, ...notifications]))
+    socket.on(
+      "newNotification",
+      async (notif) =>
+        await queryClient.invalidateQueries({
+          queryKey: ["notifications"],
+        })
+      // dispatch(setNotifications([notif, ...notifications]))
     );
-    socket.on("notificationDeleted", ({ id }) =>
+    socket.on("notificationDeleted", ({id}) =>
       dispatch(deleteNotification(id))
     );
 
@@ -124,18 +130,20 @@ const Notifications = () => {
               <div
                 key={item.id}
                 onClick={() => handleMarkRead(item.id)}
-                className={`flex items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${!item.isRead
+                className={`flex items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${
+                  !item.isRead
                     ? "bg-slate-100 border-slate-200"
                     : "bg-white border-slate-100 hover:border-slate-200"
-                  }`}
+                }`}
               >
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <ActivityIcon className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm font-medium ${!item.isRead ? "text-slate-600" : "text-slate-800"
-                      }`}
+                    className={`text-sm font-medium ${
+                      !item.isRead ? "text-slate-600" : "text-slate-800"
+                    }`}
                   >
                     {item.message}
                   </p>
