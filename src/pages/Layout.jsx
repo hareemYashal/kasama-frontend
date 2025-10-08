@@ -551,7 +551,7 @@ export default function Layout({children, currentPageName}) {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {hasAdminAccess && (
+            {hasAdminAccess && tripId && tdata &&(
               <SidebarGroup>
                 <SidebarGroupLabel className="text-xs font-semibold text-red-500 uppercase tracking-wider px-3 py-2">
                   Danger Zone

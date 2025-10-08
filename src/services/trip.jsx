@@ -126,10 +126,23 @@ const removeParticipantFromTrip = async (token, userId, tripId) => {
       }
     );
 
-    console.log("✅ AXIOS SUCCESS:", response);
-    return response.data; // this should resolve normally
+    return response.data;
   } catch (error) {
-    console.log("❌ AXIOS ERROR:", error);
+    throw error;
+  }
+};
+
+const deleteTrip = async (token, tripId) => {
+  try {
+    const response = await axiosInstance.delete(
+      `/trip/deleteTrip/${tripId}`,
+      {
+        headers: {Authorization: `Bearer ${token}`},
+      }
+    );
+
+    return response.data;
+  } catch (error) {
     throw error;
   }
 };
@@ -142,4 +155,5 @@ export {
   updateTripService,
   deleteTripService,
   removeParticipantFromTrip,
+  deleteTrip
 };
