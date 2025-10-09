@@ -36,7 +36,8 @@ export default function CancelTrip() {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
   const dispatch = useDispatch();
-
+  const [open, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -54,7 +55,6 @@ export default function CancelTrip() {
   const {mutate: deleteTripData, isLoading: deleting} = useMutation({
     mutationFn: () => deleteTripService(token, tripId),
     onSuccess: (data) => {
-      dispatch(deleteTrip(tripId));
       setSuccess(
         data?.message ||
           "The trip was successfully deleted and all associated payments were refunded."
@@ -65,9 +65,15 @@ export default function CancelTrip() {
       );
 
       setTimeout(() => navigate(createPageUrl("MyTrips")), 3000);
+      setIsOpen(false);
+      setIsDeleting(false);
+
+      //   createPageUrl("MyTrips");
+      dispatch(deleteTrip(tripId));
     },
     onError: (err) => {
       setError(err?.response?.data?.message || "Failed to delete the trip.");
+      etIsDeleting(false);
     },
   });
 
@@ -183,47 +189,40 @@ export default function CancelTrip() {
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="lg"
-                  className="w-full bg-red-600 hover:bg-red-700 text-lg py-6"
-                  disabled={deleting || success}
-                >
-                  {deleting ? (
-                    <Loader2 className="animate-spin w-5 h-5 mr-2" />
-                  ) : (
-                    <Trash2 className="w-5 h-5 mr-2" />
-                  )}
-                  Proceed with Cancellation
-                </Button>
-              </AlertDialogTrigger>
+            <AlertDialog open={open} onOpenChange={setIsOpen}>
+              <Button
+                className="w-full bg-red-600 hover:bg-red-700 py-6 text-lg"
+                onClick={() => setIsOpen(true)}
+              >
+                Proceed with Cancellation
+              </Button>
 
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently cancel
-                    the trip{" "}
-                    <strong className="font-semibold">
-                      {activeTripData?.data?.activeTrip?.trip_occasion}
-                    </strong>{" "}
-                    and notify all participants.
+                    the trip.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
 
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleting}>
+                  <AlertDialogCancel disabled={deleting || isDeleting}>
                     Go Back
                   </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteTripData()}
-                    className="bg-red-600 hover:bg-red-700"
-                    disabled={deleting}
+                  <Button
+                    className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+                    onClick={() => {
+                      setIsDeleting(true);
+                      deleteTripData();
+                    }}
+                    disabled={deleting || isDeleting}
                   >
+                    {(deleting || isDeleting) && (
+                      <Loader2 className="animate-spin w-5 h-5" />
+                    )}
                     Yes, Cancel This Trip
-                  </AlertDialogAction>
+                  </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
