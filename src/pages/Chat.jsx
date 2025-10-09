@@ -41,9 +41,11 @@ const Chat = () => {
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [readStatus, setReadStatus] = useState({});
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const prevMessageCountRef = useRef(0);
 
   const tripId = useSelector((s) => s.trips.activeTripId);
   const token = useSelector((s) => s.user.token);
@@ -51,7 +53,6 @@ const Chat = () => {
   const authUerId = authUser?.id;
   const BASE_URL = import.meta.env.VITE_API_URL;
   const [isLoading, setIsLoading] = useState(false);
-  console.log(authUser, "k");
   const socketRef = useRef(null);
 
   // Scroll to bottom function
@@ -66,9 +67,13 @@ const Chat = () => {
     }
   };
 
-  // Auto-scroll when messages change
   useEffect(() => {
-    scrollToBottom();
+    // Only scroll if the number of messages increased (new message added)
+    if (messages.length > prevMessageCountRef.current) {
+      scrollToBottom();
+    }
+    // Update the previous count
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   // Mark messages as read when they come into view
@@ -243,6 +248,7 @@ const Chat = () => {
       );
       console.log("[v0] Final processed messages:", processed);
       setMessages(processed);
+      setIsLoadingMessages(false);
     };
 
     if (socketRef.current && socketRef.current.connected) {
@@ -711,7 +717,11 @@ const Chat = () => {
         className="flex flex-col flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-2 md:p-4 space-y-4 bg-[#F1F5F9] min-w-0"
         style={{maxWidth: "100vw", overflowX: "hidden"}}
       >
-        {messages.length === 0 ? (
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <ChatLoader />
+          </div>
+        ) : messages.length === 0 ? (
           <WelcomeChat />
         ) : (
           <>
@@ -740,7 +750,6 @@ const Chat = () => {
 
                     {msg.type === "poll" && (
                       <div
-                        key={msg.id}
                         className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
