@@ -28,11 +28,10 @@ export default function ExpenseList({
 
   const queryClient = useQueryClient();
   let expenseMain = useSelector((state) => state.expenses.expensesList);
-  console.log("totalAmount....", totalAmount);
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
 
-  const { mutate: addExpenseMutate } = useMutation({
+  const {mutate: addExpenseMutate} = useMutation({
     mutationFn: (data) => createExpenseService(token, data),
     onSuccess: (data) => {
       console.log(data);
@@ -61,7 +60,7 @@ export default function ExpenseList({
       const success = onAdd(res.data); // ✅ handleAddExpense runs
       if (success) {
         // ✅ Reset form
-        setFormData({ name: "", amount: "", description: "" });
+        setFormData({name: "", amount: "", description: ""});
         // ✅ Close inline form
         setShowInlineForm(false);
       }
@@ -73,7 +72,7 @@ export default function ExpenseList({
   };
 
   const handleInlineCancel = () => {
-    setFormData({ name: "", amount: "", description: "" });
+    setFormData({name: "", amount: "", description: ""});
     setShowInlineForm(false);
   };
 
@@ -81,15 +80,13 @@ export default function ExpenseList({
     return expenses.reduce((sum, expense) => sum + expense.amount, 0);
   };
   const expensesList = useSelector((state) => state.expenses.expensesList);
-  console.log(expensesList, "Hshshshshshsh");
   const dispatch = useDispatch();
-  const { mutate } = useMutation({
-    mutationFn: (expenseId) => deleteExpenseService(token, expenseId),
+  const {mutate} = useMutation({
+    mutationFn: (expenseId) => deleteExpenseService(token, expenseId, tripId),
     onSuccess: (data, variables) => {
       dispatch(deleteExpenseRed(Number(variables)));
-      console.log(variables, "000000");
       toast.success(data.message || "Expense deleted successfully!");
-      setFormData({ name: "", amount: "" });
+      setFormData({name: "", amount: ""});
     },
     onError: (error) => {
       console.error("Error deleting expense:", error);
@@ -97,9 +94,9 @@ export default function ExpenseList({
     },
   });
 
-  const handleDeleteExpense = (expenseId) => {
+  const handleDeleteExpense = (expenseId, tripId) => {
     console.log("Deleting expense:", expenseId);
-    mutate(expenseId);
+    mutate(expenseId, tripId);
   };
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
