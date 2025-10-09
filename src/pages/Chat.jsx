@@ -14,6 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import {useSelector} from "react-redux";
+import {toast} from "sonner";
 import {io} from "socket.io-client";
 import {formatTime, normalizePoll} from "../utils/utils";
 import {RenderAttachments} from "@/components/chat/ChatAttachments";
@@ -540,7 +541,15 @@ const Chat = () => {
 
       // Limit to 10 files maximum
       if (totalFiles > 10) {
-        alert("You can only attach up to 10 files at once.");
+        toast.error("You can only attach up to 10 files at once.");
+        return;
+      }
+      const imageFiles = newFiles.filter((file) =>
+        file.type.startsWith("image/")
+      );
+
+      if (imageFiles.length !== newFiles.length) {
+        toast.error("Please upload image");
         return;
       }
 
@@ -1317,13 +1326,22 @@ const Chat = () => {
                   style={{maxWidth: "100%", overflow: "hidden"}}
                 >
                   <textarea
-                    className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none w-full max-w-full min-w-0 min-h-[40px] md:min-h-[48px] max-h-32 rounded-2xl transition-colors text-sm md:text-base
-                      ${
-                        mode === "announcement"
-                          ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
-                          : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
-                      }`}
-                    style={{maxWidth: "100%", overflow: "hidden"}}
+                    className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground
+    focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2
+    focus:ring-ring resize-none w-full max-w-full min-w-0 min-h-[40px] md:min-h-[48px]
+    max-h-32 rounded-2xl transition-colors text-sm md:text-base
+    ${
+      mode === "announcement"
+        ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+        : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+    }`}
+                    style={{
+                      maxWidth: "100%",
+                      overflow: "hidden",
+                      outline: "none",
+                      boxShadow: "none", // removes Chrome blue/black focus ring
+                      WebkitTapHighlightColor: "transparent", // removes tap highlight
+                    }}
                     placeholder={
                       mode === "announcement"
                         ? "Share an important announcement..."
@@ -1383,6 +1401,7 @@ const Chat = () => {
                   ref={generalFileInputRef}
                   onChange={handleFileUpload}
                   className="hidden"
+                  accept="image/*"
                 />
                 {loadingState === "file" ? (
                   <ChatLoader />
