@@ -672,7 +672,7 @@ const Chat = () => {
           <button
             key={reaction}
             onClick={() => handleAddReaction(messageId, reaction)}
-            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors text-lg"
+            className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 transition-colors text-md"
           >
             {reaction}
           </button>
