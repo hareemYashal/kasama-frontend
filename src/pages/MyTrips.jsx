@@ -1,24 +1,17 @@
 import React, {useState, useEffect} from "react";
 import {useNavigate} from "react-router-dom";
-import {createPageUrl} from "@/utils";
-import {Trip} from "@/api/entities";
-import {User} from "@/api/entities";
-import {Contribution} from "@/api/entities";
+
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {
   MapPin,
   Calendar,
-  Users,
   Plus,
   Eye,
   Settings,
-  Archive,
   Trash2,
-  Clock,
   UserCheck,
-  CrossIcon,
   X,
 } from "lucide-react";
 import {
@@ -51,28 +44,21 @@ import {participantStatusUpdateService} from "@/services/participant";
 
 export default function MyTrips() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [trips, setTrips] = useState([]);
-  const [contributions, setContributions] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [deletingTripId, setDeletingTripId] = useState(null);
+
+
   const [requestText, setRequestText] = useState("Request");
   const [selectedTripId, setSelectedTripId] = useState(null);
 
   const token = useSelector((state) => state.user.token);
   const dispatch = useDispatch();
   const myTrips = useSelector((state) => state.trips.myTrips || []);
-  console.log("hey I am the My Trips", myTrips);
-  console.log(setMyTrips, "Hey I am the SetMyTrips");
   const authUser = useSelector((state) => state.user.user);
-  console.log("authUser", authUser);
-  // Dummy Data
   const queryClient = useQueryClient();
   const {mutate: removeParticipant} = useMutation({
     mutationFn: ({token, userId, tripId}) =>
       removeParticipantFromTrip(token, userId, tripId),
     onSuccess: () => {
-      toast.success("Trip Removed!");
+      toast.success("Participant Removed!");
       queryClient.invalidateQueries(["getAllTripsWithRoleQuery", token]);
     },
     onError: () => toast.error("Failed to Remove"),
@@ -99,7 +85,6 @@ export default function MyTrips() {
     queryFn: () => getAllTripsWithRole(token),
     enabled: !!token,
   });
-  console.log("data", data);
   useEffect(() => {
     if (isSuccess && data?.data?.trips) {
       const tripData = data.data.trips;
@@ -107,23 +92,17 @@ export default function MyTrips() {
     }
   }, [isSuccess, data, dispatch]);
 
-  //   const { data: activeTripData, isSuccess: activeTripSuccess } = useQuery({
-  //     queryKey: ["getActiveTrip", token],
-  //     queryFn: () => getActiveTripService(token),
-  //     enabled: !!token,
-  //   });
-  // const {data: activeTripData, isLoading: isLoadingActiveTrip} = useQuery({
-  //   queryKey: ["getTripService", tripId],
-  //   queryFn: () => getTripService(tripId),
-  // });
-  // console.log(activeTripData);
-  console.log(data?.data?.trips, "Hey  I am the All Trips");
-  console.log("Heyyyyyyyy", myTrips);
   const {mutate} = useMutation({
     mutationFn: ({token, tripId}) => deleteTripService(token, tripId),
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       dispatch(deleteTrip(variables.tripId));
-      toast.success("Trip Deleted Successfully");
+      toast.success(
+        data?.message ||
+          "The trip was successfully deleted and all associated payments were refunded."
+      );
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || "Failed to delete the trip.");
     },
   });
   const handleDeleteTrip = async (tripId) => {
@@ -142,16 +121,6 @@ export default function MyTrips() {
     if (today >= startDate)
       return {status: "in progress", color: "bg-yellow-100 text-yellow-800"};
     return {status: "upcoming", color: "bg-green-100 text-green-800"};
-  };
-
-  const getDaysUntilTrip = (startDate) => {
-    const days = differenceInDays(new Date(startDate), new Date());
-    return days > 0 ? days : 0;
-  };
-
-  const canDeleteTrip = (tripId) => {
-    const tripContributions = contributions[tripId];
-    return tripContributions && !tripContributions.hasContributions;
   };
 
   const {mutate: updateMutation, isPending} = useMutation({
