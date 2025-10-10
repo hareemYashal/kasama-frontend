@@ -31,7 +31,8 @@ const Withdraw = ({withDrawlAmount}) => {
           "Complete Stripe onboarding to withdraw funds. Opening Stripe...",
           {type: "info"}
         );
-        window.open(data.onboardingUrl, "_blank");
+        window.location.href =data.onboardingUrl;
+        // window.open(data.onboardingUrl, "_blank");
       } else {
         toast.success("Payment withdrawn successfully");
       }
