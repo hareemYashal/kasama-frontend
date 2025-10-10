@@ -88,12 +88,12 @@ const updateTripService = async (data, tripId, token) => {
 export const getTripByIdService = async (tripId, token) => {
   try {
     const response = await axiosInstance.get(`/trip/getTrip/${tripId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {Authorization: `Bearer ${token}`},
     });
 
     return response.data.data.activeTrip; // ✅ directly return trip
   } catch (error) {
-    throw error.response?.data || { message: "Something went wrong" };
+    throw error.response?.data || {message: "Something went wrong"};
   }
 };
 
@@ -134,26 +134,52 @@ const removeParticipantFromTrip = async (token, userId, tripId) => {
 
 const deleteTrip = async (token, tripId) => {
   try {
-    const response = await axiosInstance.delete(
-      `/trip/deleteTrip/${tripId}`,
-      {
-        headers: {Authorization: `Bearer ${token}`},
-      }
-    );
+    const response = await axiosInstance.delete(`/trip/deleteTrip/${tripId}`, {
+      headers: {Authorization: `Bearer ${token}`},
+    });
 
     return response.data;
   } catch (error) {
     throw error;
   }
 };
-
+const withdrawPaymentService = async (token, data) => {
+  try {
+    const response = await axiosInstance.post(
+      `/trip/withdraw-trip-fund`,
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+const performWithdrawPaymentService = async (token, data) => {
+  try {
+    const response = await axiosInstance.post(`/trip/perform-trip-fund`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 export {
   createTripService,
   getAllTripsService,
   getAllTripsWithRole,
+  performWithdrawPaymentService,
   getActiveTripService,
   updateTripService,
   deleteTripService,
   removeParticipantFromTrip,
-  deleteTrip
+  withdrawPaymentService,
+  deleteTrip,
 };
