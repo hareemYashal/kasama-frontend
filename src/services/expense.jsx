@@ -28,10 +28,10 @@ const getExpenseListService = async (tripId, token) => {
     throw error;
   }
 };
-const deleteExpenseService = async (token, expenseId) => {
+const deleteExpenseService = async (token, expenseId, tripId) => {
   try {
     const response = await axiosInstance.delete(
-      `/expense/deleteExpense/${expenseId}`,
+      `/expense/deleteExpense/${expenseId}?tripId=${tripId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -59,7 +59,7 @@ const createExpenseService = async (token, data) => {
 
 const updateExpenseService = (token, expenseId, data) => {
   return axiosInstance.put(`/expense/updateExpense/${expenseId}`, data, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {Authorization: `Bearer ${token}`},
   });
 };
 

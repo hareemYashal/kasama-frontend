@@ -1,23 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { Trip } from "@/api/entities";
-import { User } from "@/api/entities";
-import { Contribution } from "@/api/entities";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, {useState, useEffect} from "react";
+import {useNavigate} from "react-router-dom";
+
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Badge} from "@/components/ui/badge";
 import {
   MapPin,
   Calendar,
-  Users,
   Plus,
   Eye,
   Settings,
-  Archive,
   Trash2,
-  Clock,
   UserCheck,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -30,8 +25,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { format, differenceInDays } from "date-fns";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {format, differenceInDays} from "date-fns";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {
   deleteTripService,
   getActiveTripService,
@@ -39,34 +34,45 @@ import {
   getAllTripsWithRole,
   getTripService,
 } from "@/services/trip";
-import { useDispatch, useSelector } from "react-redux";
-import { setMyTrips, deleteTrip, setActiveTripId } from "@/store/tripSlice";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { setUserRed } from "@/store/userSlice";
-import { participantStatusUpdateService } from "@/services/participant";
+import {useDispatch, useSelector} from "react-redux";
+import {Loader2} from "lucide-react";
+import {setMyTrips, deleteTrip, setActiveTripId} from "@/store/tripSlice";
+import {useMutation} from "@tanstack/react-query";
+import {toast} from "sonner";
+import {setUserRed} from "@/store/userSlice";
+import {removeParticipantFromTrip} from "@/services/trip";
+import {participantStatusUpdateService} from "@/services/participant";
 
 export default function MyTrips() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [trips, setTrips] = useState([]);
-  const [contributions, setContributions] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [deletingTripId, setDeletingTripId] = useState(null);
+
   const [requestText, setRequestText] = useState("Request");
   const [selectedTripId, setSelectedTripId] = useState(null);
-
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isOpenRemove, setIsOpenRemove] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const token = useSelector((state) => state.user.token);
   const dispatch = useDispatch();
   const myTrips = useSelector((state) => state.trips.myTrips || []);
-  console.log("hey I am the My Trips", myTrips);
-  console.log(setMyTrips, "Hey I am the SetMyTrips");
   const authUser = useSelector((state) => state.user.user);
-  console.log("authUser", authUser);
-  // Dummy Data
   const queryClient = useQueryClient();
+  const {mutate: removeParticipant, isLoading: removing} = useMutation({
+    mutationFn: ({token, userId, tripId}) =>
+      removeParticipantFromTrip(token, userId, tripId),
+    onSuccess: () => {
+      toast.success("Participant Removed!");
+      queryClient.invalidateQueries(["getAllTripsWithRoleQuery", token]);
+      setIsOpenRemove(false);
+      setIsRemoving(false);
+    },
+    onError: () => {
+      toast.error("Failed to Remove");
+      setIsRemoving(false);
+    },
+  });
 
-  const tripId = useSelector((state) => state.trips.activeTripId);
+  // const tripId = useSelector((state) => state.trips.activeTripId);
   const authToken = useSelector((state) => state.user.token);
   const authUerId = authUser?.id;
   const handleSwitchToTrip = async (tripId) => {
@@ -82,12 +88,11 @@ export default function MyTrips() {
   const handleCreateNewTrip = () => {
     navigate("/TripCreation");
   };
-  const { data, isSuccess } = useQuery({
+  const {data, isSuccess} = useQuery({
     queryKey: ["getAllTripsWithRoleQuery", token],
     queryFn: () => getAllTripsWithRole(token),
     enabled: !!token,
   });
-  console.log("data", data);
   useEffect(() => {
     if (isSuccess && data?.data?.trips) {
       const tripData = data.data.trips;
@@ -95,27 +100,25 @@ export default function MyTrips() {
     }
   }, [isSuccess, data, dispatch]);
 
-  //   const { data: activeTripData, isSuccess: activeTripSuccess } = useQuery({
-  //     queryKey: ["getActiveTrip", token],
-  //     queryFn: () => getActiveTripService(token),
-  //     enabled: !!token,
-  //   });
-  const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
-    queryKey: ["getTripService", tripId],
-    queryFn: () => getTripService(tripId),
-  });
-  console.log(activeTripData);
-  console.log(data?.data?.trips, "Hey  I am the All Trips");
-  console.log("Heyyyyyyyy", myTrips);
-  const { mutate } = useMutation({
-    mutationFn: ({ token, tripId }) => deleteTripService(token, tripId),
-    onSuccess: (_, variables) => {
+  const {mutate, isLoading: deleting} = useMutation({
+    mutationFn: ({token, tripId}) => deleteTripService(token, tripId),
+    onSuccess: (data, variables) => {
       dispatch(deleteTrip(variables.tripId));
-      toast.success("Trip Deleted Successfully");
+      toast.success(
+        data?.message ||
+          "The trip was successfully deleted and all associated payments were refunded."
+      );
+      setIsDeleting(false);
+      setIsOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || "Failed to delete the trip.");
+      setIsDeleting(false);
     },
   });
   const handleDeleteTrip = async (tripId) => {
-    mutate({ token, tripId });
+    setIsDeleting(true);
+    mutate({token, tripId});
   };
 
   const getTripStatus = (trip) => {
@@ -124,26 +127,16 @@ export default function MyTrips() {
     const endDate = new Date(trip.end_date);
 
     if (trip.status === "cancelled")
-      return { status: "cancelled", color: "bg-red-100 text-red-800" };
+      return {status: "cancelled", color: "bg-red-100 text-red-800"};
     if (today > endDate)
-      return { status: "completed", color: "bg-gray-100 text-gray-800" };
+      return {status: "completed", color: "bg-gray-100 text-gray-800"};
     if (today >= startDate)
-      return { status: "in progress", color: "bg-yellow-100 text-yellow-800" };
-    return { status: "upcoming", color: "bg-green-100 text-green-800" };
+      return {status: "in progress", color: "bg-yellow-100 text-yellow-800"};
+    return {status: "upcoming", color: "bg-green-100 text-green-800"};
   };
 
-  const getDaysUntilTrip = (startDate) => {
-    const days = differenceInDays(new Date(startDate), new Date());
-    return days > 0 ? days : 0;
-  };
-
-  const canDeleteTrip = (tripId) => {
-    const tripContributions = contributions[tripId];
-    return tripContributions && !tripContributions.hasContributions;
-  };
-
-  const { mutate: updateMutation, isPending } = useMutation({
-    mutationFn: ({ authToken, authUerId, tripId, status }) =>
+  const {mutate: updateMutation, isPending} = useMutation({
+    mutationFn: ({authToken, authUerId, tripId, status}) =>
       participantStatusUpdateService(authToken, authUerId, tripId, status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -152,13 +145,16 @@ export default function MyTrips() {
       setRequestText("Wait for Approval");
     },
   });
+  useEffect(() => {
+    dispatch(setActiveTripId(null));
+  }, []);
 
   const handleRequest = (tripId) => {
     // 1️⃣ Optimistic UI update
     dispatch(
       setMyTrips(
         myTrips.map((trip) =>
-          trip.id === tripId ? { ...trip, role: "REQUESTED" } : trip
+          trip.id === tripId ? {...trip, role: "REQUESTED"} : trip
         )
       )
     );
@@ -166,7 +162,7 @@ export default function MyTrips() {
 
     // 2️⃣ Trigger API call
     let status = "REQUESTED";
-    updateMutation({ authToken, authUerId, tripId, status });
+    updateMutation({authToken, authUerId, tripId, status});
   };
 
   const getButtonConfig = (trip) => {
@@ -309,7 +305,7 @@ export default function MyTrips() {
             {myTrips.length > 0 ? (
               myTrips.map((trip) => {
                 // const tripStatus = getTripStatus(trip);
-                const isCurrentTrip = activeTripData?.data?.activeTrip?.id;
+                // const isCurrentTrip = activeTripData?.data?.activeTrip?.id;
                 // const daysUntil = getDaysUntilTrip(trip.start_date);
                 // const isDeletable = canDeleteTrip(trip.id);
 
@@ -320,7 +316,7 @@ export default function MyTrips() {
                       setSelectedTripId(trip.id);
                       localStorage.setItem("selectedTripId", trip.id); // save in localStorage
                     }} // ✅ sirf local highlight
-                    className={`bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 
+                    className={`bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1
      ${trip.id === selectedTripId ? "ring-2 ring-blue-500 border-blue-300" : ""}
   `}
                   >
@@ -382,18 +378,18 @@ export default function MyTrips() {
                         </div>
 
                         {trip.role == "creator" && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8  
-                            
+                          <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+                            <Button
+                              onClick={() => setIsOpen(true)}
+                              variant="ghost"
+                              size="icon"
+                              disabled={isDeleting || deleting}
+                              className={`h-8 w-8
+
                             `}
-                              >
-                                <Trash2 color="red" className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            >
+                              <Trash2 color="red" className="w-4 h-4" />
+                            </Button>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Trip</AlertDialogTitle>
@@ -412,9 +408,82 @@ export default function MyTrips() {
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
+                                <AlertDialogCancel
+                                  disabled={deleting || isDeleting}
+                                >
+                                  {" "}
+                                  Cancel
+                                </AlertDialogCancel>
+                                <Button
                                   onClick={() => handleDeleteTrip(trip.id)}
+                                  // disabled={
+                                  //   !isDeletable || deletingTripId === trip.id
+                                  // }
+                                  disabled={isDeleting || deleting}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  {/* {deletingTripId === trip.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                ) : null} */}
+                                  {(isDeleting || deleting) && (
+                                    <Loader2 className="animate-spin w-5 h-5" />
+                                  )}
+                                  Delete Trip
+                                </Button>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+
+                        {trip.role !== "creator" && (
+                          <AlertDialog
+                            open={isOpenRemove}
+                            onOpenChange={setIsOpenRemove}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-8 w-8
+
+                            `}
+                              onClick={() => {
+                                setIsOpenRemove(true);
+                              }}
+                              disabled={isRemoving}
+                            >
+                              <X color="red" className="w-4 h-4" />
+                            </Button>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Leave Trip</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to leave "
+                                  {trip.trip_occasion}"? This action cannot be
+                                  undone.
+                                  {/* {!isDeletable && (
+                                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <p className="text-red-800 font-medium">
+                                    ⚠️ This trip cannot be deleted because funds
+                                    have already been contributed.
+                                  </p>
+                                </div>
+                              )} */}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isRemoving}>
+                                  Cancel
+                                </AlertDialogCancel>
+                                <Button
+                                  onClick={() => {
+                                    setIsRemoving(true);
+                                    removeParticipant({
+                                      token,
+                                      userId: authUser.id,
+                                      tripId: trip.id,
+                                    });
+                                  }}
+                                  disabled={isRemoving}
                                   // disabled={
                                   //   !isDeletable || deletingTripId === trip.id
                                   // }
@@ -423,8 +492,11 @@ export default function MyTrips() {
                                   {/* {deletingTripId === trip.id ? (
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                 ) : null} */}
-                                  Delete Trip
-                                </AlertDialogAction>
+                                  {isRemoving && (
+                                    <Loader2 className="animate-spin w-5 h-5" />
+                                  )}
+                                  Leave Trip
+                                </Button>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -450,7 +522,7 @@ export default function MyTrips() {
                       </div>
 
                       <div className="bg-[#F8FaFC] p-2 text-[#16A34A] text-sm font-samibold">
-                        💰 {trip?.totalContributed} contributed
+                        💰 {(trip?.totalContributed).toFixed(2)} contributed
                       </div>
 
                       <div className="text-center bg-blue-50 rounded-lg p-3 text-blue-600 text-sm">

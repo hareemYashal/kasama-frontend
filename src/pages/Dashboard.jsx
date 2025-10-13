@@ -37,6 +37,7 @@ import {
 import {getActiveTripService, getTripService} from "@/services/trip";
 import {setActiveTripId} from "@/store/tripSlice";
 import {useNavigate} from "react-router-dom";
+import {io} from "socket.io-client";
 
 import {Badge} from "@/components/ui/badge";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
@@ -44,9 +45,12 @@ import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 export default function Dashboard() {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
+   const authUser = useSelector((s) => s.user.user);
+    const authUerId = authUser?.id;
   // const router = useRouter();
 
   const dispatch = useDispatch();
@@ -192,7 +196,40 @@ export default function Dashboard() {
     setEditingItem(null);
     setShowForm(true);
   };
+const BASE_URL = import.meta.env.VITE_API_URL;
 
+  const s = io(BASE_URL, {auth: {token}});
+  // socketRef.current = s;
+
+  s.on("connect", () => {
+    s.emit("joinTripChat", {tripId, userId: authUerId});
+    s.emit("getMessages", {tripId});
+    s.emit("getUnreadCount", {tripId, userId: authUerId});
+  });
+  console.log("activeTripDataState", activeTripDataState);
+  useEffect(() => {
+    const handleUnreadCount = ({unreadCount, tripId: countTripId}) => {
+      if (countTripId === tripId) {
+        console.log("[v0] Unread count updated:", unreadCount);
+        setUnreadCount(unreadCount);
+      }
+    };
+
+    const handleNewMessage = (message) => {
+      // If it's a new message from someone else, increment unread count
+      if (message.senderId !== authUerId) {
+        setUnreadCount(prev => prev + 1);
+      }
+    };
+
+    s.on("unreadCount", handleUnreadCount);
+    s.on("newMessage", handleNewMessage);
+
+    return () => {
+      s.off("unreadCount", handleUnreadCount);
+      s.off("newMessage", handleNewMessage);
+    };
+  }, [tripId, s, authUerId]);
   const handleEditItem = (item) => {
     setEditingItem(item);
     setShowForm(true);
@@ -205,7 +242,6 @@ export default function Dashboard() {
     );
   }
 
-  console.log("activeTripDataState", activeTripDataState);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -743,14 +779,41 @@ export default function Dashboard() {
         <ItineraryCalander />
       </div>
       <div className="flex flex-row justify-end fixed bottom-6 right-6 z-50">
-        <button
+        {/* <button
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 px-4 py-2 w-14 h-14 rounded-full bg-pink-500 hover:bg-pink-600 text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative"
           onClick={() => navigate("/chat")}
 
           // onClick={() => router.push("/chat")}
         >
           <MessageCircle className="w-6 h-6" />
-        </button>
+        </button> */}
+        <div
+          onClick={() => navigate("/chat")}
+          className="fixed bottom-6 right-6 z-50"
+        >
+          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 px-4 py-2 w-14 h-14 rounded-full bg-pink-500 hover:bg-pink-600 text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative">
+            <MessageCircle className="w-6 h-6" />
+{unreadCount > 0 &&
+<>
+            <span
+              data-filename="components/chat/FloatingChatBubble"
+              data-linenumber="103"
+              data-visual-selector-id="components/chat/FloatingChatBubble103"
+              data-source-location="components/chat/FloatingChatBubble:103:12"
+              data-dynamic-content="false"
+              class="absolute -top-1 -right-1 block h-6 w-6 rounded-full bg-red-500 border-2 border-white"
+            ></span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+
+
+            )}
+            </>
+}
+          </button>
+        </div>
       </div>
     </div>
   );

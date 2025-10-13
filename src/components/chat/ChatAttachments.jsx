@@ -26,7 +26,7 @@ import React from 'react'
             <img
               key={index}
               src={fileUrl || "/placeholder.svg"}
-              className="rounded-lg max-w-2xl h-auto"
+              className="rounded-lg max-w-full h-auto"
               alt={file.name || "Attachment"}
             />
           );

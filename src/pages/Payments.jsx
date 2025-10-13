@@ -8,7 +8,6 @@ import {Elements} from "@stripe/react-stripe-js";
 
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Badge} from "@/components/ui/badge";
 import {Switch} from "@/components/ui/switch";
 import {
   Select,
@@ -52,9 +51,8 @@ import {toast} from "sonner";
 import {getTripService} from "@/services/trip";
 import PaymentsForm from "@/components/Payment/AutoPayment";
 import ACHPaymentsModal from "@/components/Payment/ACHManual";
-
-// Import axiosInstance to fix undeclared variable error
-// import axiosInstance from "@/services/axiosInstance"
+import {getExpenseByTripIdService} from "@/services/expense";
+import Withdraw from "@/components/Payment/WithdrawPayment";
 
 export default function Payments() {
   const authToken = useSelector((state) => state.user.token);
@@ -82,8 +80,7 @@ export default function Payments() {
   const totalParticipant = participantsData?.data?.participants;
   const tripParticipantsNumber =
     participantsData?.data?.participants?.length || 0;
-  console.log(totalParticipant, "totalParticipant");
-  console.log(tripParticipantsNumber, "tripParticipantsNumber");
+
   const BASE_URL = import.meta.env.VITE_API_URL;
 
   const [requestText, setRequestText] = useState("Request");
@@ -97,12 +94,20 @@ export default function Payments() {
   const [isOpenACH, setIsACHOpen] = useState(false);
 
   const [autoSavePayload, setAutoSavePayloadData] = useState("");
-
+  const {data: tripExpenseDetails, isLoading: isLoadingExpenseDetails} =
+    useQuery({
+      queryKey: ["getExpenseByTripIdService", tripId],
+      queryFn: () => getExpenseByTripIdService(token, tripId),
+      enabled: !!token && !!tripId,
+    });
+  const tripDataList = tripExpenseDetails?.data?.data;
+  console.log("tripDataList", tripDataList);
   const [loading, setLoading] = useState(null);
   const [oneTimeAmount, setOneTimeAmount] = useState("");
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [friendPaymentAmount, setFriendPaymentAmount] = useState("");
   const [processingFriendPayment, setProcessingFriendPayment] = useState(false);
+
   // const [friendBreakdown, setFriendBreakdown] = useState({
   //   amount: 0,
   //   stripeFee: 0,
@@ -944,8 +949,11 @@ export default function Payments() {
     paymentDetailData?.remainings === 0 &&
     paymentDetailData?.your_goal === 0;
   const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
-
-  console.log("noExpensesAdded", noExpensesAdded);
+  const withDrawlAmount = Math.max(
+    0,
+    (Number(tripDataList?.baseAmountContributed) || 0) -
+      (Number(trip?.withdrawl_amount) || 0)
+  );
 
   return (
     <>
@@ -1785,7 +1793,15 @@ export default function Payments() {
                 </CardContent>
               </Card>
             )}
-
+            {/* <WithdrawPayment fund={paymentDetailData?.amountPaid}/>
+             */}
+            {withDrawlAmount > 0 && trip.creatorId === authUerId && (
+              <Withdraw
+                fund={paymentDetailData?.amountPaid}
+                withDrawlAmount={withDrawlAmount}
+                // creatorId={trip.crea}
+              />
+            )}
             {/* Compliance Note */}
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
               <div className="flex items-start gap-3">

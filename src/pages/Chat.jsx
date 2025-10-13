@@ -14,6 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import {useSelector} from "react-redux";
+import {toast} from "sonner";
 import {io} from "socket.io-client";
 import {formatTime, normalizePoll} from "../utils/utils";
 import {RenderAttachments} from "@/components/chat/ChatAttachments";
@@ -38,9 +39,13 @@ const Chat = () => {
   const [loadingState, setLoadingState] = useState(null);
   const [reactions, setReactions] = useState({});
   const [showReactionPicker, setShowReactionPicker] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [readStatus, setReadStatus] = useState({});
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const generalFileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const prevMessageCountRef = useRef(0);
 
   const tripId = useSelector((s) => s.trips.activeTripId);
   const token = useSelector((s) => s.user.token);
@@ -48,7 +53,6 @@ const Chat = () => {
   const authUerId = authUser?.id;
   const BASE_URL = import.meta.env.VITE_API_URL;
   const [isLoading, setIsLoading] = useState(false);
-  console.log(authUser, "k");
   const socketRef = useRef(null);
 
   // Scroll to bottom function
@@ -63,10 +67,49 @@ const Chat = () => {
     }
   };
 
-  // Auto-scroll when messages change
   useEffect(() => {
-    scrollToBottom();
+    // Only scroll if the number of messages increased (new message added)
+    if (messages.length > prevMessageCountRef.current) {
+      scrollToBottom();
+    }
+    // Update the previous count
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
+
+  // Mark messages as read when they come into view
+  useEffect(() => {
+    const markMessagesAsRead = () => {
+      if (
+        messages.length > 0 &&
+        socketRef.current &&
+        socketRef.current.connected
+      ) {
+        const unreadMessageIds = messages
+          .filter((msg) => msg.senderId !== authUerId && !readStatus[msg.id])
+          .map((msg) => msg.id);
+
+        if (unreadMessageIds.length > 0) {
+          socketRef.current.emit("markMessagesAsRead", {
+            tripId,
+            userId: authUerId,
+            messageIds: unreadMessageIds,
+          });
+
+          // Update local read status
+          const newReadStatus = {...readStatus};
+          unreadMessageIds.forEach((id) => {
+            newReadStatus[id] = true;
+          });
+          setReadStatus(newReadStatus);
+        }
+      }
+    };
+
+    // Mark messages as read when component mounts or messages change
+    const timer = setTimeout(markMessagesAsRead, 1000); // Small delay to ensure messages are rendered
+
+    return () => clearTimeout(timer);
+  }, [messages, tripId, authUerId, readStatus]);
 
   const getFileUrl = async (fileKey) => {
     const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
@@ -205,11 +248,13 @@ const Chat = () => {
       );
       console.log("[v0] Final processed messages:", processed);
       setMessages(processed);
+      setIsLoadingMessages(false);
     };
 
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("joinTripChat", {tripId, userId: authUerId});
       socketRef.current.emit("getMessages", {tripId});
+      socketRef.current.emit("getUnreadCount", {tripId, userId: authUerId});
       return;
     }
 
@@ -219,6 +264,7 @@ const Chat = () => {
     s.on("connect", () => {
       s.emit("joinTripChat", {tripId, userId: authUerId});
       s.emit("getMessages", {tripId});
+      s.emit("getUnreadCount", {tripId, userId: authUerId});
     });
 
     s.on("messages", processMessages);
@@ -358,12 +404,42 @@ const Chat = () => {
       console.log("socket disconnect:", reason);
     });
 
+    s.on("messageReadStatus", ({messageIds, readBy, readAt}) => {
+      console.log("[v0] Message read status updated:", {
+        messageIds,
+        readBy,
+        readAt,
+      });
+      // Update read status for messages
+      setReadStatus((prev) => {
+        const newStatus = {...prev};
+        messageIds.forEach((id) => {
+          newStatus[id] = true;
+        });
+        return newStatus;
+      });
+    });
+
+    s.on("unreadCount", ({unreadCount, tripId: countTripId}) => {
+      if (countTripId === tripId) {
+        console.log("[v0] Unread count updated:", unreadCount);
+        setUnreadCount(unreadCount);
+      }
+    });
+
+    s.on("unreadCountError", ({error}) => {
+      console.error("[v0] Error getting unread count:", error);
+    });
+
     return () => {
       s.off("messages");
       s.off("newMessage");
       s.off("messageDelivered"); // Clean up messageDelivered listener
       s.off("reactionUpdated"); // Clean up reaction listener
       s.off("pollUpdated");
+      s.off("messageReadStatus"); // Clean up read status listener
+      s.off("unreadCount"); // Clean up unread count listener
+      s.off("unreadCountError"); // Clean up unread count error listener
       s.disconnect();
       socketRef.current = null;
     };
@@ -471,7 +547,15 @@ const Chat = () => {
 
       // Limit to 10 files maximum
       if (totalFiles > 10) {
-        alert("You can only attach up to 10 files at once.");
+        toast.error("You can only attach up to 10 files at once.");
+        return;
+      }
+      const imageFiles = newFiles.filter((file) =>
+        file.type.startsWith("image/")
+      );
+
+      if (imageFiles.length !== newFiles.length) {
+        toast.error("Please upload image");
         return;
       }
 
@@ -603,7 +687,7 @@ const Chat = () => {
           <button
             key={reaction}
             onClick={() => handleAddReaction(messageId, reaction)}
-            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors text-lg"
+            className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 transition-colors text-md"
           >
             {reaction}
           </button>
@@ -615,7 +699,10 @@ const Chat = () => {
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
-    <main className="flex flex-col h-screen">
+    <main
+      className="flex flex-col h-screen w-full max-w-full overflow-x-hidden"
+      style={{maxWidth: "100vw", overflowX: "hidden"}}
+    >
       {/* Header */}
       <ChatHeader />
       <ModalChatGIF
@@ -627,37 +714,51 @@ const Chat = () => {
       {/* Messages Container with ref */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-auto p-4 space-y-4"
+        className="flex flex-col flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-2 md:p-4 space-y-4 bg-[#F1F5F9] min-w-0"
+        style={{maxWidth: "100vw", overflowX: "hidden"}}
       >
-        {messages.length === 0 ? (
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <ChatLoader />
+          </div>
+        ) : messages.length === 0 ? (
           <WelcomeChat />
         ) : (
           <>
             {Object.entries(groupedMessages).map(([date, dateMessages]) => (
               <div key={date}>
-                <div className="flex justify-center my-4">
-                  <div className="bmy-4 bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200">
+                <div className="flex justify-center my-4 w-full max-w-full">
+                  <div className="bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border border-slate-200 max-w-full truncate">
                     {date}
                   </div>
                 </div>
 
                 {dateMessages.map((msg, idx) => (
-                  <div key={idx} className="w-full max-w-full mb-3">
+                  <div
+                    key={idx}
+                    className="w-full max-w-full mb-3 px-1 min-w-0"
+                    style={{maxWidth: "100%", overflow: "hidden"}}
+                  >
                     {msg.type === "announcement" && (
-                      <ChatAnnouncement msg={msg} />
+                      <div
+                        className="w-full max-w-full overflow-hidden"
+                        style={{maxWidth: "100%", overflow: "hidden"}}
+                      >
+                        <ChatAnnouncement msg={msg} />
+                      </div>
                     )}
 
                     {msg.type === "poll" && (
                       <div
-                        key={msg.id}
-                        className={`flex ${
+                        className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
                             : "justify-start"
                         }`}
+                        style={{maxWidth: "100%", overflow: "hidden"}}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
+                          className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
                             msg.senderId === authUerId
                               ? "justify-end"
                               : "justify-start"
@@ -684,15 +785,24 @@ const Chat = () => {
                                 : "items-start"
                             }`}
                           >
-                            <div className="max-w-[80%] md:max-w-xs lg:max-w-md relative group/message shadow-sm w-full rounded-2xl px-4 py-3 bg-blue-500 text-white rounded-br-md">
+                            <div
+                              className="max-w-[90%] sm:max-w-[85%] md:max-w-xs lg:max-w-md relative group/message shadow-sm w-full rounded-2xl px-4 py-3 bg-blue-500 text-white rounded-br-md min-w-0"
+                              style={{maxWidth: "90%", overflow: "hidden"}}
+                            >
                               {/* Keep poll bubble UI unchanged */}
                               <p className="text-sm font-medium leading-relaxed break-words mb-3">
                                 {"📊 "}
                                 {msg.content}
                               </p>
 
-                              <div className="max-w-full">
-                                <div className="rounded-lg bg-blue-100/80 backdrop-blur-sm p-4">
+                              <div
+                                className="w-full max-w-full min-w-0"
+                                style={{maxWidth: "100%", overflow: "hidden"}}
+                              >
+                                <div
+                                  className="rounded-lg bg-blue-100/80 backdrop-blur-sm p-4 w-full max-w-full min-w-0"
+                                  style={{maxWidth: "100%", overflow: "hidden"}}
+                                >
                                   <div className="mb-3">
                                     <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base text-slate-800 mb-1">
                                       <ChartColumn className="w-4 h-4 text-blue-600" />
@@ -715,7 +825,13 @@ const Chat = () => {
                                     </p>
                                   </div>
 
-                                  <div className="space-y-2">
+                                  <div
+                                    className="space-y-2 w-full max-w-full min-w-0"
+                                    style={{
+                                      maxWidth: "100%",
+                                      overflow: "hidden",
+                                    }}
+                                  >
                                     {(Array.isArray(msg?.poll)
                                       ? msg.poll
                                       : []
@@ -739,20 +855,26 @@ const Chat = () => {
                                             onClick={() =>
                                               handleVote(msg.id, i)
                                             }
-                                            className={`w-full p-3 rounded-lg border transition-all text-left ${
+                                            className={`w-full max-w-full p-3 rounded-lg border transition-all text-left min-w-0 ${
                                               hasVotes
                                                 ? "border-blue-300 bg-blue-50"
                                                 : "border-slate-200 bg-white hover:bg-slate-50"
                                             }`}
+                                            style={{
+                                              maxWidth: "100%",
+                                              overflow: "hidden",
+                                            }}
                                           >
-                                            <div className="flex justify-between items-center mb-2">
-                                              <span className="text-sm font-medium text-slate-800 flex items-center gap-2">
-                                                {opt.label}
+                                            <div className="flex justify-between items-center mb-2 w-full max-w-full min-w-0">
+                                              <span className="text-sm font-medium text-slate-800 flex items-center gap-2 min-w-0 flex-1">
+                                                <span className="truncate">
+                                                  {opt.label}
+                                                </span>
                                                 {hasVotes && (
-                                                  <Check className="w-4 h-4 text-blue-600" />
+                                                  <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
                                                 )}
                                               </span>
-                                              <span className="text-xs text-slate-600">
+                                              <span className="text-xs text-slate-600 flex-shrink-0 ml-2">
                                                 {Number(opt.votes) || 0} (
                                                 {Math.round(percent)}%)
                                               </span>
@@ -824,14 +946,15 @@ const Chat = () => {
 
                     {msg.type === "gif" && (
                       <div
-                        className={`flex ${
+                        className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
                             : "justify-start"
                         }`}
+                        style={{maxWidth: "100%", overflow: "hidden"}}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
+                          className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
                             msg.senderId === authUerId
                               ? "justify-end"
                               : "justify-start"
@@ -857,7 +980,10 @@ const Chat = () => {
                                 : "items-start"
                             }`}
                           >
-                            <div className="px-4 py-2 rounded-2xl max-w-xs break-words bg-blue-500 text-white rounded-br-md">
+                            <div
+                              className="px-4 py-2 rounded-2xl max-w-[90%] sm:max-w-xs md:max-w-sm break-words bg-blue-500 text-white rounded-br-md min-w-0"
+                              style={{maxWidth: "90%", overflow: "hidden"}}
+                            >
                               {/* Sender name (only for others' messages) */}
                               {msg.senderId !== authUerId && (
                                 <p className="text-xs font-medium mb-1">
@@ -866,14 +992,20 @@ const Chat = () => {
                               )}
 
                               {/* GIF content */}
-                              <div className="rounded-lg overflow-hidden">
+                              <div
+                                className="rounded-lg overflow-hidden w-full max-w-full min-w-0"
+                                style={{maxWidth: "100%", overflow: "hidden"}}
+                              >
                                 <img
                                   src={msg.fileUrl || "/placeholder.svg"}
                                   alt={msg.content || "GIF"}
-                                  className="max-w-full h-auto rounded-lg"
+                                  className="w-full h-auto max-w-full rounded-lg"
                                   style={{
-                                    maxWidth: "200px",
+                                    maxWidth: "100%",
                                     maxHeight: "200px",
+                                    objectFit: "contain",
+                                    width: "100%",
+                                    height: "auto",
                                   }}
                                 />
                               </div>
@@ -932,14 +1064,15 @@ const Chat = () => {
 
                     {msg.type === "text" && (
                       <div
-                        className={`flex ${
+                        className={`flex w-full max-w-full min-w-0 ${
                           msg.senderId === authUerId
                             ? "justify-end"
                             : "justify-start"
                         }`}
+                        style={{maxWidth: "100%", overflow: "hidden"}}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
+                          className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
                             msg.senderId === authUerId
                               ? "justify-end"
                               : "justify-start"
@@ -966,7 +1099,11 @@ const Chat = () => {
                             }`}
                           >
                             <div
-                              className={`relative px-4 text-left py-2 rounded-2xl break-words ${"bg-blue-500 text-white rounded-br-md"}`}
+                              className={`relative px-4 py-2 rounded-2xl break-words bg-blue-500 text-white ${
+                                msg.senderId === authUerId
+                                  ? "rounded-br-md"
+                                  : "rounded-bl-md"
+                              } w-auto max-w-[80vw] md:max-w-xl`}
                             >
                               {/* Sender name (only for others' messages) */}
                               {msg.senderId !== authUerId && (
@@ -980,8 +1117,14 @@ const Chat = () => {
                                 <p className="text-sm">{msg.content}</p>
                               )}
 
-                              <RenderAttachments msg={msg} />
+                              {/* Attachments */}
+                              {msg.attachments && (
+                                <div className="mt-2 w-full">
+                                  <RenderAttachments msg={msg} />
+                                </div>
+                              )}
                             </div>
+
                             <div className="flex items-center gap-2 mt-2">
                               {msg.senderId !== authUerId && (
                                 <p className="text-xs text-slate-400 flex-shrink-0">
@@ -1045,8 +1188,14 @@ const Chat = () => {
       </div>
 
       {/* Input Section */}
-      <div className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full">
-        <div className="bg-white  p-2 md:p-4 space-y-3 w-full">
+      <div
+        className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full max-w-full overflow-hidden min-w-0"
+        style={{maxWidth: "100vw", overflowX: "hidden"}}
+      >
+        <div
+          className="bg-white p-2 md:p-4 space-y-3 w-full max-w-full overflow-hidden min-w-0"
+          style={{maxWidth: "100%", overflow: "hidden"}}
+        >
           {/* Announcement Mode */}
           {mode === "announcement" && (
             <div className="bg-amber-100 text-amber-800 border border-amber-200 rounded-md p-2 flex items-center gap-2 w-full max-w-full overflow-hidden">
@@ -1173,16 +1322,35 @@ const Chat = () => {
 
           {/* Default Input */}
           {mode !== "poll" && (
-            <form className="w-full">
-              <div className="flex items-end gap-2 md:gap-3 w-full">
-                <div className="flex-1 min-w-0">
+            <form
+              className="w-full max-w-full min-w-0"
+              style={{maxWidth: "100%", overflow: "hidden"}}
+            >
+              <div
+                className="flex items-end gap-2 md:gap-3 w-full max-w-full min-w-0"
+                style={{maxWidth: "100%", overflow: "hidden"}}
+              >
+                <div
+                  className="flex-1 min-w-0 max-w-full"
+                  style={{maxWidth: "100%", overflow: "hidden"}}
+                >
                   <textarea
-                    className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none w-full min-h-[40px] md:min-h-[48px] max-h-32 rounded-2xl transition-colors text-sm md:text-base
-                      ${
-                        mode === "announcement"
-                          ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
-                          : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
-                      }`}
+                    className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground
+    focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2
+    focus:ring-ring resize-none w-full max-w-full min-w-0 min-h-[40px] md:min-h-[48px]
+    max-h-32 rounded-2xl transition-colors text-sm md:text-base
+    ${
+      mode === "announcement"
+        ? "bg-amber-50 border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+        : "bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+    }`}
+                    style={{
+                      maxWidth: "100%",
+                      overflow: "hidden",
+                      outline: "none",
+                      boxShadow: "none", // removes Chrome blue/black focus ring
+                      WebkitTapHighlightColor: "transparent", // removes tap highlight
+                    }}
                     placeholder={
                       mode === "announcement"
                         ? "Share an important announcement..."
@@ -1228,14 +1396,21 @@ const Chat = () => {
 
           {/* Bottom icons */}
           {mode !== "poll" && (
-            <div className="flex justify-start items-center mt-2 w-full overflow-hidden">
-              <div className="flex items-center gap-1 flex-wrap">
+            <div
+              className="flex justify-start items-center mt-2 w-full max-w-full overflow-hidden min-w-0"
+              style={{maxWidth: "100%", overflow: "hidden"}}
+            >
+              <div
+                className="flex items-center gap-1 flex-wrap max-w-full min-w-0"
+                style={{maxWidth: "100%", overflow: "hidden"}}
+              >
                 <input
                   type="file"
                   multiple
                   ref={generalFileInputRef}
                   onChange={handleFileUpload}
                   className="hidden"
+                  accept="image/*"
                 />
                 {loadingState === "file" ? (
                   <ChatLoader />

@@ -1,16 +1,20 @@
 "use client";
-import React, { useEffect } from "react";
-import { ActivityIcon, History, Trash2 } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
-import { useQuery } from "@tanstack/react-query";
+import React, {useEffect} from "react";
+import {ActivityIcon, History, Trash2} from "lucide-react";
+import {useSelector, useDispatch} from "react-redux";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import BackButton from "@/components/ui/BackButton";
 import {
   getNotificationsService,
   deleteNotificationService,
   markAsReadService,
 } from "@/services/notification";
-import { io } from "socket.io-client";
-import { setNotifications, markAsRead, deleteNotification } from "@/store/notificationSlice";
+import {io} from "socket.io-client";
+import {
+  setNotifications,
+  markAsRead,
+  deleteNotification,
+} from "@/store/notificationSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -19,13 +23,19 @@ const Notifications = () => {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
+  const queryClient = useQueryClient();
   const notifications = useSelector((state) => state.notifications.list);
+  const {data: activeTripData} = useQuery({
+    queryKey: ["getTripService", tripId],
+    queryFn: () => getTripService(tripId),
+  });
+  const activeTrip = activeTripData?.data?.activeTrip;
 
   const hasAdminAccess =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   // Fetch notifications from API
-  const { data } = useQuery({
+  const {data} = useQuery({
     queryKey: ["notifications", tripId, token],
     queryFn: () => getNotificationsService(tripId, token),
     enabled: !!tripId && !!token,
@@ -38,14 +48,23 @@ const Notifications = () => {
   }, [data, dispatch]);
 
   // Socket for real-time notifications
-  useEffect(() => {
+  useEffect( () => {
     if (!tripId || !token) return;
 
-    const socket = io(BASE_URL, { auth: { token } });
+    const socket = io(BASE_URL, {auth: {token}});
     socket.emit("joinTrip", tripId);
 
-    socket.on("newNotification", (notif) => dispatch(setNotifications([notif, ...notifications])));
-    socket.on("notificationDeleted", ({ id }) => dispatch(deleteNotification(id)));
+    socket.on(
+      "newNotification",
+      async (notif) =>
+        await queryClient.invalidateQueries({
+          queryKey: ["notifications"],
+        })
+      // dispatch(setNotifications([notif, ...notifications]))
+    );
+    socket.on("notificationDeleted", ({id}) =>
+      dispatch(deleteNotification(id))
+    );
 
     return () => socket.disconnect();
   }, [tripId, token, dispatch, notifications]);
@@ -93,6 +112,9 @@ const Notifications = () => {
               <h1 className="text-4xl font-bold text-slate-800 mb-2">
                 Trip Activity Log
               </h1>
+              <p className="text-xl text-slate-600">
+                All the latest updates for {activeTrip?.trip_occasion}{" "}
+              </p>
             </div>
           </div>
         </div>
@@ -130,12 +152,12 @@ const Notifications = () => {
                   </p>
                 </div>
                 {/* {hasAdminAccess && ( */}
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 {/* )} */}
               </div>
             ))

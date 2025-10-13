@@ -208,7 +208,7 @@ export default function Layout({children, currentPageName}) {
   ];
   const {data: notificationsData} = useQuery({
     queryKey: ["notifications", tripId, token],
-    queryFn: () => getNotificationsService(token, tripId),
+    queryFn: () => getNotificationsService(tripId, token),
     enabled: !!token && !!tripId,
   });
   useEffect(() => {
@@ -396,6 +396,10 @@ export default function Layout({children, currentPageName}) {
                             location.pathname === item.url
                               ? "bg-blue-50 text-blue-700 shadow-sm"
                               : ""
+                          } ${
+                            item.title === "Notifications"
+                              ? "hidden md:flex"
+                              : ""
                           }`}
                         >
                           <Link
@@ -551,7 +555,7 @@ export default function Layout({children, currentPageName}) {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {hasAdminAccess && (
+            {hasAdminAccess && tripId && tdata && (
               <SidebarGroup>
                 <SidebarGroupLabel className="text-xs font-semibold text-red-500 uppercase tracking-wider px-3 py-2">
                   Danger Zone
@@ -579,37 +583,42 @@ export default function Layout({children, currentPageName}) {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-slate-200/60 p-4">
-            <Link
-              to={createPageUrl("Profile")}
-              className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-all duration-200"
+            <SidebarMenuButton
+              asChild
+              className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl flex items-center gap-3 px-3 py-5 w-full text-left"
             >
-              {/* Avatar */}
-              <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
-                {userProfileData?.profile_photo_url ? (
-                  <img
-                    src={userProfileData.profile_photo_url}
-                    alt={userProfileData.username || user?.name || "User"}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-slate-600 font-semibold text-sm leading-none">
-                    {userProfileData?.username?.charAt(0) ||
-                      user?.name?.charAt(0) ||
-                      "U"}
-                  </span>
-                )}
-              </div>
+              <Link
+                to={createPageUrl("Profile")}
+                className="flex items-center gap-3"
+              >
+                {/* Avatar */}
+                <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
+                  {userProfileData?.profile_photo_url ? (
+                    <img
+                      src={userProfileData.profile_photo_url}
+                      alt={userProfileData.username || user?.name || "User"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-slate-600 font-semibold text-sm leading-none">
+                      {userProfileData?.username?.charAt(0) ||
+                        user?.name?.charAt(0) ||
+                        "U"}
+                    </span>
+                  )}
+                </div>
 
-              {/* Name & label */}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 text-sm truncate">
-                  {userProfileData.username
-                    ? userProfileData.username
-                    : user?.name}
-                </p>
-                <p className="text-xs text-slate-500 truncate">My Profile</p>
-              </div>
-            </Link>
+                {/* Name & label */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">
+                    {userProfileData.username
+                      ? userProfileData.username
+                      : user?.name}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">My Profile</p>
+                </div>
+              </Link>
+            </SidebarMenuButton>
           </SidebarFooter>
         </Sidebar>
 
@@ -620,20 +629,21 @@ export default function Layout({children, currentPageName}) {
                 <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200 md:hidden" />
                 <h1 className="text-xl font-bold text-slate-800">Kasama</h1>
               </div>
-
-              <MobileNotifications
-                notifications={notifications}
-                unreadCount={unreadCount}
-              />
-              {location.pathname === createPageUrl("Profile") && (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  Logout
-                </button>
-              )}
+              <div className="flex flex-row justify-end gap-2">
+                <MobileNotifications
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                />
+                {location.pathname === createPageUrl("Profile") && (
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Logout
+                  </button>
+                )}
+              </div>
             </header>
           )}
 
