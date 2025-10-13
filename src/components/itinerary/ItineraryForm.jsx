@@ -33,7 +33,9 @@ export default function ItineraryForm({
     if (item) {
       setFormData({
         date: item.date ? format(new Date(item.date), "yyyy-MM-dd") : "",
-        start_time: item.start_time ? format(new Date(item.start_time), "HH:mm") : "",
+        start_time: item.start_time
+          ? format(new Date(item.start_time), "HH:mm")
+          : "",
         end_time: item.end_time ? format(new Date(item.end_time), "HH:mm") : "",
         activity_title: item.activity_title || "",
         notes: item.notes || "",
@@ -43,10 +45,15 @@ export default function ItineraryForm({
         ...prev,
         date: format(new Date(selectedDate), "yyyy-MM-dd"),
       }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        date: format(parseISO(trip.start_date), "yyyy-MM-dd"),
+      }));
     }
-  }, [item, selectedDate]);
+  }, [item, selectedDate, trip.start_date]);
 
-  const { mutate: saveItinerary } = useMutation({
+  const {mutate: saveItinerary} = useMutation({
     mutationFn: (data) =>
       item
         ? updateItineraryService(token, item.id, data)
@@ -85,7 +92,8 @@ export default function ItineraryForm({
     if (formData.start_time && formData.end_time) {
       const start = new Date(`${formData.date}T${formData.start_time}`);
       const end = new Date(`${formData.date}T${formData.end_time}`);
-      if (end <= start) newErrors.end_time = "End time must be after start time";
+      if (end <= start)
+        newErrors.end_time = "End time must be after start time";
     }
 
     if (formData.notes && formData.notes.length > 500) {
@@ -94,6 +102,27 @@ export default function ItineraryForm({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value;
+    const selectedDateObj = new Date(selectedDate);
+    const tripStart = new Date(trip.start_date);
+    const tripEnd = new Date(trip.end_date);
+
+    // Validate date is within range
+    if (selectedDateObj < tripStart || selectedDateObj > tripEnd) {
+      toast.error(
+        `Please select a date between ${format(
+          tripStart,
+          "MMM d, yyyy"
+        )} and ${format(tripEnd, "MMM d, yyyy")}`
+      );
+      // Reset to trip start date if invalid
+      setFormData({...formData, date: format(tripStart, "yyyy-MM-dd")});
+    } else {
+      setFormData({...formData, date: selectedDate});
+    }
   };
 
   const handleSubmit = (e) => {
@@ -114,7 +143,7 @@ export default function ItineraryForm({
   const generate12HourTimes = () => {
     const times = [];
     for (let hour = 1; hour <= 12; hour++) {
-      for (let minute of ["00", "15", "30", "45"]) {
+      for (const minute of ["00", "15", "30", "45"]) {
         times.push(`${hour}:${minute}`);
       }
     }
@@ -122,11 +151,11 @@ export default function ItineraryForm({
   };
 
   const format12Hour = (time24) => {
-    if (!time24) return { time: "12:00", ampm: "AM" };
+    if (!time24) return {time: "12:00", ampm: "AM"};
     let [hour, minute] = time24.split(":").map(Number);
     const ampm = hour >= 12 ? "PM" : "AM";
     hour = hour % 12 || 12;
-    return { time: `${hour}:${minute.toString().padStart(2, "0")}`, ampm };
+    return {time: `${hour}:${minute.toString().padStart(2, "0")}`, ampm};
   };
 
   const to24Hour = (time, ampm) => {
@@ -138,7 +167,7 @@ export default function ItineraryForm({
 
   const handleTimeChange = (field, time, ampm) => {
     const time24 = to24Hour(time, ampm);
-    setFormData((prev) => ({ ...prev, [field]: time24 }));
+    setFormData((prev) => ({...prev, [field]: time24}));
   };
 
   // ===== Render Form =====
@@ -153,7 +182,7 @@ export default function ItineraryForm({
           <Input
             type="date"
             value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            onChange={handleDateChange}
             min={format(parseISO(trip.start_date), "yyyy-MM-dd")}
             max={format(parseISO(trip.end_date), "yyyy-MM-dd")}
           />
@@ -176,7 +205,7 @@ export default function ItineraryForm({
           <Input
             value={formData.activity_title}
             onChange={(e) =>
-              setFormData({ ...formData, activity_title: e.target.value })
+              setFormData({...formData, activity_title: e.target.value})
             }
             placeholder="e.g., Beach Day, City Tour, Dinner"
           />
@@ -283,7 +312,7 @@ export default function ItineraryForm({
         <Textarea
           placeholder="Add any additional details, meeting points, or special instructions..."
           value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          onChange={(e) => setFormData({...formData, notes: e.target.value})}
           className="flex w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none mt-2 border-slate-200 min-h-24"
         />
         {errors.notes && <p className="text-red-500 text-sm">{errors.notes}</p>}
