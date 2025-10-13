@@ -39,8 +39,8 @@ export default function ManageTrip() {
     welcome_message: "",
   });
   const [tripImageFile, setTripImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [url, setUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [url, setUrl] = useState(null);
   const [saving, setSaving] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const tripId = useSelector((state) => state.trips.activeTripId);
@@ -163,7 +163,7 @@ export default function ManageTrip() {
     }
   };
   useEffect(() => {
-    if (!previewUrl) return;
+    if (previewUrl===null || previewUrl=='null') return;
 
     const fetchFileUrl = async () => {
       try {
@@ -242,7 +242,7 @@ export default function ManageTrip() {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-6">
                   <div className="w-32 h-24 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
-                    {previewUrl ? (
+                    {url ? (
                       <img
                         alt="Trip preview"
                         className="w-full h-full object-cover rounded-lg"

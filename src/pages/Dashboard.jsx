@@ -237,14 +237,21 @@ export default function Dashboard() {
     setShowForm(true);
   };
   useEffect(() => {
-    const getFile = async () => {
-      const res = await getFileUrl(BASE_URL, token, activeTripDataState.image);
+    if (
+      activeTripDataState.image == null ||
+      activeTripDataState.image == "null"
+    )return
+      const getFile = async () => {
+        const res = await getFileUrl(
+          BASE_URL,
+          token,
+          activeTripDataState.image
+        );
+        if (res) setUrl(res);
+      };
 
-      if (res) setUrl(res);
-    };
-    if (activeTripDataState.image) {
       getFile();
-    }
+    
   }, [activeTripDataState]);
 
   if (isLoading) {
@@ -254,14 +261,13 @@ export default function Dashboard() {
       </div>
     );
   }
- 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Banner */}
         {activeTripDataState && (
           <div className="relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl group">
-            {activeTripDataState?.image ? (
+            {url && activeTripDataState?.image ? (
               <>
                 {/* Trip Image */}
                 <img
