@@ -37,6 +37,7 @@ import {
   Check,
   Plus,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import {useMutation, useQuery} from "@tanstack/react-query";
 import {useQueryClient} from "@tanstack/react-query";
@@ -481,7 +482,11 @@ export default function Payments() {
     }
   }, [autoPaymentDataResponse]);
 
-  const {data: isInvitedData, isSuccess: invitedSuccess} = useQuery({
+  const {
+    data: isInvitedData,
+    isSuccess: invitedSuccess,
+    isLoading: loadingInvitation,
+  } = useQuery({
     queryKey: ["participantTripCheckQuery", authToken, authUerId, authTripId],
     queryFn: () => participantTripCheck(authToken, authUerId, authTripId),
     enabled: !!authToken && !!authTripId && !!authUerId,
@@ -935,14 +940,6 @@ export default function Payments() {
 
   const trip = tripData?.data?.activeTrip;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   const noExpensesAdded =
     paymentDetailData?.amountPaid === 0 &&
     paymentDetailData?.overpaid === 0 &&
@@ -954,6 +951,14 @@ export default function Payments() {
     (Number(tripDataList?.baseAmountContributed) || 0) -
       (Number(trip?.withdrawl_amount) || 0)
   );
+
+  if (loading || loadingInvitation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <>
