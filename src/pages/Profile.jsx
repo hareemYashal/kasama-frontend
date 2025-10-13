@@ -22,11 +22,15 @@ import {
 import {createPageUrl} from "@/utils";
 import {getProfileService, saveProfileService} from "@/services/profile";
 import {toast} from "sonner";
+import {uploadToS3} from "@/utils/utils";
+import {getFileUrl} from "@/services/expense";
 import {SidebarTrigger} from "@/components/ui/sidebar";
 
 export default function Profile() {
   const navigate = useNavigate();
   const token = useSelector((state) => state.user.token);
+  const BASE_URL = import.meta.env.VITE_API_URL;
+  const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -43,6 +47,7 @@ export default function Profile() {
   });
   const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [url, setUrl] = useState(null);
 
   const {data: profileData, isLoading} = useQuery({
     queryKey: ["profile"],
@@ -96,11 +101,60 @@ export default function Profile() {
     },
   });
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
+    setIsUploading(true);
     const file = e.target.files[0];
-    if (file) {
-      setProfilePhotoFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+    // if (file) {
+    //   setProfilePhotoFile(file);
+    //   setPreviewUrl(URL.createObjectURL(file));
+    // }
+
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please select a valid image file (JPG, PNG, or WebP)");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be less than 5MB");
+      e.target.value = "";
+      return;
+    }
+    setUrl(URL.createObjectURL(file));
+
+    // setUrl(URL.createObjectURL(file));
+    try {
+      const uploadResult = await uploadToS3({
+        file: file,
+        BASE_URL,
+        token,
+        folder: "trip-images",
+      });
+
+      if (!uploadResult?.key) {
+        toast.error("Failed to upload image.");
+        return;
+      }
+      // formData.image = uploadResult.key;
+      setProfilePhotoFile(uploadResult.key);
+      const signedUrl = await getFileUrl(BASE_URL, token, uploadResult.key);
+      if (signedUrl) {
+        setPreviewUrl(signedUrl);
+
+        toast.success("Image uploaded successfully!");
+      } else {
+        toast.error("Failed to generate signed URL.");
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error("Error uploading image.");
+    } finally {
+      // setImageLoading(false);
+      setIsUploading(false);
     }
   };
 
@@ -126,7 +180,6 @@ export default function Profile() {
     if (profilePhotoFile) {
       payload.append("profile_photo", profilePhotoFile); // 👈 name must match backend field
     }
-
     mutate(payload);
   };
   const dispatch = useDispatch();
@@ -139,6 +192,20 @@ export default function Profile() {
     dispatch(setActiveTripId(null));
     navigate("/");
   };
+  useEffect(() => {
+    const getFile = async () => {
+      const res = await getFileUrl(
+        BASE_URL,
+        token,
+        profileData?.profile?.profile_photo_url
+      );
+
+      if (res) setUrl(res);
+    };
+    if (profileData?.profile) {
+      getFile();
+    }
+  }, [profileData]);
   // if (isLoading) {
   //   return (
   //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -180,7 +247,7 @@ export default function Profile() {
                 <div className="flex items-center gap-6">
                   <img
                     src={
-                      previewUrl ||
+                      url ||
                       `https://ui-avatars.com/api/?name=${encodeURIComponent(
                         formData.full_name
                       )}&background=random`
@@ -338,10 +405,10 @@ export default function Profile() {
                 <div className="flex justify-end pt-4">
                   <Button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || isLoading || isUploading}
                     className="px-8 bg-blue-600 hover:bg-blue-700"
                   >
-                    {saving ? (
+                    {saving || isUploading ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
                       <Save className="w-4 h-4 mr-2" />

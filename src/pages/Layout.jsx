@@ -16,6 +16,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import {getFileUrl} from "@/services/expense";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,7 @@ export default function Layout({children, currentPageName}) {
   const user = useSelector((state) => state.user.user);
   console.log("hey I am the user from  layout", user);
   const [trip, setTrip] = useState(null);
+  const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
   const tripId = useSelector((state) => state.trips.activeTripId);
@@ -87,8 +89,7 @@ export default function Layout({children, currentPageName}) {
   });
 
   const tdata = tripData?.data?.activeTrip;
-  console.log("tripDatagetTripService", tripData);
-  console.log("tripId-=-=-=->", tripId);
+
   useEffect(() => {
     // Skip authentication check for public pages
     const publicPages = ["Home", "JoinTrip", "ExpediaTeaser"];
@@ -132,6 +133,21 @@ export default function Layout({children, currentPageName}) {
 
     return () => socket.disconnect();
   }, [tripId, token, dispatch]);
+
+  useEffect(() => {
+    const getFile = async () => {
+      const res = await getFileUrl(
+        BASE_URL,
+        token,
+        userProfileData.profile_photo_url
+      );
+
+      if (res) setUrl(res);
+    };
+    if (userProfileData.profile_photo_url) {
+      getFile();
+    }
+  }, [userProfileData]);
 
   const loadDummyUserAndTrip = () => {
     const dummyUser = {
@@ -595,7 +611,7 @@ export default function Layout({children, currentPageName}) {
                 <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center overflow-hidden">
                   {userProfileData?.profile_photo_url ? (
                     <img
-                      src={userProfileData.profile_photo_url}
+                      src={url}
                       alt={userProfileData.username || user?.name || "User"}
                       className="w-full h-full object-cover"
                     />

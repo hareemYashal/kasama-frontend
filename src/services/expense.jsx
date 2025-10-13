@@ -78,6 +78,30 @@ const getExpenseByIdService = async (token, expenseId) => {
     throw error;
   }
 };
+const getFileUrl = async (BASE_URL, token, fileKey) => {
+  const sanitizedKey = fileKey.startsWith("/") ? fileKey.slice(1) : fileKey;
+
+  const endpoint = `${BASE_URL}/files/signed-url/${sanitizedKey}`;
+
+  const res = await fetch(endpoint, {
+    method: "GET",
+    headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+  });
+
+  if (!res.ok) {
+    return null;
+  }
+
+  const json = await res.json();
+
+  if (json?.success && json?.data?.url) {
+    const result = json.data.url;
+    console.log(result, "err");
+    return result;
+  }
+
+  return null;
+};
 
 export {
   createExpenseService,
@@ -86,4 +110,5 @@ export {
   getExpenseByTripIdService,
   getExpenseListService,
   deleteExpenseService,
+  getFileUrl,
 };

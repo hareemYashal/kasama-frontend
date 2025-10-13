@@ -28,6 +28,7 @@ import {useQuery} from "@tanstack/react-query";
 import {
   getExpenseByTripIdService,
   getExpenseListService,
+  getFileUrl,
 } from "@/services/expense";
 import {useSelector, useDispatch} from "react-redux";
 import {
@@ -49,8 +50,8 @@ export default function Dashboard() {
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
   const user = useSelector((state) => state.user.user);
-   const authUser = useSelector((s) => s.user.user);
-    const authUerId = authUser?.id;
+  const authUser = useSelector((s) => s.user.user);
+  const authUerId = authUser?.id;
   // const router = useRouter();
 
   const dispatch = useDispatch();
@@ -101,6 +102,7 @@ export default function Dashboard() {
   // State management with useEffect to sync with query data
   const [tripExpenses, setTripExpenses] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [url, setUrl] = useState(null);
   const [participantContributionData, setParticipantContributionData] =
     useState({});
   const [activeTripDataState, setActiveTripDataState] = useState({});
@@ -196,7 +198,7 @@ export default function Dashboard() {
     setEditingItem(null);
     setShowForm(true);
   };
-const BASE_URL = import.meta.env.VITE_API_URL;
+  const BASE_URL = import.meta.env.VITE_API_URL;
 
   const s = io(BASE_URL, {auth: {token}});
   // socketRef.current = s;
@@ -218,7 +220,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
     const handleNewMessage = (message) => {
       // If it's a new message from someone else, increment unread count
       if (message.senderId !== authUerId) {
-        setUnreadCount(prev => prev + 1);
+        setUnreadCount((prev) => prev + 1);
       }
     };
 
@@ -234,6 +236,17 @@ const BASE_URL = import.meta.env.VITE_API_URL;
     setEditingItem(item);
     setShowForm(true);
   };
+  useEffect(() => {
+    const getFile = async () => {
+      const res = await getFileUrl(BASE_URL, token, activeTripDataState.image);
+
+      if (res) setUrl(res);
+    };
+    if (activeTripDataState.image) {
+      getFile();
+    }
+  }, [activeTripDataState]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-slate-50 to-blue-50">
@@ -241,7 +254,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
       </div>
     );
   }
-
+ 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -252,7 +265,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
               <>
                 {/* Trip Image */}
                 <img
-                  src={activeTripDataState.image}
+                  src={url}
                   alt={activeTripDataState.trip_occasion || "Trip Image"}
                   className="w-full h-full object-cover"
                 />
@@ -793,25 +806,23 @@ const BASE_URL = import.meta.env.VITE_API_URL;
         >
           <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 px-4 py-2 w-14 h-14 rounded-full bg-pink-500 hover:bg-pink-600 text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative">
             <MessageCircle className="w-6 h-6" />
-{unreadCount > 0 &&
-<>
-            <span
-              data-filename="components/chat/FloatingChatBubble"
-              data-linenumber="103"
-              data-visual-selector-id="components/chat/FloatingChatBubble103"
-              data-source-location="components/chat/FloatingChatBubble:103:12"
-              data-dynamic-content="false"
-              class="absolute -top-1 -right-1 block h-6 w-6 rounded-full bg-red-500 border-2 border-white"
-            ></span>
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-
-
+              <>
+                <span
+                  data-filename="components/chat/FloatingChatBubble"
+                  data-linenumber="103"
+                  data-visual-selector-id="components/chat/FloatingChatBubble103"
+                  data-source-location="components/chat/FloatingChatBubble:103:12"
+                  data-dynamic-content="false"
+                  class="absolute -top-1 -right-1 block h-6 w-6 rounded-full bg-red-500 border-2 border-white"
+                ></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </>
             )}
-            </>
-}
           </button>
         </div>
       </div>

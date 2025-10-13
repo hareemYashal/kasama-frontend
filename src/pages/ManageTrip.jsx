@@ -42,7 +42,7 @@ export default function ManageTrip() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
-
+  const [imageLoading, setImageLoading] = useState(false);
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
 
@@ -67,17 +67,13 @@ export default function ManageTrip() {
         booking_deadline_weeks: tripData?.booking_deadline?.toString() || "",
         welcome_message: tripData?.welcome_message || "",
       });
-      console.log(tripData.image, "the image");
 
       if (tripData?.image) {
-        console.log(tripData.image, "the image");
         setPreviewUrl(tripData?.image);
       }
     }
   }, [tripData]);
 
-  console.log("tripData", tripData);
-  console.log("formData", formData);
   // 🔹 Update trip mutation
   const {mutate, isLoading: isMutating} = useMutation({
     mutationFn: ({formDataToSend, tripId, token}) =>
@@ -108,11 +104,9 @@ export default function ManageTrip() {
       return null;
     }
     const json = await res.json();
-    console.log(json, "skssk");
 
     if (json?.success && json?.data?.url) {
       const result = json.data.url;
-      console.log(result, "the result");
       return result;
     }
     return null;
@@ -120,7 +114,6 @@ export default function ManageTrip() {
   const handleImageChange = async (e) => {
     setImageLoading(true);
     const file = e.target.files[0];
-    console.log(file, "");
     if (!file) return;
 
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -152,6 +145,7 @@ export default function ManageTrip() {
       }
       setTripImageFile(uploadResult.key);
       formData.image = uploadResult.key;
+      setPreviewUrl(uploadResult.key);
 
       const signedUrl = await getFileUrl(uploadResult.key);
       if (signedUrl) {
@@ -174,8 +168,7 @@ export default function ManageTrip() {
     const fetchFileUrl = async () => {
       try {
         const ur = await getFileUrl(previewUrl);
-        setUrl(ur)
-        console.log(ur);
+        setUrl(ur);
       } catch (err) {
         console.error(err);
       }
@@ -183,7 +176,6 @@ export default function ManageTrip() {
 
     fetchFileUrl();
   }, [previewUrl]);
-  console.log(url, "the url",previewUrl);
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -197,9 +189,9 @@ export default function ManageTrip() {
     formDataToSend.append("welcome_message", formData.welcome_message);
 
     if (tripImageFile) {
-      formDataToSend.append("image", previewUrl);
+      formDataToSend.append("image", formData.image);
     }
-
+    //
     mutate({formDataToSend, tripId, token});
   };
 
@@ -252,9 +244,9 @@ export default function ManageTrip() {
                   <div className="w-32 h-24 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
                     {previewUrl ? (
                       <img
-                        src={url}
                         alt="Trip preview"
                         className="w-full h-full object-cover rounded-lg"
+                        src={url}
                       />
                     ) : (
                       <div className="text-center">
@@ -384,11 +376,13 @@ export default function ManageTrip() {
             <div className="flex justify-end pt-6">
               <Button
                 onClick={handleSubmit}
-                disabled={saving || isMutating}
+                disabled={saving || isMutating || imageLoading}
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground h-10 px-8 py-3 bg-blue-600 hover:bg-blue-700"
               >
                 <SaveIcon />{" "}
-                {saving || isMutating ? "Saving..." : "Save Changes"}
+                {saving || isMutating || imageLoading
+                  ? "Saving..."
+                  : "Save Changes"}
               </Button>
             </div>
           </div>
