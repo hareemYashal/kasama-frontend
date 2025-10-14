@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { useSelector } from "react-redux";
-import { useMutation } from "@tanstack/react-query";
-import { createItineraryService, updateItineraryService } from "@/services/itinerary";
-import { format, parseISO } from "date-fns";
-import { Save, X } from "lucide-react";
+"use client";
+
+import React from "react";
+import {useState, useEffect, useRef, useMemo} from "react";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Textarea} from "@/components/ui/textarea";
+import {toast} from "sonner";
+import {useSelector} from "react-redux";
+import {useMutation} from "@tanstack/react-query";
+import {
+  createItineraryService,
+  updateItineraryService,
+} from "@/services/itinerary";
+import {format, parseISO} from "date-fns";
+import {Save, X} from "lucide-react";
 
 export default function ItineraryForm({
   trip,
@@ -17,17 +23,74 @@ export default function ItineraryForm({
   refetch,
   selectedDate,
 }) {
-  const [formData, setFormData] = useState({
-    date: "",
-    start_time: "",
-    end_time: "",
-    activity_title: "",
-    notes: "",
+  const [formData, setFormData] = useState(() => {
+    // Compute initial date from props and clamp within trip range
+    const start = new Date(trip.start_date);
+    const end = new Date(trip.end_date);
+    let initial = item?.date
+      ? new Date(item.date)
+      : selectedDate
+      ? new Date(selectedDate)
+      : new Date(trip.start_date);
+
+    if (isNaN(initial.getTime())) initial = start;
+    if (initial < start) initial = start;
+    if (initial > end) initial = end;
+
+    return {
+      date: format(initial, "yyyy-MM-dd"),
+      start_time: item?.start_time
+        ? format(new Date(item.start_time), "HH:mm")
+        : "",
+      end_time: item?.end_time ? format(new Date(item.end_time), "HH:mm") : "",
+      activity_title: item?.activity_title || "",
+      notes: item?.notes || "",
+    };
   });
 
   const [errors, setErrors] = useState({});
+  const [isDateReady, setIsDateReady] = useState(false);
   const token = useSelector((state) => state.user.token);
   const activeTripId = useSelector((state) => state.trips.activeTripId);
+  const dateInputRef = useRef(null);
+
+  const tripStartDate = useMemo(
+    () => new Date(trip.start_date),
+    [trip.start_date]
+  );
+  const tripEndDate = useMemo(() => new Date(trip.end_date), [trip.end_date]);
+  const minDateStr = useMemo(
+    () => format(tripStartDate, "yyyy-MM-dd"),
+    [tripStartDate]
+  );
+  const maxDateStr = useMemo(
+    () => format(tripEndDate, "yyyy-MM-dd"),
+    [tripEndDate]
+  );
+
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    (/iP(hone|ad|od)/.test(navigator.platform) ||
+      (navigator.userAgent.includes("Mac") && navigator.maxTouchPoints > 1));
+
+  const clampDateToRange = (dateStr) => {
+    if (!dateStr) return minDateStr;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return minDateStr;
+    if (d < tripStartDate) return minDateStr;
+    if (d > tripEndDate) return maxDateStr;
+    return format(d, "yyyy-MM-dd");
+  };
+
+  const primeDateValueForPicker = () => {
+    const target = clampDateToRange(formData.date);
+    // update DOM value immediately so iOS opens on the correct month
+    if (dateInputRef.current) {
+      dateInputRef.current.value = target;
+    }
+    // keep state in sync
+    setFormData((prev) => ({...prev, date: target}));
+  };
 
   useEffect(() => {
     if (item) {
@@ -45,13 +108,39 @@ export default function ItineraryForm({
         ...prev,
         date: format(new Date(selectedDate), "yyyy-MM-dd"),
       }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        date: format(parseISO(trip.start_date), "yyyy-MM-dd"),
-      }));
     }
-  }, [item, selectedDate, trip.start_date]);
+  }, [item, selectedDate]);
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      date: clampDateToRange(prev.date || minDateStr),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minDateStr, maxDateStr]);
+
+  useEffect(() => {
+    if (isIOS && dateInputRef.current) {
+      // Keep input non-interactive initially
+      setIsDateReady(false);
+
+      // Wait for modal animation and rendering to complete
+      const timer = setTimeout(() => {
+        // Set the correct clamped date value
+        primeDateValueForPicker();
+        // Ensure input is blurred (not focused)
+        dateInputRef.current?.blur();
+        // Now allow the input to be interactive
+        setIsDateReady(true);
+      }, 150);
+
+      return () => clearTimeout(timer);
+    } else {
+      // Non-iOS devices are ready immediately
+      setIsDateReady(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIOS]);
 
   const {mutate: saveItinerary} = useMutation({
     mutationFn: (data) =>
@@ -73,9 +162,7 @@ export default function ItineraryForm({
       newErrors.date = "Date is required";
     } else {
       const selectedDateObj = new Date(formData.date);
-      const tripStart = new Date(trip.start_date);
-      const tripEnd = new Date(trip.end_date);
-      if (selectedDateObj < tripStart || selectedDateObj > tripEnd) {
+      if (selectedDateObj < tripStartDate || selectedDateObj > tripEndDate) {
         newErrors.date = "Date must be within trip dates";
       }
     }
@@ -105,24 +192,17 @@ export default function ItineraryForm({
   };
 
   const handleDateChange = (e) => {
-    const selectedDate = e.target.value;
-    const selectedDateObj = new Date(selectedDate);
-    const tripStart = new Date(trip.start_date);
-    const tripEnd = new Date(trip.end_date);
-
-    // Validate date is within range
-    if (selectedDateObj < tripStart || selectedDateObj > tripEnd) {
+    const raw = e.target.value;
+    const clamped = clampDateToRange(raw);
+    if (clamped !== raw) {
       toast.error(
         `Please select a date between ${format(
-          tripStart,
+          tripStartDate,
           "MMM d, yyyy"
-        )} and ${format(tripEnd, "MMM d, yyyy")}`
+        )} and ${format(tripEndDate, "MMM d, yyyy")}`
       );
-      // Reset to trip start date if invalid
-      setFormData({...formData, date: format(tripStart, "yyyy-MM-dd")});
-    } else {
-      setFormData({...formData, date: selectedDate});
     }
+    setFormData({...formData, date: clamped});
   };
 
   const handleSubmit = (e) => {
@@ -139,7 +219,6 @@ export default function ItineraryForm({
     });
   };
 
-  // ===== 12-Hour Time Helpers =====
   const generate12HourTimes = () => {
     const times = [];
     for (let hour = 1; hour <= 12; hour++) {
@@ -170,7 +249,6 @@ export default function ItineraryForm({
     setFormData((prev) => ({...prev, [field]: time24}));
   };
 
-  // ===== Render Form =====
   return (
     <form id="itinerary" onSubmit={handleSubmit} className="space-y-6">
       {/* Date + Title */}
@@ -180,11 +258,19 @@ export default function ItineraryForm({
             Date *
           </label>
           <Input
-            type="date"
+            ref={dateInputRef}
+            type={isIOS && !isDateReady ? "text" : "date"}
+            inputMode={isIOS && !isDateReady ? "none" : undefined}
+            tabIndex={isIOS && !isDateReady ? -1 : 0}
+            autoComplete="off"
             value={formData.date}
             onChange={handleDateChange}
-            min={format(parseISO(trip.start_date), "yyyy-MM-dd")}
-            max={format(parseISO(trip.end_date), "yyyy-MM-dd")}
+            onFocus={primeDateValueForPicker}
+            onMouseDown={primeDateValueForPicker}
+            onTouchStart={primeDateValueForPicker}
+            min={minDateStr}
+            max={maxDateStr}
+            readOnly={isIOS && !isDateReady}
           />
           {formData.date && (
             <p className="text-sm text-blue-600 mt-1">
@@ -192,8 +278,8 @@ export default function ItineraryForm({
             </p>
           )}
           <p className="text-sm text-slate-500 mt-1">
-            Must be between {format(parseISO(trip.start_date), "MMM d, yyyy")} –{" "}
-            {format(parseISO(trip.end_date), "MMM d, yyyy")}
+            Must be between {format(tripStartDate, "MMM d, yyyy")} –{" "}
+            {format(tripEndDate, "MMM d, yyyy")}
           </p>
           {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
         </div>
