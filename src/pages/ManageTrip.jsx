@@ -1,10 +1,10 @@
-import React, {useState, useEffect} from "react";
-import {useNavigate} from "react-router-dom";
-import {createPageUrl} from "@/utils";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Textarea} from "@/components/ui/textarea";
-import {Label} from "@/components/ui/label";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
   Settings,
@@ -20,11 +20,11 @@ import {
   Image as ImageIcon,
   SaveIcon,
 } from "lucide-react";
-import {useMutation, useQuery} from "@tanstack/react-query";
-import {useSelector} from "react-redux";
-import {updateTripService, getTripByIdService} from "@/services/trip";
-import {toast} from "sonner";
-import {uploadToS3} from "@/utils/utils";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useSelector } from "react-redux";
+import { updateTripService, getTripByIdService } from "@/services/trip";
+import { toast } from "sonner";
+import { uploadToS3 } from "@/utils/utils";
 
 export default function ManageTrip() {
   const BASE_URL = import.meta.env.VITE_API_URL;
@@ -47,7 +47,7 @@ export default function ManageTrip() {
   const token = useSelector((state) => state.user.token);
 
   // 🔹 Fetch trip details
-  const {data: tripData, isLoading} = useQuery({
+  const { data: tripData, isLoading } = useQuery({
     queryKey: ["trip", tripId],
     queryFn: () => getTripByIdService(tripId, token),
     enabled: !!tripId && !!token,
@@ -75,8 +75,8 @@ export default function ManageTrip() {
   }, [tripData]);
 
   // 🔹 Update trip mutation
-  const {mutate, isLoading: isMutating} = useMutation({
-    mutationFn: ({formDataToSend, tripId, token}) =>
+  const { mutate, isLoading: isMutating } = useMutation({
+    mutationFn: ({ formDataToSend, tripId, token }) =>
       updateTripService(formDataToSend, tripId, token),
     onSuccess: (data) => {
       console.log("Trip Updated Successfully", data);
@@ -91,14 +91,14 @@ export default function ManageTrip() {
   });
 
   const updateFormData = (field, value) => {
-    setFormData((prev) => ({...prev, [field]: value}));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
   const getFileUrl = async (fileKey) => {
     const endpoint = `${BASE_URL}/files/signed-url/${fileKey}`;
 
     const res = await fetch(endpoint, {
       method: "GET",
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     if (!res.ok) {
       return null;
@@ -163,7 +163,7 @@ export default function ManageTrip() {
     }
   };
   useEffect(() => {
-    if (previewUrl===null || previewUrl=='null') return;
+    if (previewUrl === null || previewUrl == "null") return;
 
     const fetchFileUrl = async () => {
       try {
@@ -192,7 +192,7 @@ export default function ManageTrip() {
       formDataToSend.append("image", formData.image);
     }
     //
-    mutate({formDataToSend, tripId, token});
+    mutate({ formDataToSend, tripId, token });
   };
 
   if (isLoading) {
@@ -240,7 +240,7 @@ export default function ManageTrip() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-6">
+                <div className="flex flex-col md:flex-row md:items-center gap-6">
                   <div className="w-32 h-24 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
                     {url ? (
                       <img
@@ -257,16 +257,9 @@ export default function ManageTrip() {
                   </div>
                   <div className="flex-1">
                     <Label htmlFor="trip_image">Upload Trip Image</Label>
-                    {/* <Input
-                      id="trip_image"
-                      type="file"
-                      onChange={handleImageChange}
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      className="mt-2"
-                    /> */}
                     <input
                       type="file"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base cursor-pointer ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1 file:text-primary"
+                      className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base cursor-pointer ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1 file:text-primary"
                       onChange={handleImageChange}
                       id="profile_photo"
                       accept="image/jpeg,image/jpg,image/png,image/webp"

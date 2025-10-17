@@ -292,19 +292,16 @@ export default function Layout({children, currentPageName}) {
 
         <Sidebar className="border-r border-slate-200/60 bg-white/80 backdrop-blur-sm">
           <SidebarHeader className="border-b border-slate-200/60 p-6">
-            <div className="">
-              <div className="flex flex-col justify-center gap-2 -mt-2 items-start">
+              <div className="">
                 <img
-                  src="/assets/kasama-logo1.jpg"
+                  src="/assets/kasama-logo1.png"
                   alt="Kasama Logo"
-                  className="w-50 h-16 rounded-full"
                 />
                 {/* <div> */}
                 {/* <h2 className="font-bold text-xl text-slate-800">Kasama</h2> */}
                 {/* <p className="text-sm text-slate-500">Group Travel Planning</p> */}
                 {/* </div> */}
               </div>
-            </div>
             {tdata && tripId && (
               <div className="mt-4 p-3 bg-slate-50 rounded-lg">
                 <p className="text-sm font-medium text-slate-700">

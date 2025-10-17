@@ -41,7 +41,7 @@ const TripInvitePage = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success(res.data.message);
-        console.log('res?.data?.data?.id',res)
+        console.log("res?.data?.data?.id", res);
         localStorage.setItem("selectedTripId", res?.data?.data?.trip?.id); // save in localStorage
         navigate("/mytrips");
       } catch (err) {
@@ -80,6 +80,9 @@ const TripInvitePage = () => {
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
               <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-2xl w-full">
                 <div className="p-8">
+                  <div className="flex justify-center items-center">
+                    <img src="/assets/kasama-logo1.png" alt="Kasama Logo" className="w-80" />
+                  </div>
                   <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-slate-800 mb-2">
                       You're Invited!
