@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 /* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -71,8 +70,6 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 } */
-
-
 
 @layer base {
   :root {
@@ -146,7 +143,15 @@ button:focus-visible {
   }
 }
 
+/* Fix Radix scroll lock issue on mobile keyboard */
+body[data-scroll-locked] {
+  pointer-events: auto !important;
+}
 
+body[data-scroll-locked] > [data-radix-dialog-content] {
+  pointer-events: auto !important;
+  touch-action: pan-y !important;
+}
 
 @layer base {
   * {

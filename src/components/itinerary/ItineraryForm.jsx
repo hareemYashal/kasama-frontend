@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,36 +47,6 @@ export default function ItineraryForm({
       notes: item?.notes || "",
     };
   });
-
-useEffect(() => {
-  const handleFocus = (e) => {
-    const input = e.target;
-    if (input && typeof window !== "undefined") {
-      // Wait a bit for the keyboard to open
-      setTimeout(() => {
-        input.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 300);
-    }
-  };
-
-  const focusableElements = document.querySelectorAll(
-    "input, textarea, select"
-  );
-
-  focusableElements.forEach((el) =>
-    el.addEventListener("focus", handleFocus)
-  );
-
-  return () => {
-    focusableElements.forEach((el) =>
-      el.removeEventListener("focus", handleFocus)
-    );
-  };
-}, []);
-
 
   const [errors, setErrors] = useState({});
   const [isDateReady, setIsDateReady] = useState(false);
@@ -296,11 +267,7 @@ useEffect(() => {
   };
 
   return (
-    <form
-      id="itinerary"
-      onSubmit={handleSubmit}
-      className="space-y-6 max-h-[80vh] overflow-y-auto sm:overflow-visible px-1"
-    >
+    <form id="itinerary" onSubmit={handleSubmit} className="space-y-6">
       {/* Date + Title */}
       <div className="grid md:grid-cols-2 gap-6">
         <div>
