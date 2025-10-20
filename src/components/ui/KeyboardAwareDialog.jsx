@@ -28,6 +28,18 @@ export default function KeyboardAwareDialog({ open, onClose, title, children }) 
     };
   }, []);
 
+  // ✅ Disable background scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -81,6 +93,6 @@ export default function KeyboardAwareDialog({ open, onClose, title, children }) 
         </>
       )}
     </AnimatePresence>,
-    document.body // ✅ Mount directly under <body>, just like Radix
+    document.body
   );
 }
