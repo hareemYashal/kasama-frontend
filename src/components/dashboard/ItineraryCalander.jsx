@@ -453,7 +453,7 @@ const ItineraryCalander = () => {
       </div>
       {isAdmin && (
         <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
+          <DialogContent className="sm:max-w-[425px] p-0 max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y">
             <DialogHeader className="px-6 pt-6">
               <DialogTitle>
                 {editingItem ? "Edit Itinerary" : "Add New Itinerary Item"}
