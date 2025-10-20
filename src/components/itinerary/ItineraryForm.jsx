@@ -267,7 +267,11 @@ export default function ItineraryForm({
   };
 
   return (
-    <form id="itinerary" onSubmit={handleSubmit} className="space-y-6">
+    <form
+      id="itinerary"
+      onSubmit={handleSubmit}
+      className="space-y-6 max-h-[80vh] overflow-y-auto sm:overflow-visible px-1"
+    >
       {/* Date + Title */}
       <div className="grid md:grid-cols-2 gap-6">
         <div>
