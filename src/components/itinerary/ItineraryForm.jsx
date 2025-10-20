@@ -245,7 +245,7 @@ export default function ItineraryForm({
   };
 
   const format12Hour = (time24) => {
-    if (!time24) return { time: "12:00", ampm: "AM" };
+    if (!time24) return { time: "", ampm: "AM" }; // leave time empty initially
     let [hour, minute] = time24.split(":").map(Number);
     const ampm = hour >= 12 ? "PM" : "AM";
     hour = hour % 12 || 12;
@@ -319,7 +319,7 @@ export default function ItineraryForm({
       </div>
 
       {/* Start/End Times */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="flex flex-col gap-6">
         {/* Start Time */}
         <div>
           <label className="text-base font-semibold text-slate-700 mb-2 block">
@@ -335,14 +335,18 @@ export default function ItineraryForm({
                   format12Hour(formData.start_time).ampm
                 )
               }
-              className="border rounded-md px-3 py-2 w-full"
+              className="border rounded-md px-3 py-2 w-full text-sm"
             >
+              <option value="" disabled>
+                Select time
+              </option>
               {generate12HourTimes().map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
             </select>
+
             <select
               value={format12Hour(formData.start_time).ampm}
               onChange={(e) =>
@@ -352,7 +356,7 @@ export default function ItineraryForm({
                   e.target.value
                 )
               }
-              className="border rounded-md px-3 py-2 w-24"
+              className="border rounded-md px-3 py-2 w-24 text-sm"
             >
               <option value="AM">AM</option>
               <option value="PM">PM</option>
@@ -378,14 +382,18 @@ export default function ItineraryForm({
                   format12Hour(formData.end_time).ampm
                 )
               }
-              className="border rounded-md px-3 py-2 w-full"
+              className="border rounded-md px-3 py-2 w-full text-sm"
             >
+              <option value="" disabled>
+                Select time
+              </option>
               {generate12HourTimes().map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
             </select>
+
             <select
               value={format12Hour(formData.end_time).ampm}
               onChange={(e) =>
@@ -395,7 +403,7 @@ export default function ItineraryForm({
                   e.target.value
                 )
               }
-              className="border rounded-md px-3 py-2 w-24"
+              className="border rounded-md px-3 py-2 w-24 text-sm"
             >
               <option value="AM">AM</option>
               <option value="PM">PM</option>
