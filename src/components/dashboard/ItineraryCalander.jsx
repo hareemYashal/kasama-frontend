@@ -470,15 +470,7 @@ const ItineraryCalander = () => {
               </DialogTitle>
             </DialogHeader>
 
-            <div
-              className="p-6"
-              style={{
-                // This enables scroll *only when keyboard is open* (mobile behavior)
-                maxHeight: "calc(100dvh - 120px)",
-                overflowY: "auto",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
+            <div className="max-h-[calc(100dvh-100px)] overflow-y-auto overscroll-contain p-6">
               <ItineraryForm
                 trip={activeTrip}
                 item={editingItem}
