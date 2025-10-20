@@ -11,29 +11,13 @@ export default function KeyboardAwareDialog({
   title,
   children,
 }) {
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-
-    const handleResize = () => {
-      const offset = window.innerHeight - viewport.height;
-      setKeyboardOffset(offset > 0 ? offset : 0);
-    };
-
-    viewport.addEventListener("resize", handleResize);
-    viewport.addEventListener("scroll", handleResize);
-
-    return () => {
-      viewport.removeEventListener("resize", handleResize);
-      viewport.removeEventListener("scroll", handleResize);
-    };
   }, []);
 
-  // ✅ Lock body scroll when modal open
+  // ✅ Disable background scroll
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -59,25 +43,22 @@ export default function KeyboardAwareDialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* ✅ Backdrop stays static (no scroll) */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto" />
+          {/* ✅ Fullscreen backdrop (no scroll) */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
 
-          {/* ✅ Dialog container — scroll only inside here */}
+          {/* ✅ Centered Modal — stays fixed even with keyboard open */}
           <motion.div
             className="relative z-[9999] w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[90dvh]"
-            initial={{ y: 40, opacity: 0 }}
-            animate={{
-              y:
-                keyboardOffset > 0
-                  ? -Math.min(keyboardOffset * 0.3, 120)
-                  : 0,
-              opacity: 1,
-            }}
-            exit={{ y: 40, opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: "spring", damping: 20, stiffness: 200 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <h2 className="text-lg font-semibold">{title}</h2>
               <button
                 onClick={onClose}
@@ -87,13 +68,8 @@ export default function KeyboardAwareDialog({
               </button>
             </div>
 
-            {/* ✅ Only this part scrolls */}
-            <div
-              className="p-6 overflow-y-auto"
-              style={{
-                maxHeight: `calc(100dvh - ${keyboardOffset + 150}px)`,
-              }}
-            >
+            {/* ✅ Only inner form scrolls */}
+            <div className="flex-1 overflow-y-auto p-6">
               {children}
             </div>
           </motion.div>
