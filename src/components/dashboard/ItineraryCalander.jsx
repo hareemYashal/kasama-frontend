@@ -44,6 +44,7 @@ import {
   updateItineraryService,
 } from "@/services/itinerary";
 import { toast } from "sonner";
+import KeyboardAwareDialog from "../ui/KeyboardAwareDialog";
 
 const ItineraryCalander = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -452,38 +453,22 @@ const ItineraryCalander = () => {
         </div>
       </div>
       {isAdmin && (
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent
-            className="sm:max-w-[425px] p-0"
-            style={{
-              // Default: no scroll
-              overflowY: "visible",
-              maxHeight: "none",
-
-              // Add adaptive behavior for mobile
-              height: "auto",
-            }}
-          >
-            <DialogHeader className="px-6 pt-6">
-              <DialogTitle>
-                {editingItem ? "Edit Itinerary" : "Add New Itinerary Item"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="max-h-[calc(100dvh-100px)] overflow-y-auto overscroll-contain p-6">
-              <ItineraryForm
-                trip={activeTrip}
-                item={editingItem}
-                formData={formData}
-                selectedDate={selectedDate}
-                setFormData={setFormData}
-                onCancel={() => setShowForm(false)}
-                setShowForm={setShowForm}
-                refetch={refetch}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <KeyboardAwareDialog
+          open={showForm}
+          onClose={() => setShowForm(false)}
+          title={editingItem ? "Edit Itinerary" : "Add New Itinerary Item"}
+        >
+          <ItineraryForm
+            trip={activeTrip}
+            item={editingItem}
+            formData={formData}
+            selectedDate={selectedDate}
+            setFormData={setFormData}
+            onCancel={() => setShowForm(false)}
+            setShowForm={setShowForm}
+            refetch={refetch}
+          />
+        </KeyboardAwareDialog>
       )}
     </div>
   );
