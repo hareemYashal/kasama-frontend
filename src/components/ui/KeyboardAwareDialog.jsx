@@ -51,7 +51,7 @@ export default function KeyboardAwareDialog({
 
           {/* ✅ Centered Modal — stays fixed even with keyboard open */}
           <motion.div
-            className="relative z-[9999] w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[90dvh]"
+            className="relative z-[9999] w-[90%] sm:w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-dvh  mx-auto my-6 sm:my-10"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -69,9 +69,7 @@ export default function KeyboardAwareDialog({
             </div>
 
             {/* ✅ Only inner form scrolls */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto p-6">{children}</div>
           </motion.div>
         </motion.div>
       )}
