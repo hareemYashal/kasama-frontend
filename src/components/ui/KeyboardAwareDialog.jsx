@@ -5,7 +5,12 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
-export default function KeyboardAwareDialog({ open, onClose, title, children }) {
+export default function KeyboardAwareDialog({
+  open,
+  onClose,
+  title,
+  children,
+}) {
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [mounted, setMounted] = useState(false);
 
@@ -62,12 +67,15 @@ export default function KeyboardAwareDialog({ open, onClose, title, children }) 
             initial={{ opacity: 0, y: 40 }}
             animate={{
               opacity: 1,
-              y: keyboardOffset > 0 ? -keyboardOffset / 2 : 0,
+              y:
+                keyboardOffset > 0
+                  ? -Math.min(keyboardOffset * 0.3, 120) // limit upward movement
+                  : 0,
             }}
             exit={{ opacity: 0, y: 40 }}
             transition={{ type: "spring", damping: 20, stiffness: 200 }}
           >
-            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[90dvh] overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-semibold">{title}</h2>
@@ -80,10 +88,11 @@ export default function KeyboardAwareDialog({ open, onClose, title, children }) 
               </div>
 
               {/* Scrollable Content */}
+              {/* Fixed height wrapper (modal stays fixed, only content scrolls) */}
               <div
-                className="overflow-y-auto overscroll-contain p-6"
+                className="p-6 overflow-y-auto"
                 style={{
-                  maxHeight: `calc(100dvh - ${keyboardOffset + 120}px)`,
+                  maxHeight: `calc(100dvh - ${keyboardOffset + 150}px)`,
                 }}
               >
                 {children}
