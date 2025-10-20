@@ -454,21 +454,31 @@ const ItineraryCalander = () => {
       {isAdmin && (
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent
-            className="sm:max-w-[425px] p-0 max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y"
+            className="sm:max-w-[425px] p-0"
             style={{
-              WebkitOverflowScrolling: "touch",
-              overflowY: "auto",
-              height: "100%",
-              maxHeight: "calc(100dvh - 20px)",
+              // Default: no scroll
+              overflowY: "visible",
+              maxHeight: "none",
+
+              // Add adaptive behavior for mobile
+              height: "auto",
             }}
           >
-            {" "}
             <DialogHeader className="px-6 pt-6">
               <DialogTitle>
                 {editingItem ? "Edit Itinerary" : "Add New Itinerary Item"}
               </DialogTitle>
             </DialogHeader>
-            <div className="p-6">
+
+            <div
+              className="p-6"
+              style={{
+                // This enables scroll *only when keyboard is open* (mobile behavior)
+                maxHeight: "calc(100dvh - 120px)",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               <ItineraryForm
                 trip={activeTrip}
                 item={editingItem}

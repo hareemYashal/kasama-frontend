@@ -143,14 +143,8 @@ button:focus-visible {
   }
 }
 
-/* Fix Radix scroll lock issue on mobile keyboard */
 body[data-scroll-locked] {
   pointer-events: auto !important;
-}
-
-body[data-scroll-locked] > [data-radix-dialog-content] {
-  pointer-events: auto !important;
-  touch-action: pan-y !important;
 }
 
 @layer base {
