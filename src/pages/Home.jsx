@@ -15,7 +15,7 @@ export default function Home() {
   // ✅ Auto redirect if logged in
   useEffect(() => {
     if (user) {
-      navigate("/mytrips");
+      navigate("/DashboardHome");
     }
   }, [user, navigate]);
 

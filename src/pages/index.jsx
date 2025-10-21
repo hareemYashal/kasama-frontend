@@ -39,11 +39,13 @@ import { useSelector } from "react-redux";
 import KasamaTips from "./KasamaTips.jsx";
 import TripInvitePage from "./TripInvitePage.jsx";
 import SocketListener from "@/sockets/SocketListener.jsx";
+import DashboardHome from "./DashboardHome.jsx";
 
 // Pages mapping (for Layout)
 const PAGES = {
   // TripCreation: TripCreation,
   Home,
+  DashboardHome,
   Dashboard,
   JoinTrip,
   Itinerary,
@@ -108,6 +110,15 @@ function PagesContent() {
           <Route path="/emailSuccess" element={<EmailVerifiedPage />} />
           <Route path="/JoinTrip" element={<JoinTrip />} />
           {/* Protected routes */}
+          <Route
+            path="/dashboardHome"
+            element={
+              <PrivateRoute>
+                <DashboardHome />
+              </PrivateRoute>
+            }
+          />
+
           <Route
             path="/tripSelection"
             element={
@@ -270,7 +281,7 @@ function PagesContent() {
             }
           />
 
-           <Route
+          <Route
             path="/Notifications"
             element={
               <PrivateRoute>

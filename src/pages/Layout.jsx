@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from "react";
-import {Link, useLocation, useNavigate} from "react-router-dom";
-import {createPageUrl} from "@/utils";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 import {
   Sidebar,
@@ -16,7 +16,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {getFileUrl} from "@/services/expense";
+import { getFileUrl } from "@/services/expense";
 import {
   Dialog,
   DialogContent,
@@ -46,18 +46,18 @@ import {
   Lightbulb, // Added Briefcase icon
 } from "lucide-react";
 
-import {useDispatch} from "react-redux";
-import {setUserRed} from "./../store/userSlice";
-import {useSelector} from "react-redux";
-import {setActiveTripId} from "@/store/tripSlice";
-import {getTripService} from "@/services/trip";
-import {useQuery} from "@tanstack/react-query";
-import {Badge} from "@/components/ui/badge";
-import {getProfileService} from "@/services/profile";
+import { useDispatch } from "react-redux";
+import { setUserRed } from "./../store/userSlice";
+import { useSelector } from "react-redux";
+import { setActiveTripId } from "@/store/tripSlice";
+import { getTripService } from "@/services/trip";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { getProfileService } from "@/services/profile";
 import BackButton from "@/components/ui/BackButton";
-import {getNotificationsService} from "@/services/notification";
-import {addNotification} from "@/store/notificationSlice";
-import {io} from "socket.io-client";
+import { getNotificationsService } from "@/services/notification";
+import { addNotification } from "@/store/notificationSlice";
+import { io } from "socket.io-client";
 import {
   setNotifications,
   markAsRead,
@@ -66,7 +66,7 @@ import {
 import MobileNotifications from "@/components/dashboard/MobileNotifications";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-export default function Layout({children, currentPageName}) {
+export default function Layout({ children, currentPageName }) {
   const dispatch = useDispatch();
 
   const user = useSelector((state) => state.user.user);
@@ -77,13 +77,13 @@ export default function Layout({children, currentPageName}) {
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
   const tripId = useSelector((state) => state.trips.activeTripId);
   // Optional: local fetch for recent notifications (fallback if store does not hold list)
-
+console.log('tripId<><><>',tripId)
   const location = useLocation();
   const navigate = useNavigate();
 
   const token = useSelector((state) => state.user.token);
 
-  const {data: tripData, isLoading: isLoadingTripData} = useQuery({
+  const { data: tripData, isLoading: isLoadingTripData } = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -101,7 +101,7 @@ export default function Layout({children, currentPageName}) {
     loadDummyUserAndTrip();
   }, [currentPageName]);
 
-  const {data: profileData, isLoading} = useQuery({
+  const { data: profileData, isLoading } = useQuery({
     queryKey: ["profile"],
     queryFn: () => getProfileService(token),
     enabled: !!token, // only fetch if token exists
@@ -124,7 +124,7 @@ export default function Layout({children, currentPageName}) {
   useEffect(() => {
     if (!tripId || !token) return;
 
-    const socket = io(BASE_URL, {auth: {token}});
+    const socket = io(BASE_URL, { auth: { token } });
     socket.emit("joinTrip", tripId);
 
     socket.on("newNotification", (notif) => {
@@ -193,22 +193,22 @@ export default function Layout({children, currentPageName}) {
   // Navigation items based on role
 
   const adminNavItems = [
-    {title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin},
+    { title: "Dashboard", url: createPageUrl("Dashboard"), icon: MapPin },
     {
       title: "Trip Settings",
       url: createPageUrl("ManageTrip"),
       icon: Settings,
     },
-    {title: "Participants", url: createPageUrl("Participants"), icon: Users},
+    { title: "Participants", url: createPageUrl("Participants"), icon: Users },
     // {
     //   title: "Participants Invitation",
     //   url: createPageUrl("ParticipantsManagment"),
     //   icon: Users,
     // },
-    {title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard},
-    {title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar},
-    {title: "Make a Payment", url: createPageUrl("Payments"), icon: Send},
-    {title: "Notifications", url: createPageUrl("Notifications"), icon: Bell},
+    { title: "Expenses", url: createPageUrl("Expenses"), icon: CreditCard },
+    { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
+    { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
+    { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
 
   const participantNavItems = [
@@ -217,12 +217,12 @@ export default function Layout({children, currentPageName}) {
       url: createPageUrl("ParticipantDashboard"),
       icon: MapPin,
     },
-    {title: "Participants", url: createPageUrl("Participants"), icon: Users},
+    { title: "Participants", url: createPageUrl("Participants"), icon: Users },
     // { title: "Itinerary", url: createPageUrl("Itinerary"), icon: Calendar },
-    {title: "Make a Payment", url: createPageUrl("Payments"), icon: Send},
-    {title: "Notifications", url: createPageUrl("Notifications"), icon: Bell},
+    { title: "Make a Payment", url: createPageUrl("Payments"), icon: Send },
+    { title: "Notifications", url: createPageUrl("Notifications"), icon: Bell },
   ];
-  const {data: notificationsData} = useQuery({
+  const { data: notificationsData } = useQuery({
     queryKey: ["notifications", tripId, token],
     queryFn: () => getNotificationsService(tripId, token),
     enabled: !!token && !!tripId,
@@ -240,8 +240,8 @@ export default function Layout({children, currentPageName}) {
       url: createPageUrl("Tips"),
       icon: Lightbulb,
     },
-    {title: "Help", url: createPageUrl("Help"), icon: HelpCircle},
-    {title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare},
+    { title: "Help", url: createPageUrl("Help"), icon: HelpCircle },
+    { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
   ];
   let navigationItems = [];
 
@@ -292,16 +292,9 @@ export default function Layout({children, currentPageName}) {
 
         <Sidebar className="border-r border-slate-200/60 bg-white/80 backdrop-blur-sm">
           <SidebarHeader className="border-b border-slate-200/60 p-6">
-              <div className="">
-                <img
-                  src="/assets/kasama-logo1.png"
-                  alt="Kasama Logo"
-                />
-                {/* <div> */}
-                {/* <h2 className="font-bold text-xl text-slate-800">Kasama</h2> */}
-                {/* <p className="text-sm text-slate-500">Group Travel Planning</p> */}
-                {/* </div> */}
-              </div>
+            <Link to={'/DashboardHome'}>
+              <img src="/assets/kasama-logo1.png" alt="Kasama Logo" />
+            </Link>
             {tdata && tripId && (
               <div className="mt-4 p-3 bg-slate-50 rounded-lg">
                 <p className="text-sm font-medium text-slate-700">

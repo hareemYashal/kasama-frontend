@@ -24,7 +24,7 @@ const BackButton = ({ closeModal }) => {
       navigate(createPageUrl(page));
     } else {
       // Redirect to My Trips if no tripId
-      navigate("/mytrips");
+      navigate("/DashboardHome");
     }
   };
 

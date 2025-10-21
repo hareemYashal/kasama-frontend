@@ -166,7 +166,7 @@ export default function RegisterPage() {
             navigate("/mytrips");
           }
         } else {
-          navigate("/mytrips");
+          navigate("/DashboardHome");
         }
       } catch (err) {
         console.error("Google registration failed:", err);

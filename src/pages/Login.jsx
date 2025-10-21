@@ -91,8 +91,6 @@ export default function LoginPage({ onNavigate }) {
           toast.success(
             res.data.message || "You’ve successfully joined the trip!"
           );
-          console.log("ssssssssssssssssssssss", res?.data);
-
           localStorage.setItem("selectedTripId", res?.data?.data?.trip?.id); // save in localStorage
         } catch (err) {
           console.error(err);
@@ -103,7 +101,7 @@ export default function LoginPage({ onNavigate }) {
         }
       } else {
         // normal flow
-        navigate("/mytrips");
+        navigate("/DashboardHome");
       }
     },
     onError: (error) => {
@@ -160,7 +158,7 @@ export default function LoginPage({ onNavigate }) {
             navigate("/mytrips");
           }
         } else {
-          navigate("/mytrips");
+          navigate("/DashboardHome");
         }
       } catch (err) {
         console.error("Google login failed:", err);
@@ -208,7 +206,7 @@ export default function LoginPage({ onNavigate }) {
 
   useEffect(() => {
     if (user) {
-      navigate("/mytrips");
+      navigate("/DashboardHome");
     }
   }, [user, navigate]);
 
