@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react";
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,125 +22,135 @@ export default function ItineraryForm({
   refetch,
   selectedDate,
 }) {
-  const [formData, setFormData] = useState(() => {
-    // Compute initial date from props and clamp within trip range
-    const start = new Date(trip.start_date);
-    const end = new Date(trip.end_date);
-    let initial = item?.date
-      ? new Date(item.date)
-      : selectedDate
-      ? new Date(selectedDate)
-      : new Date(trip.start_date);
-
-    if (isNaN(initial.getTime())) initial = start;
-    if (initial < start) initial = start;
-    if (initial > end) initial = end;
-
-    return {
-      date: format(initial, "yyyy-MM-dd"),
-      start_time: item?.start_time
-        ? format(new Date(item.start_time), "HH:mm")
-        : "",
-      end_time: item?.end_time ? format(new Date(item.end_time), "HH:mm") : "",
-      activity_title: item?.activity_title || "",
-      notes: item?.notes || "",
-    };
-  });
-
-  const [errors, setErrors] = useState({});
-  const [isDateReady, setIsDateReady] = useState(false);
   const token = useSelector((state) => state.user.token);
   const activeTripId = useSelector((state) => state.trips.activeTripId);
   const dateInputRef = useRef(null);
 
-  const tripStartDate = useMemo(
-    () => new Date(trip.start_date),
-    [trip.start_date]
-  );
-  const tripEndDate = useMemo(() => new Date(trip.end_date), [trip.end_date]);
-  const minDateStr = useMemo(
-    () => format(tripStartDate, "yyyy-MM-dd"),
-    [tripStartDate]
-  );
-  const maxDateStr = useMemo(
-    () => format(tripEndDate, "yyyy-MM-dd"),
-    [tripEndDate]
-  );
+  // ---------- Date setup ----------
+  const tripStart = useMemo(() => new Date(trip.start_date), [trip.start_date]);
+  const tripEnd = useMemo(() => new Date(trip.end_date), [trip.end_date]);
+  const minDate = format(tripStart, "yyyy-MM-dd");
+  const maxDate = format(tripEnd, "yyyy-MM-dd");
 
+  const clampDate = (date) => {
+    if (!date) return minDate;
+    const d = new Date(date);
+    if (d < tripStart) return minDate;
+    if (d > tripEnd) return maxDate;
+    return format(d, "yyyy-MM-dd");
+  };
+
+  // ---------- Initialize form ----------
+  const [formData, setFormData] = useState({
+    date: clampDate(item?.date || selectedDate || trip.start_date),
+    start_time: item?.start_time
+      ? format(new Date(item.start_time), "HH:mm")
+      : "",
+    end_time: item?.end_time ? format(new Date(item.end_time), "HH:mm") : "",
+    activity_title: item?.activity_title || "",
+    notes: item?.notes || "",
+  });
+
+  const [errors, setErrors] = useState({});
+  const [isDateReady, setIsDateReady] = useState(false);
+
+  // ---------- iOS date picker fix ----------
   const isIOS =
     typeof navigator !== "undefined" &&
     (/iP(hone|ad|od)/.test(navigator.platform) ||
       (navigator.userAgent.includes("Mac") && navigator.maxTouchPoints > 1));
 
-  const clampDateToRange = (dateStr) => {
-    if (!dateStr) return minDateStr;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return minDateStr;
-    if (d < tripStartDate) return minDateStr;
-    if (d > tripEndDate) return maxDateStr;
-    return format(d, "yyyy-MM-dd");
-  };
-
-  const primeDateValueForPicker = () => {
-    const target = clampDateToRange(formData.date);
-    // update DOM value immediately so iOS opens on the correct month
-    if (dateInputRef.current) {
-      dateInputRef.current.value = target;
-    }
-    // keep state in sync
-    setFormData((prev) => ({ ...prev, date: target }));
-  };
-
-  useEffect(() => {
-    if (item) {
-      setFormData({
-        date: item.date ? format(new Date(item.date), "yyyy-MM-dd") : "",
-        start_time: item.start_time
-          ? format(new Date(item.start_time), "HH:mm")
-          : "",
-        end_time: item.end_time ? format(new Date(item.end_time), "HH:mm") : "",
-        activity_title: item.activity_title || "",
-        notes: item.notes || "",
-      });
-    } else if (selectedDate) {
-      setFormData((prev) => ({
-        ...prev,
-        date: format(new Date(selectedDate), "yyyy-MM-dd"),
-      }));
-    }
-  }, [item, selectedDate]);
-
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      date: clampDateToRange(prev.date || minDateStr),
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minDateStr, maxDateStr]);
-
   useEffect(() => {
     if (isIOS && dateInputRef.current) {
-      // Keep input non-interactive initially
       setIsDateReady(false);
-
-      // Wait for modal animation and rendering to complete
       const timer = setTimeout(() => {
-        // Set the correct clamped date value
-        primeDateValueForPicker();
-        // Ensure input is blurred (not focused)
+        dateInputRef.current.value = formData.date;
         dateInputRef.current?.blur();
-        // Now allow the input to be interactive
         setIsDateReady(true);
       }, 150);
-
       return () => clearTimeout(timer);
-    } else {
-      // Non-iOS devices are ready immediately
-      setIsDateReady(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIOS]);
+    } else setIsDateReady(true);
+  }, [isIOS, formData.date]);
 
+  // ---------- Change handlers ----------
+  const handleChange = (key, value) =>
+    setFormData((prev) => ({ ...prev, [key]: value }));
+
+  const handleDateChange = (e) => {
+    const value = e.target.value;
+    const clamped = clampDate(value);
+    if (clamped !== value)
+      toast.error(
+        `Please select a date between ${format(
+          tripStart,
+          "MMM d, yyyy"
+        )} and ${format(tripEnd, "MMM d, yyyy")}`
+      );
+    handleChange("date", clamped);
+  };
+
+  // ---------- Time format helpers ----------
+  const format12Hour = (time24) => {
+    if (!time24) return { time: "", ampm: "AM" };
+    let [h, m] = time24.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return { time: `${h}:${m.toString().padStart(2, "0")}`, ampm };
+  };
+
+  const to24Hour = (time, ampm) => {
+    let [h, m] = time.split(":").map(Number);
+    if (ampm === "PM" && h !== 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  };
+
+  const handleTimeChange = (field, time, ampm) => {
+    handleChange(field, to24Hour(time, ampm));
+  };
+
+  // ---------- Time generator ----------
+  const generateTimes = () => {
+    const arr = [];
+    for (let h = 1; h <= 12; h++)
+      for (const m of ["00", "15", "30", "45"]) arr.push(`${h}:${m}`);
+    return arr;
+  };
+
+  // ---------- Validation ----------
+  const validate = () => {
+    const errs = {};
+    const { date, start_time, end_time, activity_title, notes } = formData;
+
+    if (!date) errs.date = "Date is required";
+    const d = new Date(date);
+    if (d < tripStart || d > tripEnd)
+      errs.date = "Date must be within trip dates";
+
+    if (!activity_title.trim()) errs.activity_title = "Title is required";
+    else if (activity_title.trim().length < 3)
+      errs.activity_title = "Title must be at least 3 characters";
+
+    if (!start_time) errs.start_time = "Start time is required";
+    if (!end_time) errs.end_time = "End time is required";
+
+    if (start_time && end_time) {
+      const start = new Date(`${date}T${start_time}`);
+      const end = new Date(`${date}T${end_time}`);
+      if (start_time === end_time)
+        errs.end_time = "End time cannot be same as start";
+      else if (end <= start) end.setDate(end.getDate() + 1);
+      if ((end - start) / (1000 * 60 * 60) > 24)
+        errs.end_time = "Duration cannot exceed 24 hours";
+    }
+
+    if (notes?.length > 500) errs.notes = "Notes cannot exceed 500 characters";
+
+    setErrors(errs);
+    return !Object.keys(errs).length;
+  };
+
+  // ---------- API mutation ----------
   const { mutate: saveItinerary } = useMutation({
     mutationFn: (data) =>
       item
@@ -155,120 +164,17 @@ export default function ItineraryForm({
     onError: () => toast.error("Failed to save itinerary"),
   });
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.date) {
-      newErrors.date = "Date is required";
-    } else {
-      const selectedDateObj = new Date(formData.date);
-      if (selectedDateObj < tripStartDate || selectedDateObj > tripEndDate) {
-        newErrors.date = "Date must be within trip dates";
-      }
-    }
-
-    if (!formData.activity_title.trim()) {
-      newErrors.activity_title = "Title is required";
-    } else if (formData.activity_title.trim().length < 3) {
-      newErrors.activity_title = "Title must be at least 3 characters";
-    }
-
-    if (!formData.start_time) newErrors.start_time = "Start time is required";
-    if (!formData.end_time) newErrors.end_time = "End time is required";
-
-    if (formData.start_time && formData.end_time) {
-      const start = new Date(`${formData.date}T${formData.start_time}`);
-      let end = new Date(`${formData.date}T${formData.end_time}`);
-
-      // If end time equals start time — ❌ not allowed
-      if (formData.start_time === formData.end_time) {
-        newErrors.end_time = "End time cannot be the same as start time";
-      } else {
-        // ✅ Allow crossing midnight (e.g., 9:30 PM → 12:30 AM)
-        if (end <= start) {
-          end.setDate(end.getDate() + 1);
-        }
-
-        // ⏱️ Duration check (optional but good practice)
-        const durationHours = (end - start) / (1000 * 60 * 60);
-        if (durationHours > 24) {
-          newErrors.end_time =
-            "End time cannot be more than 24 hours after start time";
-        }
-      }
-    }
-
-    if (formData.notes && formData.notes.length > 500) {
-      newErrors.notes = "Notes cannot exceed 500 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleDateChange = (e) => {
-    const raw = e.target.value;
-    const clamped = clampDateToRange(raw);
-    if (clamped !== raw) {
-      toast.error(
-        `Please select a date between ${format(
-          tripStartDate,
-          "MMM d, yyyy"
-        )} and ${format(tripEndDate, "MMM d, yyyy")}`
-      );
-    }
-    setFormData({ ...formData, date: clamped });
-  };
-
+  // ---------- Submit ----------
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-
-    saveItinerary({
-      date: formData.date,
-      start_time: formData.start_time,
-      end_time: formData.end_time,
-      activity_title: formData.activity_title,
-      notes: formData.notes,
-      tripId: activeTripId,
-    });
+    if (!validate()) return;
+    saveItinerary({ ...formData, tripId: activeTripId });
   };
 
-  const generate12HourTimes = () => {
-    const times = [];
-    for (let hour = 1; hour <= 12; hour++) {
-      for (const minute of ["00", "15", "30", "45"]) {
-        times.push(`${hour}:${minute}`);
-      }
-    }
-    return times;
-  };
-
-  const format12Hour = (time24) => {
-    if (!time24) return { time: "", ampm: "AM" }; // leave time empty initially
-    let [hour, minute] = time24.split(":").map(Number);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    hour = hour % 12 || 12;
-    return { time: `${hour}:${minute.toString().padStart(2, "0")}`, ampm };
-  };
-
-  const to24Hour = (time, ampm) => {
-    let [hour, minute] = time.split(":").map(Number);
-    if (ampm === "PM" && hour !== 12) hour += 12;
-    if (ampm === "AM" && hour === 12) hour = 0;
-    return `${hour.toString().padStart(2, "0")}:${minute
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  const handleTimeChange = (field, time, ampm) => {
-    const time24 = to24Hour(time, ampm);
-    setFormData((prev) => ({ ...prev, [field]: time24 }));
-  };
-
+  // ---------- UI ----------
   return (
-    <form id="itinerary" onSubmit={handleSubmit} className="space-y-6">
-      {/* Date + Title */}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Date & Title */}
       <div className="grid md:grid-cols-2 gap-6">
         <div>
           <label className="text-base font-semibold text-slate-700 mb-2 block">
@@ -277,27 +183,19 @@ export default function ItineraryForm({
           <Input
             ref={dateInputRef}
             type={isIOS && !isDateReady ? "text" : "date"}
-            inputMode={isIOS && !isDateReady ? "none" : undefined}
-            tabIndex={isIOS && !isDateReady ? -1 : 0}
-            autoComplete="off"
             value={formData.date}
             onChange={handleDateChange}
-            onFocus={primeDateValueForPicker}
-            onMouseDown={primeDateValueForPicker}
-            onTouchStart={primeDateValueForPicker}
-            min={minDateStr}
-            max={maxDateStr}
+            onFocus={() => (dateInputRef.current.value = formData.date)}
+            min={minDate}
+            max={maxDate}
             readOnly={isIOS && !isDateReady}
           />
-          {formData.date && (
-            <p className="text-sm text-blue-600 mt-1">
-              Selected: {format(parseISO(formData.date), "MM/dd/yyyy")}
-            </p>
-          )}
           <p className="text-sm text-slate-500 mt-1">
-            Must be between {format(tripStartDate, "MMM d, yyyy")} –{" "}
-            {format(tripEndDate, "MMM d, yyyy")}
+            Must be between {format(tripStart, "MMM d, yyyy")} –{" "}
+            {format(tripEnd, "MMM d, yyyy")}
           </p>
+          {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
+
           {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
         </div>
 
@@ -307,10 +205,8 @@ export default function ItineraryForm({
           </label>
           <Input
             value={formData.activity_title}
-            onChange={(e) =>
-              setFormData({ ...formData, activity_title: e.target.value })
-            }
-            placeholder="e.g., Beach Day, City Tour, Dinner"
+            onChange={(e) => handleChange("activity_title", e.target.value)}
+            placeholder="e.g., City Tour, Dinner"
           />
           {errors.activity_title && (
             <p className="text-red-500 text-sm">{errors.activity_title}</p>
@@ -318,101 +214,46 @@ export default function ItineraryForm({
         </div>
       </div>
 
-      {/* Start/End Times */}
+      {/* Start / End time */}
       <div className="flex flex-col gap-6">
-        {/* Start Time */}
-        <div>
-          <label className="text-base font-semibold text-slate-700 mb-2 block">
-            Start Time *
-          </label>
-          <div className="flex gap-2">
-            <select
-              value={format12Hour(formData.start_time).time}
-              onChange={(e) =>
-                handleTimeChange(
-                  "start_time",
-                  e.target.value,
-                  format12Hour(formData.start_time).ampm
-                )
-              }
-              className="border rounded-md px-3 py-2 w-full text-sm"
-            >
-              <option value="" disabled>
-                Select time
-              </option>
-              {generate12HourTimes().map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={format12Hour(formData.start_time).ampm}
-              onChange={(e) =>
-                handleTimeChange(
-                  "start_time",
-                  format12Hour(formData.start_time).time,
-                  e.target.value
-                )
-              }
-              className="border rounded-md px-3 py-2 w-24 text-sm"
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </div>
-          {errors.start_time && (
-            <p className="text-red-500 text-sm">{errors.start_time}</p>
-          )}
-        </div>
-
-        {/* End Time */}
-        <div>
-          <label className="text-base font-semibold text-slate-700 mb-2 block">
-            End Time *
-          </label>
-          <div className="flex gap-2">
-            <select
-              value={format12Hour(formData.end_time).time}
-              onChange={(e) =>
-                handleTimeChange(
-                  "end_time",
-                  e.target.value,
-                  format12Hour(formData.end_time).ampm
-                )
-              }
-              className="border rounded-md px-3 py-2 w-full text-sm"
-            >
-              <option value="" disabled>
-                Select time
-              </option>
-              {generate12HourTimes().map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={format12Hour(formData.end_time).ampm}
-              onChange={(e) =>
-                handleTimeChange(
-                  "end_time",
-                  format12Hour(formData.end_time).time,
-                  e.target.value
-                )
-              }
-              className="border rounded-md px-3 py-2 w-24 text-sm"
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </div>
-          {errors.end_time && (
-            <p className="text-red-500 text-sm">{errors.end_time}</p>
-          )}
-        </div>
+        {["start_time", "end_time"].map((field) => {
+          const label = field === "start_time" ? "Start Time *" : "End Time *";
+          const formatted = format12Hour(formData[field]);
+          return (
+            <div key={field}>
+              <label className="text-base font-semibold text-slate-700 mb-2 block">
+                {label}
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={formatted.time}
+                  onChange={(e) =>
+                    handleTimeChange(field, e.target.value, formatted.ampm)
+                  }
+                  className="border rounded-md px-3 py-2 w-full text-sm"
+                >
+                  <option value="">Select time</option>
+                  {generateTimes().map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+                <select
+                  value={formatted.ampm}
+                  onChange={(e) =>
+                    handleTimeChange(field, formatted.time, e.target.value)
+                  }
+                  className="border rounded-md px-3 py-2 w-24 text-sm"
+                >
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+              {errors[field] && (
+                <p className="text-red-500 text-sm">{errors[field]}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Notes */}
@@ -421,10 +262,10 @@ export default function ItineraryForm({
           Notes (Optional)
         </label>
         <Textarea
-          placeholder="Add any additional details, meeting points, or special instructions..."
+          placeholder="Add any details..."
           value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="flex w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none mt-2 border-slate-200 min-h-24"
+          onChange={(e) => handleChange("notes", e.target.value)}
+          className="min-h-24"
         />
         {errors.notes && <p className="text-red-500 text-sm">{errors.notes}</p>}
       </div>
