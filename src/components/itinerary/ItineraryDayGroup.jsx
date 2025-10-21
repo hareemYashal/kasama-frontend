@@ -11,6 +11,7 @@ import {
   FileText,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
 export default function ItineraryDayGroup({
   date,
@@ -21,6 +22,17 @@ export default function ItineraryDayGroup({
   onEdit,
   onDelete,
 }) {
+  // ✅ Helper: convert UTC timestamps to the viewer’s local timezone
+  const formatToLocalTime = (timeString, timeZone) => {
+    if (!timeString) return "";
+
+    const localDate = timeZone
+      ? fromZonedTime(timeString, timeZone)
+      : new Date(timeString);
+
+    return format(localDate, "h:mm a");
+  };
+
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-lg">
       <CardHeader
@@ -65,9 +77,15 @@ export default function ItineraryDayGroup({
                       <p className="font-semibold text-slate-800">
                         {item.activity_title}
                       </p>
+                      {/* ✅ Time converted to local timezone */}
                       <p className="text-sm text-blue-600 font-medium">
-                        {format(new Date(item.start_time), "h:mm a")} -{" "}
-                        {format(new Date(item.end_time), "h:mm a")}
+                        {`${formatToLocalTime(
+                          item.start_time,
+                          item.timeZone
+                        )} - ${formatToLocalTime(
+                          item.end_time,
+                          item.timeZone
+                        )}`}
                       </p>
                     </div>
                     {isAdmin && (

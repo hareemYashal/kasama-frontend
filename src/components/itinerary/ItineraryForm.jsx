@@ -12,6 +12,7 @@ import {
   updateItineraryService,
 } from "@/services/itinerary";
 import { format, parseISO } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 import { Save, X } from "lucide-react";
 
 export default function ItineraryForm({
@@ -168,7 +169,29 @@ export default function ItineraryForm({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    saveItinerary({ ...formData, tripId: activeTripId });
+
+    // 🧠 Detect the user’s timezone (auto)
+    // Detect the user’s timezone automatically
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Convert from the user's selected local date/time to UTC
+    const startUtc = fromZonedTime(
+      `${formData.date}T${formData.start_time}`,
+      timeZone
+    );
+    const endUtc = fromZonedTime(
+      `${formData.date}T${formData.end_time}`,
+      timeZone
+    );
+
+    const payload = {
+      ...formData,
+      start_time: startUtc.toISOString(),
+      end_time: endUtc.toISOString(),
+      tripId: activeTripId,
+    };
+
+    saveItinerary(payload);
   };
 
   // ---------- UI ----------

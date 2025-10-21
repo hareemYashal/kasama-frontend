@@ -2,6 +2,7 @@ import axiosInstance from "@/utils/axiosInstance";
 
 // ✅ Create Itinerary
 const createItineraryService = async (token, data) => {
+console.log('itinerarry data ',data)
   const response = await axiosInstance.post(`/itinerary/createItinerary`, data, {
     headers: { Authorization: `Bearer ${token}` },
   });

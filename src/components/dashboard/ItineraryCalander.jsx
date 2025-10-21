@@ -274,6 +274,7 @@ const ItineraryCalander = () => {
     return <div className="grid grid-cols-7 gap-1 mb-4">{days}</div>;
   };
 
+  console.log('activitiesForSelectedDay',activitiesForSelectedDay)
   const renderCells = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
@@ -392,6 +393,7 @@ const ItineraryCalander = () => {
             )}
           </div>
           <div className="space-y-3">
+
             {activitiesForSelectedDay.length > 0 ? (
               activitiesForSelectedDay.map((a) => (
                 <div key={a.id} className="bg-slate-50 rounded-lg p-3">
