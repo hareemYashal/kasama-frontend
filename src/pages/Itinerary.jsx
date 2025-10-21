@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import KeyboardAwareDialog from "@/components/ui/KeyboardAwareDialog";
 
 export default function Itinerary() {
   const navigate = useNavigate();
@@ -44,7 +45,8 @@ export default function Itinerary() {
   });
 
   const activeTrip = activeTripData?.data?.activeTrip;
-  const isAdmin = authUser?.trip_role === "creator" || authUser?.trip_role === "co-admin";
+  const isAdmin =
+    authUser?.trip_role === "creator" || authUser?.trip_role === "co-admin";
 
   // ✅ Get Itineraries
   const {
@@ -189,25 +191,19 @@ export default function Itinerary() {
 
         {/* Form */}
         {isAdmin && (
-          <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-6">
-                <DialogTitle>
-                  {editingItem ? "Edit Itinerary" : "Add New Itinerary Item"}
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="p-6">
-                <ItineraryForm
-                  trip={activeTrip}
-                  item={editingItem}
-                  onCancel={() => setShowForm(false)}
-                  setShowForm={setShowForm}
-                  refetch={refetch}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+          <KeyboardAwareDialog
+            open={showForm}
+            onClose={() => setShowForm(false)}
+            title={editingItem ? "Edit Itinerary" : "Add New Itinerary Item"}
+          >
+            <ItineraryForm
+              trip={activeTrip}
+              item={editingItem}
+              onCancel={() => setShowForm(false)}
+              setShowForm={setShowForm}
+              refetch={refetch}
+            />
+          </KeyboardAwareDialog>
         )}
 
         {/* Itinerary Groups */}
