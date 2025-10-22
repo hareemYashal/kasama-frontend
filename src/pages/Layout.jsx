@@ -77,7 +77,7 @@ export default function Layout({ children, currentPageName }) {
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
   const tripId = useSelector((state) => state.trips.activeTripId);
   // Optional: local fetch for recent notifications (fallback if store does not hold list)
-console.log('tripId<><><>',tripId)
+  console.log("tripId<><><>", tripId);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -235,12 +235,12 @@ console.log('tripId<><><>',tripId)
   const notifications =
     notificationsData?.notifications || notificationsData?.data || [];
   const commonNavItems = [
+        { title: "FAQ", url: createPageUrl("Help"), icon: HelpCircle },
     {
       title: "Tips for Using Kasama",
       url: createPageUrl("Tips"),
       icon: Lightbulb,
     },
-    { title: "Help", url: createPageUrl("Help"), icon: HelpCircle },
     { title: "Feedback", url: createPageUrl("Feedback"), icon: MessageSquare },
   ];
   let navigationItems = [];
@@ -292,7 +292,7 @@ console.log('tripId<><><>',tripId)
 
         <Sidebar className="border-r border-slate-200/60 bg-white/80 backdrop-blur-sm">
           <SidebarHeader className="border-b border-slate-200/60 p-6">
-            <Link to={'/DashboardHome'}>
+            <Link to={"/DashboardHome"}>
               <img src="/assets/kasama-logo1.png" alt="Kasama Logo" />
             </Link>
             {tdata && tripId && (
@@ -503,56 +503,105 @@ console.log('tripId<><><>',tripId)
                       <DialogTrigger asChild>
                         <SidebarMenuButton className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl mb-1 flex items-center gap-3 px-4 py-3 w-full text-left">
                           <Info className="w-4 h-4" />
-                          <span className="font-medium">About Kasama</span>
+                          <span className="font-medium">About</span>
                         </SidebarMenuButton>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-lg bg-white">
                         <DialogHeader>
                           <DialogTitle className="text-2xl font-bold text-slate-800">
-                            Why We Created Kasama
+                            <div className="flex flex-col space-y-1.5 text-center sm:text-left pb-6 border-b">
+                              <div className="flex justify-center items-center">
+                                <img
+                                  src="/assets/kasama-logo1.png"
+                                  alt="Kasama Logo"
+                                  className="h-16 object-contain"
+                                />
+                              </div>
+                            </div>
                           </DialogTitle>
                         </DialogHeader>
-                        <div className="py-4 space-y-4 text-slate-700">
+                        <div className="flex-1 overflow-y-auto space-y-4 text-slate-600 leading-relaxed py-6">
+                          <h3 className="text-center font-bold text-black text-sm tracking-widest uppercase">
+                            About
+                          </h3>
                           <p>
-                            <em>Kasama</em> is a Filipino word that means{" "}
-                            <strong>
-                              "companion," "ally," or "someone who is with you."
-                            </strong>
+                            Kasama was created to make planning group trips
+                            simple and stress-free. It’s built for people who
+                            just want to get things done — set the plan, collect
+                            funds, and go — without all the back-and-forth and
+                            confusion that usually comes with it.
                           </p>
                           <p>
-                            In Filipino, the phrase <strong>"magkasama"</strong>{" "}
-                            means <strong>"together"</strong> — side by side,
-                            united, with no one left behind.
-                          </p>
-                          <p>That meaning is at the heart of this platform.</p>
-                          <p>
-                            <strong>Kasama</strong> was created to make group
-                            travel easier, more transparent, and more meaningful
-                            — especially for those who value shared experiences.
-                            It helps friends, families, and communities{" "}
-                            <strong>
-                              plan trips, track contributions, manage expenses,
-                              and coordinate itineraries — all in one place.
-                            </strong>
+                            We’ve all been in group chats where plans fall
+                            apart, payments get lost, and no one knows who’s
+                            handling what. Kasama fixes that. It keeps
+                            everything in one place — from your goals and
+                            payments to your itinerary and updates — so the
+                            whole group stays on the same page.
                           </p>
                           <p>
-                            Inspired by the spirit of{" "}
-                            <strong>Filipino culture</strong> — where
-                            hospitality, loyalty, and togetherness are a way of
-                            life — Kasama is more than an app. It's a reminder
-                            that the journey is better when we go through it{" "}
-                            <strong>magkasama</strong>.
+                            At the end of the day, Kasama is about keeping
+                            people connected and accountable. It’s about making
+                            the process smoother, more transparent, and easier
+                            for everyone involved.
                           </p>
                         </div>
-                        <DialogFooter className="flex-col items-center justify-center text-center border-t pt-4 space-y-1 sm:justify-center">
-                          <p className="text-[11px] text-slate-400 font-light italic">
-                            Dedicated to Lotus aka "Dodi Girl" — 10/11/2009 –
-                            01/17/2025
-                          </p>
-                          <p className="text-[11px] text-slate-400 font-light italic">
-                            "Jesus said to him, 'I am the way, the truth, and
-                            the life.' – John 14:6"
-                          </p>
+
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 border-t py-6">
+                          <div className="space-y-2 w-full">
+                            <div className="flex items-start gap-2 text-xs text-slate-500 italic">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width={24}
+                                height={24}
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="lucide lucide-dog w-4 h-4 flex-shrink-0 mt-0.5"
+                              >
+                                <path d="M11.25 16.25h1.5L12 17z" />
+                                <path d="M16 14v.5" />
+                                <path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444a11.702 11.702 0 0 0-.493-3.309" />
+                                <path d="M8 14v.5" />
+                                <path d="M8.5 8.5c-.384 1.05-1.083 2.028-2.344 2.5-1.931.722-3.576-.297-3.656-1-.113-.994 1.177-6.53 4-7 1.923-.321 3.651.845 3.651 2.235A7.497 7.497 0 0 1 14 5.277c0-1.39 1.844-2.598 3.767-2.277 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5" />
+                              </svg>
+                              <div>
+                                <div>Dedicated to Lotus aka "Dodi Girl"</div>
+                                <div className="block md:inline whitespace-nowrap">
+                                  10/11/2009 – 01/17/2025
+                                </div>
+                              </div>
+                            </div>
+                            <div
+                         
+                              className="flex items-center gap-2 text-xs text-slate-500 italic"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width={24}
+                                height={24}
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="lucide lucide-book-text w-4 h-4 flex-shrink-0 mt-0.5"
+                               
+                              >
+                                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+                                <path d="M8 11h8" />
+                                <path d="M8 7h6" />
+                              </svg>
+                              <span
+                              >
+                                Ecclesiastes 4:9–10
+                              </span>
+                            </div>
+                          </div>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
