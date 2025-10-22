@@ -101,7 +101,7 @@ export default function LoginPage({ onNavigate }) {
         }
       } else {
         // normal flow
-        navigate("/DashboardHome");
+        navigate("/mytrips");
       }
     },
     onError: (error) => {
@@ -158,7 +158,7 @@ export default function LoginPage({ onNavigate }) {
             navigate("/mytrips");
           }
         } else {
-          navigate("/DashboardHome");
+          navigate("/mytrips");
         }
       } catch (err) {
         console.error("Google login failed:", err);
@@ -206,7 +206,7 @@ export default function LoginPage({ onNavigate }) {
 
   useEffect(() => {
     if (user) {
-      navigate("/DashboardHome");
+      navigate("/mytrips");
     }
   }, [user, navigate]);
 

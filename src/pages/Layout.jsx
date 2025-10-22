@@ -292,7 +292,7 @@ export default function Layout({ children, currentPageName }) {
 
         <Sidebar className="border-r border-slate-200/60 bg-white/80 backdrop-blur-sm">
           <SidebarHeader className="border-b border-slate-200/60 p-6">
-            <Link to={"/DashboardHome"}>
+            <Link to={"/mytrips"}>
               <img src="/assets/kasama-logo1.png" alt="Kasama Logo" />
             </Link>
             {tdata && tripId && (

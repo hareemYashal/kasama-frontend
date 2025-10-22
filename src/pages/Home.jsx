@@ -12,7 +12,7 @@ export default function Home() {
   // ✅ Auto redirect if logged in
   useEffect(() => {
     if (user) {
-      navigate("/DashboardHome");
+      navigate("/mytrips");
     }
   }, [user, navigate]);
 

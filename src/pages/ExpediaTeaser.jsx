@@ -22,7 +22,7 @@ export default function ExpediaTeaser() {
       const page = isAdmin ? "Dashboard" : "ParticipantDashboard";
       navigate(createPageUrl(page));
     } else {
-      navigate("/DashboardHome");
+      navigate("/mytrips");
     }
   };
 

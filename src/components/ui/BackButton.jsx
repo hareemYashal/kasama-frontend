@@ -11,7 +11,7 @@ const BackButton = ({ closeModal }) => {
   const authUser = useSelector((state) => state.user.user);
   const activeTripId = useSelector((state) => state.trips.activeTripId);
 
-  const tripId = activeTripId || JSON.parse(localStorage.getItem("activeTripId"));
+  const tripId = activeTripId
 
   const handleClick = () => {
     if (closeModal) closeModal();
@@ -24,7 +24,7 @@ const BackButton = ({ closeModal }) => {
       navigate(createPageUrl(page));
     } else {
       // Redirect to My Trips if no tripId
-      navigate("/DashboardHome");
+      navigate("/mytrips");
     }
   };
 
