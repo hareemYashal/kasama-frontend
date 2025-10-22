@@ -10,11 +10,11 @@ export default function Home() {
   const intervalRef = useRef(null);
 
   // ✅ Auto redirect if logged in
-  useEffect(() => {
-    if (user) {
-      navigate("/mytrips");
-    }
-  }, [user, navigate]);
+  // useEffect(() => {
+  //   if (user) {
+  //     navigate("/mytrips");
+  //   }
+  // }, [user, navigate]);
 
   // ✅ Auto-slide logic
   useEffect(() => {
@@ -52,7 +52,8 @@ export default function Home() {
   };
 
   const handleGetStarted = () => {
-    navigate("/register");
+    if (user) navigate("/mytrips");
+    else navigate("/register");
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axiosInstance from "@/utils/axiosInstance";
 import { useGoogleLogin } from "@react-oauth/google";
 import { loginWithGoogleService } from "@/services/auth"; // same service as in login
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setToken, setUserRed } from "@/store/userSlice";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -91,6 +91,8 @@ export default function RegisterPage() {
   };
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const user = useSelector((state) => state.user.user);
+
   const queryClient = useQueryClient();
   const { mutate, isPending } = useMutation({
     mutationFn: registerService,
@@ -225,6 +227,12 @@ export default function RegisterPage() {
       acceptTerms: true,
     });
   };
+
+  useEffect(() => {
+    if (user) {
+      navigate("/mytrips");
+    }
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">

@@ -124,7 +124,7 @@ export default function LoginPage({ onNavigate }) {
           access_token: tokenResponse.access_token,
         });
 
-        console.log('GOOGLEresp', resp)
+        console.log("GOOGLEresp", resp);
         // success flow identical to your current loginService success:
         toast.success(resp.data.message || "Login Successful");
         dispatch(setToken(resp.data.data.token));
@@ -217,12 +217,13 @@ export default function LoginPage({ onNavigate }) {
         <div className="text-center pb-8">
           {/* <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-8"> */}
           <div className="flex items-center justify-center">
-
-            <img
-              src="/assets/kasama-logo1.jpg"
-              alt="Kasama Logo"
-              className="w-50 h-16 rounded-full"
-            />
+            <Link to={"/"}>
+              <img
+                src="/assets/kasama-logo1.jpg"
+                alt="Kasama Logo"
+                className="w-50 h-16 rounded-full cursor-pointer"
+              />
+            </Link>
           </div>{" "}
           {/* </div> */}
           <div className="space-y-2 sm:space-y-3">
@@ -349,10 +350,11 @@ export default function LoginPage({ onNavigate }) {
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className={`pr-10 ${errors.password
+                    className={`pr-10 ${
+                      errors.password
                         ? "border-destructive focus:ring-destructive"
                         : ""
-                      }`}
+                    }`}
                   />
                   <button
                     type="button"
