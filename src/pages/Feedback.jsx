@@ -120,7 +120,7 @@ export default function FeedbackPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <BackButton />
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8 mt-5">
         <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-2xl">
