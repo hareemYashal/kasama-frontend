@@ -13,7 +13,7 @@ export default function ExpediaTeaser() {
   const activeTripId = useSelector((state) => state.trips.activeTripId);
 
   const tripId =
-    activeTripId || JSON.parse(localStorage.getItem("activeTripId"));
+    activeTripId
 
   const goto = () => {
     if (tripId) {
@@ -35,13 +35,13 @@ export default function ExpediaTeaser() {
             alt="Kasama Logo"
             className="h-14 md:h-20 object-contain"
           />
-          <span className="text-4xl md:text-6xl font-bold text-slate-700 opacity-80">
+          <span className="text-4xl md:text-5xl font-bold text-slate-700 opacity-80">
             X
           </span>
           <img
             src="assets/expedia-logo.png"
             alt="Expedia Logo"
-            className="h-16 md:h-20 object-contain"
+            className="h-12 md:h-16 object-contain"
           />
         </div>
 
@@ -50,12 +50,12 @@ export default function ExpediaTeaser() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, ease: "easeOut" }}
-          className="text-5xl md:text-7xl font-extrabold text-slate-800 mb-6"
+          className="text-4xl md:text-7xl font-extrabold text-slate-800 mb-6"
         >
           Coming Soon
         </motion.h1>
 
-        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-12">
+        <p className="text-md md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-12">
           Soon you’ll be able to use your saved contributions to book hotels,
           flights, and activities directly through our partnership with Expedia
           — all without leaving Kasama.

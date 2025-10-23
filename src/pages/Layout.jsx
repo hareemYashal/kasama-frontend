@@ -64,6 +64,7 @@ import {
   deleteNotification,
 } from "@/store/notificationSlice";
 import MobileNotifications from "@/components/dashboard/MobileNotifications";
+import KeyboardAwareDialog from "@/components/ui/KeyboardAwareDialog";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Layout({ children, currentPageName }) {
@@ -78,6 +79,8 @@ export default function Layout({ children, currentPageName }) {
   const tripId = useSelector((state) => state.trips.activeTripId);
   // Optional: local fetch for recent notifications (fallback if store does not hold list)
   console.log("tripId<><><>", tripId);
+  const [showDialog, setDialog] = useState(false);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -235,7 +238,7 @@ export default function Layout({ children, currentPageName }) {
   const notifications =
     notificationsData?.notifications || notificationsData?.data || [];
   const commonNavItems = [
-        { title: "FAQ", url: createPageUrl("Help"), icon: HelpCircle },
+    { title: "FAQ", url: createPageUrl("Help"), icon: HelpCircle },
     {
       title: "Tips for Using Kasama",
       url: createPageUrl("Tips"),
@@ -498,29 +501,23 @@ export default function Layout({ children, currentPageName }) {
                   </SidebarMenuItem>
 
                   {/* About Kasama Modal Trigger */}
+
                   <SidebarMenuItem>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <SidebarMenuButton className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl mb-1 flex items-center gap-3 px-4 py-3 w-full text-left">
-                          <Info className="w-4 h-4" />
-                          <span className="font-medium">About</span>
-                        </SidebarMenuButton>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg bg-white">
-                        <DialogHeader>
-                          <DialogTitle className="text-2xl font-bold text-slate-800">
-                            <div className="flex flex-col space-y-1.5 text-center sm:text-left pb-6 border-b">
-                              <div className="flex justify-center items-center">
-                                <img
-                                  src="/assets/kasama-logo1.png"
-                                  alt="Kasama Logo"
-                                  className="h-16 object-contain"
-                                />
-                              </div>
-                            </div>
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="flex-1 overflow-y-auto space-y-4 text-slate-600 leading-relaxed py-6">
+                    <SidebarMenuButton
+                      onClick={() => setDialog(true)} // ✅ This opens the dialog
+                      className="hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 rounded-xl mb-1 flex items-center gap-3 px-4 py-3 w-full text-left"
+                    >
+                      <Info className="w-4 h-4" />
+                      <span className="font-medium">About</span>
+                    </SidebarMenuButton>
+
+                    {showDialog && (
+                      <KeyboardAwareDialog
+                        open={showDialog}
+                        onClose={() => setDialog(false)}
+                        title=""
+                      >
+                        <div className="flex-1 overflow-y-auto space-y-4 text-slate-600 leading-relaxed pb-6">
                           <h3 className="text-center font-bold text-black text-sm tracking-widest uppercase">
                             About
                           </h3>
@@ -547,7 +544,7 @@ export default function Layout({ children, currentPageName }) {
                           </p>
                         </div>
 
-                        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 border-t py-6">
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 border-t py-6">
                           <div className="space-y-2 w-full">
                             <div className="flex items-start gap-2 text-xs text-slate-500 italic">
                               <svg
@@ -575,10 +572,7 @@ export default function Layout({ children, currentPageName }) {
                                 </div>
                               </div>
                             </div>
-                            <div
-                         
-                              className="flex items-center gap-2 text-xs text-slate-500 italic"
-                            >
+                            <div className="flex items-center gap-2 text-xs text-slate-500 italic">
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width={24}
@@ -590,21 +584,17 @@ export default function Layout({ children, currentPageName }) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 className="lucide lucide-book-text w-4 h-4 flex-shrink-0 mt-0.5"
-                               
                               >
                                 <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
                                 <path d="M8 11h8" />
                                 <path d="M8 7h6" />
                               </svg>
-                              <span
-                              >
-                                Ecclesiastes 4:9–10
-                              </span>
+                              <span>Ecclesiastes 4:9–10</span>
                             </div>
                           </div>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                        </div>
+                      </KeyboardAwareDialog>
+                    )}
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>

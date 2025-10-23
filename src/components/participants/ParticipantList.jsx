@@ -38,7 +38,7 @@ export default function ParticipantList({
         {participants?.length > 0 ? (
           participants.map((participant) => {
             const profile = participant?.user?.Profile;
-
+            console.log("profile", profile);
             return (
               <div
                 key={participant.id}
@@ -57,8 +57,8 @@ export default function ParticipantList({
                           e.target.parentNode.innerHTML = `
                             <span class='w-full h-full flex items-center justify-center bg-purple-500 text-white font-semibold'>
                               ${(
-                              participant?.user?.name?.[0] || "P"
-                            ).toUpperCase()}
+                                participant?.user?.name?.[0] || "P"
+                              ).toUpperCase()}
                             </span>`;
                         }}
                       />
@@ -80,7 +80,7 @@ export default function ParticipantList({
                         {/* Badges */}
                         <div className="flex items-center gap-x-1.5">
                           {/* Crown badge only for creator */}
-                          {participant?.userId === creatorId  && (
+                          {participant?.userId === creatorId && (
                             <div className="inline-flex items-center rounded-full border px-2.5 bg-amber-100 text-amber-800 border-amber-200 font-medium text-xs py-0.5">
                               <Crown className="w-3 h-3 mr-1" />
                               Admin
@@ -140,13 +140,13 @@ export default function ParticipantList({
                         <span className="truncate">
                           {profile?.birthday
                             ? new Date(profile?.birthday).toLocaleDateString(
-                              "en-US",
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              }
-                            )
+                                "en-US",
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                }
+                              )
                             : "Not provided"}
                         </span>
                       </div>
@@ -159,8 +159,8 @@ export default function ParticipantList({
                         <span className="font-medium">Emergency Contact:</span>
                         <div className="break-words text-xs leading-relaxed">
                           {profile?.emergency_contact_name ||
-                            profile?.emergency_contact_phone ||
-                            profile?.emergency_contact_relationship ? (
+                          profile?.emergency_contact_phone ||
+                          profile?.emergency_contact_relationship ? (
                             <>
                               {profile?.emergency_contact_name || "N/A"} •{" "}
                               {profile?.emergency_contact_phone || "N/A"} •{" "}
@@ -177,43 +177,53 @@ export default function ParticipantList({
                     {isAdmin && (
                       <>
                         <div className="mt-3 pt-3 border-t border-border/60">
-                          {profile?.passport_country &&
-                            profile?.passport_expiration &&
-                            profile?.passport_number ? (
+                          {profile?.passport_country ||
+                          profile?.passport_expiration ||
+                          profile?.passport_number ? (
                             <div className="space-y-1">
                               <p className="text-xs text-slate-400 italic">
                                 {profile?.travelDocument ||
                                   "Travel document details available"}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                <span className="font-medium">
-                                  Passport Number:
-                                </span>{" "}
-                                {profile?.passport_number}
-                              </p>
+
+                              {profile?.passport_number && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">
+                                    Passport Number:
+                                  </span>{" "}
+                                  {profile?.passport_number}
+                                </p>
+                              )}
+
+                              {profile?.passport_expiration && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">
+                                    Passport Expiry:
+                                  </span>{" "}
+                                  {new Date(
+                                    profile?.passport_expiration
+                                  ).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}
+                                </p>
+                              )}
+
+                              {profile?.passport_country && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">
+                                    Country of Issue:
+                                  </span>{" "}
+                                  {profile?.passport_country}
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <p className="text-xs text-slate-400 italic">
                               No travel document submitted.
                             </p>
                           )}
-                        </div>
-                        <div className="space-y-1">
-                          {profile?.passport_expiration &&
-                            profile?.passport_number && (
-                              <p className="text-xs text-muted-foreground">
-                                <span className="font-medium">
-                                  Passport Expiry:
-                                </span>{" "}
-                                {new Date(
-                                  profile?.passport_expiration
-                                ).toLocaleDateString("en-US", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
-                              </p>
-                            )}
                         </div>
                       </>
                     )}
