@@ -10,7 +10,7 @@ const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
-// ✅ Overlay — removed outer margin for equal spacing
+// ✅ Overlay (unchanged)
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -23,7 +23,7 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-// ✅ Content — equal inner padding, centered, balanced spacing
+// ✅ Content — cross stays fixed, only below content scrolls
 const DialogContent = React.forwardRef(
   ({ className, children, ...props }, ref) => (
     <DialogPortal>
@@ -31,31 +31,31 @@ const DialogContent = React.forwardRef(
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          // layout + height + scroll
-          "fixed left-1/2 top-1/2 z-50 grid w-[90%] max-w-lg max-h-[90vh] translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-2xl border bg-white p-5 sm:p-6 shadow-lg duration-200",
-
-          // animations
+          "fixed left-1/2 top-1/2 z-50 w-[90%] max-w-lg max-h-[90vh] translate-x-[-50%] translate-y-[-50%] rounded-2xl border bg-white shadow-lg duration-200",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-
           className
         )}
         {...props}
       >
-        {children}
+        {/* Header with cross (fixed at top) */}
+        <div className="flex justify-end p-4 !pb-0 sticky top-0 bg-white z-10 rounded-t-2xl">
+          <DialogPrimitive.Close className="opacity-70 hover:opacity-100 focus:outline-none">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </div>
 
-        <DialogPrimitive.Close
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {/* Scrollable content below */}
+        <div className="overflow-y-auto max-h-[calc(90vh-60px)] p-5 sm:p-6">
+          {children}
+        </div>
       </DialogPrimitive.Content>
     </DialogPortal>
   )
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-// Header + Footer remain the same
+// ✅ Rest unchanged
 const DialogHeader = ({ className, ...props }) => (
   <div
     className={cn(
