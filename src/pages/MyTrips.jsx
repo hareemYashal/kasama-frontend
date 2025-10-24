@@ -507,8 +507,23 @@ export default function MyTrips() {
                       {/* Trip Dates */}
                       <div className="flex items-center gap-2 text-sm text-slate-500">
                         <Calendar className="w-4 h-4" />
-                        {format(new Date(trip.start_date), "MMM d")} -{" "}
-                        {format(new Date(trip.end_date), "MMM d, yyyy")}
+                        {format(
+                          new Date(
+                            new Date(trip.start_date).toLocaleString("en-US", {
+                              timeZone: "UTC",
+                            })
+                          ),
+                          "MMM d"
+                        )}{" "}
+                        -{" "}
+                        {format(
+                          new Date(
+                            new Date(trip.end_date).toLocaleString("en-US", {
+                              timeZone: "UTC",
+                            })
+                          ),
+                          "MMM d, yyyy"
+                        )}
                       </div>
 
                       <div className="bg-[#F8FaFC] p-2 text-[#16A34A] text-sm font-samibold">
