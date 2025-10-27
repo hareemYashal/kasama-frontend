@@ -279,16 +279,8 @@ export default function ParticipantDashboard() {
   // ✅ Converts any date string to fixed UTC date (same globally)
   const toUTCDate = (dateString) => {
     if (!dateString) return null;
-    const date = new Date(dateString);
     return new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate(),
-        date.getUTCHours(),
-        date.getUTCMinutes(),
-        date.getUTCSeconds()
-      )
+      new Date(dateString).toLocaleString("en-US", { timeZone: "UTC" })
     );
   };
 
@@ -480,9 +472,9 @@ export default function ParticipantDashboard() {
                 startDate={toUTCDate(
                   activeTripData?.data?.activeTrip.start_date
                 )}
-                bookingDeadline={(
+                bookingDeadline={
                   activeTripData?.data?.activeTrip.booking_deadline
-                )}
+                }
               />
             )}
         </div>

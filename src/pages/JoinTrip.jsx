@@ -66,11 +66,8 @@ const TripInvitePage = () => {
 
   const toUTCDate = (dateString) => {
     if (!dateString) return null;
-    const date = new Date(dateString);
     return new Date(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate()
+      new Date(dateString).toLocaleString("en-US", { timeZone: "UTC" })
     );
   };
 

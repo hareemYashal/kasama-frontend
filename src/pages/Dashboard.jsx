@@ -252,16 +252,8 @@ export default function Dashboard() {
 
   const toUTCDate = (dateString) => {
     if (!dateString) return null;
-    const date = new Date(dateString);
     return new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate(),
-        date.getUTCHours(),
-        date.getUTCMinutes(),
-        date.getUTCSeconds()
-      )
+      new Date(dateString).toLocaleString("en-US", { timeZone: "UTC" })
     );
   };
 
@@ -352,10 +344,6 @@ export default function Dashboard() {
                         "MMM d, yyyy"
                       )}{" "}
                       -{" "}
-                      {format(
-                        toUTCDate(activeTripDataState?.end_date),
-                        "MMM d, yyyy"
-                      )}
                     </div>
                   </div>
                 </div>
@@ -508,7 +496,7 @@ export default function Dashboard() {
             activeTripDataState?.booking_deadline && (
               <BookingDeadlineTimer
                 startDate={toUTCDate(activeTripDataState.start_date)}
-                bookingDeadline={(activeTripDataState.booking_deadline)}
+                bookingDeadline={activeTripDataState.booking_deadline}
               />
             )}
         </div>
