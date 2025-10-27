@@ -133,42 +133,6 @@ const ItineraryCalander = () => {
     onError: () => toast.error("Failed to save itinerary"),
   });
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.date) {
-      newErrors.date = "Date is required";
-    } else {
-      const selectedDateObj = new Date(formData.date);
-      if (selectedDateObj < tripStartDate || selectedDateObj > tripEndDate) {
-        newErrors.date = "Date must be within trip dates";
-      }
-    }
-
-    if (!formData.activity_title.trim()) {
-      newErrors.activity_title = "Title is required";
-    } else if (formData.activity_title.trim().length < 3) {
-      newErrors.activity_title = "Title must be at least 3 characters";
-    }
-
-    if (!formData.start_time) newErrors.start_time = "Start time is required";
-    if (!formData.end_time) newErrors.end_time = "End time is required";
-
-    if (formData.start_time && formData.end_time) {
-      const start = new Date(`${formData.date}T${formData.start_time}`);
-      const end = new Date(`${formData.date}T${formData.end_time}`);
-      if (end <= start)
-        newErrors.end_time = "End time must be after start time";
-    }
-
-    if (formData.notes && formData.notes.length > 500) {
-      newErrors.notes = "Notes cannot exceed 500 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   console.log("activeTrippppp", activeTrip);
   // ✅ Fetch all itineraries once
   const {
