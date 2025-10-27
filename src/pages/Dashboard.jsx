@@ -1,9 +1,9 @@
-import React, {useState, useEffect} from "react";
-import {redirect, useRoutes} from "react-router-dom";
-import {createPageUrl} from "@/utils";
-import {Button} from "@/components/ui/button";
-import {Card, CardHeader, CardTitle, CardContent} from "@/components/ui/card";
-import {Progress} from "@/components/ui/progress";
+import React, { useState, useEffect } from "react";
+import { redirect, useRoutes } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   MapPin,
   Calendar,
@@ -19,28 +19,28 @@ import {
   Settings,
   PenLine,
 } from "lucide-react";
-import {format} from "date-fns";
+import { format } from "date-fns";
 import CountdownTimer from "../components/dashboard/CountdownTimer";
 import BookingDeadlineTimer from "../components/dashboard/BookingDeadlineTimer";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import ContributionBreakdown from "../components/dashboard/ContributionBreakdown";
-import {useQuery} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   getExpenseByTripIdService,
   getExpenseListService,
   getFileUrl,
 } from "@/services/expense";
-import {useSelector, useDispatch} from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import {
   getParticipantsWithContributions,
   totalParticipantsService,
 } from "@/services/participant";
-import {getActiveTripService, getTripService} from "@/services/trip";
-import {setActiveTripId} from "@/store/tripSlice";
-import {useNavigate} from "react-router-dom";
-import {io} from "socket.io-client";
+import { getActiveTripService, getTripService } from "@/services/trip";
+import { setActiveTripId } from "@/store/tripSlice";
+import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 
-import {Badge} from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 
 export default function Dashboard() {
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const dispatch = useDispatch();
 
   // Query for expense list
-  const {data: tripExpenseData, isLoading: isLoadingExpenses} = useQuery({
+  const { data: tripExpenseData, isLoading: isLoadingExpenses } = useQuery({
     queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
     enabled: !!token && !!tripId,
@@ -71,7 +71,7 @@ export default function Dashboard() {
   //     enabled: !!token && !!tripId,
   //   });
 
-  const {data: getContributionsData, isLoading: isLoadingContributions} =
+  const { data: getContributionsData, isLoading: isLoadingContributions } =
     useQuery({
       queryKey: ["totalParticipantsService"],
       queryFn: () => totalParticipantsService(token, tripId),
@@ -85,14 +85,14 @@ export default function Dashboard() {
   //   enabled: !!token,
   // });
 
-  const {data: activeTripData, isLoading: isLoadingActiveTrip} = useQuery({
+  const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
 
   console.log("activeTripData----000998>>>", activeTripData);
   // Query for trip expense details
-  const {data: tripExpenseDetails, isLoading: isLoadingExpenseDetails} =
+  const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
     useQuery({
       queryKey: ["getExpenseByTripIdService", tripId],
       queryFn: () => getExpenseByTripIdService(token, tripId),
@@ -200,17 +200,17 @@ export default function Dashboard() {
   };
   const BASE_URL = import.meta.env.VITE_API_URL;
 
-  const s = io(BASE_URL, {auth: {token}});
+  const s = io(BASE_URL, { auth: { token } });
   // socketRef.current = s;
 
   s.on("connect", () => {
-    s.emit("joinTripChat", {tripId, userId: authUerId});
-    s.emit("getMessages", {tripId});
-    s.emit("getUnreadCount", {tripId, userId: authUerId});
+    s.emit("joinTripChat", { tripId, userId: authUerId });
+    s.emit("getMessages", { tripId });
+    s.emit("getUnreadCount", { tripId, userId: authUerId });
   });
   console.log("activeTripDataState", activeTripDataState);
   useEffect(() => {
-    const handleUnreadCount = ({unreadCount, tripId: countTripId}) => {
+    const handleUnreadCount = ({ unreadCount, tripId: countTripId }) => {
       if (countTripId === tripId) {
         console.log("[v0] Unread count updated:", unreadCount);
         setUnreadCount(unreadCount);
@@ -240,19 +240,30 @@ export default function Dashboard() {
     if (
       activeTripDataState.image == null ||
       activeTripDataState.image == "null"
-    )return
-      const getFile = async () => {
-        const res = await getFileUrl(
-          BASE_URL,
-          token,
-          activeTripDataState.image
-        );
-        if (res) setUrl(res);
-      };
+    )
+      return;
+    const getFile = async () => {
+      const res = await getFileUrl(BASE_URL, token, activeTripDataState.image);
+      if (res) setUrl(res);
+    };
 
-      getFile();
-    
+    getFile();
   }, [activeTripDataState]);
+
+  const toUTCDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        date.getUTCHours(),
+        date.getUTCMinutes(),
+        date.getUTCSeconds()
+      )
+    );
+  };
 
   if (isLoading) {
     return (
@@ -298,8 +309,8 @@ export default function Dashboard() {
                         return null;
 
                       const today = new Date();
-                      const start = new Date(activeTripDataState.start_date);
-                      const end = new Date(activeTripDataState.end_date);
+                      const start = toUTCDate(activeTripDataState.start_date);
+                      const end = toUTCDate(activeTripDataState.end_date);
 
                       // Normalize (remove time part, only compare dates)
                       const todayDate = new Date(
@@ -332,12 +343,17 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
                       {format(
-                        new Date(activeTripDataState?.start_date),
+                        toUTCDate(activeTripDataState?.start_date),
                         "MMM d"
                       )}{" "}
                       -{" "}
                       {format(
-                        new Date(activeTripDataState?.end_date),
+                        toUTCDate(activeTripDataState?.end_date),
+                        "MMM d, yyyy"
+                      )}{" "}
+                      -{" "}
+                      {format(
+                        toUTCDate(activeTripDataState?.end_date),
                         "MMM d, yyyy"
                       )}
                     </div>
@@ -484,13 +500,15 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row gap-6">
           {/* Countdown & Booking Deadline */}
           {activeTripDataState?.start_date && (
-            <CountdownTimer targetDate={activeTripDataState.start_date} />
+            <CountdownTimer
+              targetDate={toUTCDate(activeTripDataState.start_date)}
+            />
           )}
           {activeTripDataState?.start_date &&
             activeTripDataState?.booking_deadline && (
               <BookingDeadlineTimer
-                startDate={activeTripDataState.start_date}
-                bookingDeadline={activeTripDataState.booking_deadline} // e.g. 6 = 6 weeks before
+                startDate={toUTCDate(activeTripDataState.start_date)}
+                bookingDeadline={(activeTripDataState.booking_deadline)}
               />
             )}
         </div>
@@ -634,7 +652,7 @@ export default function Dashboard() {
           />
         )}
         <ContributionBreakdown
-          participantContributionData={{participants}}
+          participantContributionData={{ participants }}
           contributions={contributions}
           participants={participants}
           totalAmount={participantContributionData?.totalTripGoal || 0}

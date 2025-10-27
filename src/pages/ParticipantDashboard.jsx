@@ -1,14 +1,14 @@
-import React, {useState, useEffect} from "react";
-import {useNavigate} from "react-router-dom";
-import {createPageUrl} from "@/utils";
-import {Trip} from "@/api/entities";
-import {User} from "@/api/entities";
-import {Expense} from "@/api/entities";
-import {Contribution} from "@/api/entities";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Badge} from "@/components/ui/badge";
-import {Progress} from "@/components/ui/progress";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Trip } from "@/api/entities";
+import { User } from "@/api/entities";
+import { Expense } from "@/api/entities";
+import { Contribution } from "@/api/entities";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   MapPin,
   Calendar,
@@ -22,26 +22,26 @@ import {
   CheckCircle,
   Settings,
 } from "lucide-react";
-import {format} from "date-fns";
-import {io} from "socket.io-client";
+import { format } from "date-fns";
+import { io } from "socket.io-client";
 
 import CountdownTimer from "../components/dashboard/CountdownTimer";
 import BookingDeadlineTimer from "../components/dashboard/BookingDeadlineTimer";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import ContributionBreakdown from "../components/dashboard/ContributionBreakdown";
-import {useQuery} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   getExpenseByTripIdService,
   getExpenseListService,
 } from "@/services/expense";
-import {useDispatch, useSelector} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   getParticipantsWithContributions,
   totalParticipantsService,
 } from "@/services/participant";
-import {getActiveTripService, getTripService} from "@/services/trip";
-import {getPaymentRemainingsService} from "@/services/paynent";
-import {setActiveTripId} from "@/store/tripSlice";
+import { getActiveTripService, getTripService } from "@/services/trip";
+import { getPaymentRemainingsService } from "@/services/paynent";
+import { setActiveTripId } from "@/store/tripSlice";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
 
 export default function ParticipantDashboard() {
@@ -60,13 +60,13 @@ export default function ParticipantDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const dispatch = useDispatch();
-  const {data: expenseDataList, isSuccess: expenseListSuccess} = useQuery({
+  const { data: expenseDataList, isSuccess: expenseListSuccess } = useQuery({
     queryKey: ["getExpenseListQuery", tripId],
     queryFn: () => getExpenseListService(tripId, token),
     enabled: !!tripId && !!token,
   });
 
-  const {data: participantsData} = useQuery({
+  const { data: participantsData } = useQuery({
     queryKey: ["totalParticipantsService"],
     queryFn: () => totalParticipantsService(token, tripId),
     enabled: !!token && !!tripId,
@@ -77,7 +77,7 @@ export default function ParticipantDashboard() {
   //   queryFn: () => getActiveTripService(token),
   //   enabled: !!token,
   // });
-  const {data: tripExpenseDetails, isLoading: isLoadingExpenseDetails} =
+  const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
     useQuery({
       queryKey: ["getExpenseByTripIdService", tripId],
       queryFn: () => getExpenseByTripIdService(token, tripId),
@@ -85,7 +85,7 @@ export default function ParticipantDashboard() {
     });
   const tripDataList = tripExpenseDetails?.data?.data;
 
-  const {data: activeTripData, isLoading: isLoadingActiveTrip} = useQuery({
+  const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -93,7 +93,7 @@ export default function ParticipantDashboard() {
     "activeTripData?.data?.activeTrip.booking_deadline=====>",
     activeTripData?.data?.activeTrip.booking_deadline
   );
-  const {data: paymentData, isSuccess: activeTripSuccess} = useQuery({
+  const { data: paymentData, isSuccess: activeTripSuccess } = useQuery({
     queryKey: ["getPaymentRemainingsQuery", tripId, authUerId],
     queryFn: () => getPaymentRemainingsService(token, tripId, authUerId),
     enabled: !!token && !!tripId && !!authUerId,
@@ -187,16 +187,16 @@ export default function ParticipantDashboard() {
   };
   const BASE_URL = import.meta.env.VITE_API_URL;
 
-  const s = io(BASE_URL, {auth: {token}});
+  const s = io(BASE_URL, { auth: { token } });
   // socketRef.current = s;
 
   s.on("connect", () => {
-    s.emit("joinTripChat", {tripId, userId: authUerId});
-    s.emit("getMessages", {tripId});
-    s.emit("getUnreadCount", {tripId, userId: authUerId});
+    s.emit("joinTripChat", { tripId, userId: authUerId });
+    s.emit("getMessages", { tripId });
+    s.emit("getUnreadCount", { tripId, userId: authUerId });
   });
   useEffect(() => {
-    const handleUnreadCount = ({unreadCount, tripId: countTripId}) => {
+    const handleUnreadCount = ({ unreadCount, tripId: countTripId }) => {
       if (countTripId === tripId) {
         console.log("[v0] Unread count updated:", unreadCount);
         setUnreadCount(unreadCount);
@@ -243,30 +243,30 @@ export default function ParticipantDashboard() {
   }
 
   const mockParticipants = [
-    {id: 1, name: "Alice", role: "admin"},
-    {id: 2, name: "Bob", role: "member"},
-    {id: 3, name: "Charlie", role: "member"},
+    { id: 1, name: "Alice", role: "admin" },
+    { id: 2, name: "Bob", role: "member" },
+    { id: 3, name: "Charlie", role: "member" },
   ];
 
   const mockContributions = [
     {
       id: 101,
       user_id: 1,
-      user: {id: 1, name: "Alice", role: "admin"},
+      user: { id: 1, name: "Alice", role: "admin" },
       paidAmount: 120,
       mygoal: 200,
     },
     {
       id: 102,
       user_id: 2,
-      user: {id: 2, name: "Bob", role: "member"},
+      user: { id: 2, name: "Bob", role: "member" },
       paidAmount: 80,
       mygoal: 150,
     },
     {
       id: 103,
       user_id: 3,
-      user: {id: 3, name: "Charlie", role: "member"},
+      user: { id: 3, name: "Charlie", role: "member" },
       paidAmount: 200,
       mygoal: 200,
     },
@@ -274,6 +274,22 @@ export default function ParticipantDashboard() {
 
   const mockData = {
     participants: mockParticipants,
+  };
+
+  // ✅ Converts any date string to fixed UTC date (same globally)
+  const toUTCDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        date.getUTCHours(),
+        date.getUTCMinutes(),
+        date.getUTCSeconds()
+      )
+    );
   };
 
   console.log("trip;;;;;;;;;;", trip);
@@ -335,8 +351,8 @@ export default function ParticipantDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
-                      {format(new Date(trip.start_date), "MMM d")} -{" "}
-                      {format(new Date(trip.end_date), "MMM d, yyyy")}
+                      {format(toUTCDate(trip.start_date), "MMM d")} -{" "}
+                      {format(toUTCDate(trip.end_date), "MMM d, yyyy")}
                     </div>
                   </div>
                 </div>
@@ -446,22 +462,27 @@ export default function ParticipantDashboard() {
 
         <div className="flex flex-col md:flex-row gap-6">
           <CountdownTimer
-            targetDate={activeTripData?.data?.activeTrip?.start_date}
+            targetDate={toUTCDate(activeTripData?.data?.activeTrip?.start_date)}
           />
 
           {activeTripData?.data?.activeTrip.booking_deadline && (
             <BookingDeadlineTimer
-              targetDate={activeTripData?.data?.activeTrip.booking_deadline}
+              startDate={toUTCDate(activeTripData?.data?.activeTrip.start_date)}
+              targetDate={toUTCDate(
+                activeTripData?.data?.activeTrip.booking_deadline
+              )}
             />
           )}
 
           {activeTripData?.data?.activeTrip.start_date &&
             activeTripData?.data?.activeTrip.booking_deadline && (
               <BookingDeadlineTimer
-                startDate={activeTripData?.data?.activeTrip.start_date}
-                bookingDeadline={
+                startDate={toUTCDate(
+                  activeTripData?.data?.activeTrip.start_date
+                )}
+                bookingDeadline={(
                   activeTripData?.data?.activeTrip.booking_deadline
-                } // e.g. 6 = 6 weeks before
+                )}
               />
             )}
         </div>
@@ -676,7 +697,7 @@ export default function ParticipantDashboard() {
 
         {/* All Participants Contribution Breakdown */}
         <ContributionBreakdown
-          participantContributionData={{participants}}
+          participantContributionData={{ participants }}
           contributions={contributions}
           participants={participants}
           totalAmount={apiData?.totalTripGoal || 0}

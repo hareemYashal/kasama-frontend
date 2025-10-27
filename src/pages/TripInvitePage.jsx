@@ -54,6 +54,16 @@ const TripInvitePage = () => {
     }
   };
 
+  const toUTCDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate()
+    );
+  };
+
   if (isLoadingActiveTrip) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -98,8 +108,15 @@ const TripInvitePage = () => {
                       <div className="flex items-center gap-2">
                         <CalendarIcon className="w-4 h-4" />
                         <span>
-                          {format(new Date(invitedTripData.start_date), "MMM d")} -{" "}
-                          {format(new Date(invitedTripData.end_date), "MMM d, yyyy")}
+                          {format(
+                            toUTCDate(invitedTripData.start_date),
+                            "MMM d"
+                          )}{" "}
+                          -{" "}
+                          {format(
+                            toUTCDate(invitedTripData.end_date),
+                            "MMM d, yyyy"
+                          )}
                         </span>
                       </div>
                     </div>

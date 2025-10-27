@@ -64,6 +64,16 @@ const TripInvitePage = () => {
     );
   }
 
+  const toUTCDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate()
+    );
+  };
+
   if (!invitedTripData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -81,7 +91,11 @@ const TripInvitePage = () => {
               <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-2xl w-full">
                 <div className="p-8">
                   <div className="flex justify-center items-center">
-                    <img src="/assets/kasama-logo1.png" alt="Kasama Logo" className="w-80" />
+                    <img
+                      src="/assets/kasama-logo1.png"
+                      alt="Kasama Logo"
+                      className="w-80"
+                    />
                   </div>
                   <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-slate-800 mb-2">
@@ -104,12 +118,12 @@ const TripInvitePage = () => {
                         <CalendarIcon className="w-4 h-4" />
                         <span>
                           {format(
-                            new Date(invitedTripData.start_date),
+                            toUTCDate(invitedTripData.start_date),
                             "MMM d"
                           )}{" "}
                           -{" "}
                           {format(
-                            new Date(invitedTripData.end_date),
+                            toUTCDate(invitedTripData.end_date),
                             "MMM d, yyyy"
                           )}
                         </span>

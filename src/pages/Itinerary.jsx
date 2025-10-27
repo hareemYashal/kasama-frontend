@@ -92,17 +92,27 @@ export default function Itinerary() {
   };
   console.log("itineraries", itineraries);
   const groupItemsByDay = () => {
-    const groups = {};
-    itineraries?.itineraries?.forEach((item) => {
-      if (!groups[item.date]) groups[item.date] = [];
-      groups[item.date].push(item);
-    });
+    if (!itineraries?.itineraries || !Array.isArray(itineraries.itineraries)) {
+      return [];
+    }
+
+    const groups = itineraries.itineraries.reduce((acc, item) => {
+      if (!item.date) return acc;
+      if (!acc[item.date]) acc[item.date] = [];
+      acc[item.date].push(item);
+      return acc;
+    }, {});
+
     return Object.keys(groups)
-      .sort((a, b) => new Date(a) - new Date(b))
+      .sort((a, b) => {
+        const dateA = new Date(a).toLocaleString("en-US", { timeZone: "UTC" });
+        const dateB = new Date(b).toLocaleString("en-US", { timeZone: "UTC" });
+        return new Date(dateA) - new Date(dateB);
+      })
       .map((date) => ({
         date,
         items: groups[date].sort((a, b) =>
-          a.start_time.localeCompare(b.start_time)
+          a.start_time?.localeCompare(b.start_time)
         ),
       }));
   };
@@ -167,8 +177,23 @@ export default function Itinerary() {
               <div className="flex items-center gap-2 text-xl text-slate-600">
                 <MapPin className="w-5 h-5" />
                 {activeTrip.destination} •{" "}
-                {format(new Date(activeTrip.start_date), "MMM d")} -{" "}
-                {format(new Date(activeTrip.end_date), "MMM d, yyyy")}
+                {format(
+                  new Date(
+                    activeTrip.start_date.toLocaleString("en-US", {
+                      timeZone: "UTC",
+                    })
+                  ),
+                  "MMM d"
+                )}{" "}
+                -{" "}
+                {format(
+                  new Date(
+                    activeTrip.end_date.toLocaleString("en-US", {
+                      timeZone: "UTC",
+                    })
+                  ),
+                  "MMM d, yyyy"
+                )}
               </div>
               {/* {activeTrip.welcome_message && (
                 <p className="mt-2 text-slate-500">
