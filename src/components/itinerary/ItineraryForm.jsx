@@ -42,8 +42,18 @@ export default function ItineraryForm({
   };
 
   // ---------- Initialize form ----------
+
+  const toLocalDate = (utcDate) => {
+    if (!utcDate) return "";
+    const d = new Date(utcDate);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [formData, setFormData] = useState({
-    date: clampDate(item?.date || selectedDate || trip.start_date),
+    date: clampDate(toLocalDate(item?.date || selectedDate || trip.start_date)),
     start_time: item?.start_time
       ? format(new Date(item.start_time), "HH:mm")
       : "",
