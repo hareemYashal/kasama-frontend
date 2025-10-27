@@ -14,6 +14,7 @@ import {
   startOfDay,
   endOfDay,
   isWithinInterval,
+  isValid,
 } from "date-fns";
 import {
   deleteItineraryService,
@@ -47,8 +48,8 @@ import { toast } from "sonner";
 import KeyboardAwareDialog from "../ui/KeyboardAwareDialog";
 
 const ItineraryCalander = () => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
@@ -90,15 +91,41 @@ const ItineraryCalander = () => {
   }, [editingItem]);
 
   useEffect(() => {
-    if (activeTrip) {
-      const tripStart = new Date(activeTrip.start_date);
-      const tripEnd = new Date(activeTrip.end_date);
+    if (!activeTrip) return;
 
-      if (selectedDate < tripStart || selectedDate > tripEnd) {
-        setSelectedDate(tripStart);
-        setCurrentMonth(tripStart);
-      }
+    // ✅ Convert start and end to start/end of UTC day
+    const tripStart = new Date(activeTrip.start_date);
+    const tripEnd = new Date(activeTrip.end_date);
+
+    // ✅ Get today's UTC start of day for correct comparison
+    const now = new Date();
+    const todayUTC = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+
+    // ✅ If trip start is in past → use tripStart; else → use today
+    // ✅ Correct logic: if trip start is in past → use tripStart (NOT today)
+    let defaultDate;
+
+    // if trip hasn't started yet → show tripStart
+    if (tripStart > todayUTC) {
+      defaultDate = tripStart;
     }
+    // if trip is ongoing → show tripStart (not today)
+    else if (todayUTC >= tripStart && todayUTC <= tripEnd) {
+      defaultDate = tripStart;
+    }
+    // if trip ended → show tripEnd
+    else {
+      defaultDate = tripEnd;
+    }
+
+    // ✅ Clamp inside trip range
+    if (defaultDate < tripStart) defaultDate = tripStart;
+    if (defaultDate > tripEnd) defaultDate = tripEnd;
+
+    setSelectedDate(defaultDate);
+    setCurrentMonth(defaultDate);
   }, [activeTrip]);
 
   const { mutate: saveItinerary } = useMutation({
@@ -174,7 +201,10 @@ const ItineraryCalander = () => {
   const handleAddItem = () => {
     setEditingItem(null);
     setFormData({
-      date: format(selectedDate, "yyyy-MM-dd"), // ✅ selected calendar date auto set
+      date: format(
+        new Date(selectedDate.toLocaleString("en-US", { timeZone: "UTC" })),
+        "yyyy-MM-dd"
+      ),
       start_time: "",
       end_time: "",
       activity_title: "",
@@ -197,14 +227,25 @@ const ItineraryCalander = () => {
   // ✅ Group itineraries by date
   const itinerariesByDate = {};
   itineraries.forEach((item) => {
-    const dateKey = format(new Date(item.date), "yyyy-MM-dd");
+    const dateKey = format(
+      new Date(
+        new Date(item.date).toLocaleString("en-US", { timeZone: "UTC" })
+      ),
+      "yyyy-MM-dd"
+    );
     if (!itinerariesByDate[dateKey]) itinerariesByDate[dateKey] = [];
     itinerariesByDate[dateKey].push(item);
   });
 
   // ✅ Get itineraries for selected day
-  const selectedDayKey = format(selectedDate, "yyyy-MM-dd");
-  const activitiesForSelectedDay = itinerariesByDate[selectedDayKey] || [];
+  const selectedDayKey =
+    selectedDate && isValid(selectedDate)
+      ? format(selectedDate, "yyyy-MM-dd")
+      : null;
+
+  const activitiesForSelectedDay = selectedDayKey
+    ? itinerariesByDate[selectedDayKey] || []
+    : [];
 
   const renderHeader = () => {
     if (!activeTrip) return null;
@@ -242,7 +283,9 @@ const ItineraryCalander = () => {
         </button>
 
         <h3 className="text-lg font-semibold">
-          {format(currentMonth, "MMMM yyyy")}
+          {currentMonth && isValid(currentMonth)
+            ? format(currentMonth, "MMMM yyyy")
+            : ""}
         </h3>
 
         <button
@@ -262,8 +305,11 @@ const ItineraryCalander = () => {
   };
 
   const renderDays = () => {
+    if (!currentMonth || !isValid(currentMonth)) return null; // 👈 guard added
+
     const days = [];
     const startDate = startOfWeek(currentMonth, { weekStartsOn: 0 });
+
     for (let i = 0; i < 7; i++) {
       days.push(
         <div key={i} className="text-center text-xs font-medium text-slate-500">
@@ -271,10 +317,11 @@ const ItineraryCalander = () => {
         </div>
       );
     }
+
     return <div className="grid grid-cols-7 gap-1 mb-4">{days}</div>;
   };
 
-  console.log('activitiesForSelectedDay',activitiesForSelectedDay)
+  console.log("activitiesForSelectedDay", activitiesForSelectedDay);
   const renderCells = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
@@ -381,8 +428,11 @@ const ItineraryCalander = () => {
         <div className="border-t pt-4 mt-4">
           <div className="flex justify-between items-center mb-3">
             <h4 className="font-semibold text-slate-800">
-              {format(selectedDate, "EEEE, MMMM d")}
+              {selectedDate
+                ? format(selectedDate, "EEEE, MMMM d")
+                : "Select a date"}
             </h4>
+
             {isAdmin && (
               <button
                 onClick={handleAddItem}
@@ -393,7 +443,6 @@ const ItineraryCalander = () => {
             )}
           </div>
           <div className="space-y-3">
-
             {activitiesForSelectedDay.length > 0 ? (
               activitiesForSelectedDay.map((a) => (
                 <div key={a.id} className="bg-slate-50 rounded-lg p-3">
@@ -407,14 +456,25 @@ const ItineraryCalander = () => {
                       {/* Time */}
                       <div className="flex items-center gap-1 text-sm text-blue-600 mt-1">
                         <Clock className="w-3 h-3" />
-                        {a.start_time && a.end_time
-                          ? `${format(
-                              new Date(a.start_time),
-                              "HH:mm"
-                            )} - ${format(new Date(a.end_time), "HH:mm")}`
-                          : a.start_time
-                          ? format(new Date(a.start_time), "HH:mm")
-                          : "No time set"}
+                        {a.start_time && a.end_time ? (
+                          <>
+                            {isValid(new Date(a.start_time)) &&
+                            isValid(new Date(a.end_time))
+                              ? `${format(
+                                  new Date(a.start_time),
+                                  "HH:mm"
+                                )} - ${format(new Date(a.end_time), "HH:mm")}`
+                              : "Invalid time"}
+                          </>
+                        ) : a.start_time ? (
+                          isValid(new Date(a.start_time)) ? (
+                            format(new Date(a.start_time), "HH:mm")
+                          ) : (
+                            "Invalid time"
+                          )
+                        ) : (
+                          "No time set"
+                        )}
                       </div>
 
                       {/* Description */}

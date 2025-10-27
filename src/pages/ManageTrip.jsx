@@ -304,7 +304,11 @@ export default function ManageTrip() {
                   id="start_date"
                   className="mt-2"
                   type="date"
-                  value={formData.start_date}
+                  value={
+                    formData.start_date ||
+                    new Date().toISOString().split("T")[0]
+                  }
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => updateFormData("start_date", e.target.value)}
                 />
               </div>
@@ -317,7 +321,10 @@ export default function ManageTrip() {
                   type="date"
                   value={formData.end_date}
                   onChange={(e) => updateFormData("end_date", e.target.value)}
-                  min={formData.start_date}
+                  min={
+                    formData.start_date ||
+                    new Date().toISOString().split("T")[0]
+                  }
                 />
               </div>
             </div>

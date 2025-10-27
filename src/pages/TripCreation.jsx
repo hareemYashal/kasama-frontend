@@ -1,10 +1,10 @@
-import React, {useState} from "react";
-import {useNavigate} from "react-router-dom";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Textarea} from "@/components/ui/textarea";
-import {Label} from "@/components/ui/label";
-import {uploadToS3} from "@/utils/utils";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { uploadToS3 } from "@/utils/utils";
 import {
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,11 +21,11 @@ import {
   MessageSquare,
   CheckCircle,
 } from "lucide-react";
-import {addWeeks, format} from "date-fns";
-import {useMutation} from "@tanstack/react-query";
-import {createTripService} from "@/services/trip";
-import {useSelector} from "react-redux";
-import {toast} from "sonner";
+import { addWeeks, format } from "date-fns";
+import { useMutation } from "@tanstack/react-query";
+import { createTripService } from "@/services/trip";
+import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 export default function TripCreation() {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ export default function TripCreation() {
   const [loading, setLoading] = useState(false);
 
   const updateFormData = (field, value) => {
-    setFormData((prev) => ({...prev, [field]: value}));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
   const handleImageChange = async (e) => {
     setImageLoading(true);
@@ -113,7 +113,7 @@ export default function TripCreation() {
     );
   };
 
-  const {mutate, isLoading} = useMutation({
+  const { mutate, isLoading } = useMutation({
     mutationFn: (formData) => createTripService(formData, token),
     onSuccess: (data) => {
       console.log("Trip Created Successfully:", data);
@@ -156,10 +156,10 @@ export default function TripCreation() {
   };
 
   const steps = [
-    {number: 1, title: "Trip Basics", icon: MapPin},
-    {number: 2, title: "Dates", icon: Calendar},
-    {number: 3, title: "Deadline", icon: CheckCircle},
-    {number: 4, title: "Welcome", icon: MessageSquare},
+    { number: 1, title: "Trip Basics", icon: MapPin },
+    { number: 2, title: "Dates", icon: Calendar },
+    { number: 3, title: "Deadline", icon: CheckCircle },
+    { number: 4, title: "Welcome", icon: MessageSquare },
   ];
   // useEffect(async () => {
   //   if (imgkey) {
@@ -173,7 +173,7 @@ export default function TripCreation() {
 
     const res = await fetch(endpoint, {
       method: "GET",
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     if (!res.ok) {
       return null;
@@ -315,13 +315,18 @@ export default function TripCreation() {
                     <Input
                       id="start_date"
                       type="date"
-                      value={formData.start_date}
+                      value={
+                        formData.start_date ||
+                        new Date().toISOString().split("T")[0]
+                      } // ✅ Default = today
                       onChange={(e) =>
                         updateFormData("start_date", e.target.value)
                       }
+                      min={new Date().toISOString().split("T")[0]} // ✅ No past dates
                       className="mt-2 text-base md:text-lg py-4 md:py-6 border-slate-200 focus:border-blue-500"
                     />
                   </div>
+
                   <div>
                     <Label
                       htmlFor="end_date"
@@ -336,7 +341,10 @@ export default function TripCreation() {
                       onChange={(e) =>
                         updateFormData("end_date", e.target.value)
                       }
-                      min={formData.start_date}
+                      min={
+                        formData.start_date ||
+                        new Date().toISOString().split("T")[0]
+                      }
                       className="mt-2 text-base md:text-lg py-4 md:py-6 border-slate-200 focus:border-blue-500"
                     />
                   </div>
