@@ -358,8 +358,8 @@ export default function ParticipantDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
-                      {format(new Date(trip.start_date), "MMM d")} -{" "}
-                      {format(new Date(trip.end_date), "MMM d, yyyy")}
+                      {format(toUTCDate(trip.start_date), "MMM d")} -{" "}
+                      {format(toUTCDate(trip.end_date), "MMM d, yyyy")}
                     </div>
                   </div>
                 </div>

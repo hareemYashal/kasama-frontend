@@ -74,6 +74,7 @@ const TripInvitePage = () => {
     );
   }
 
+  console.log('invitedTripData.start_date',invitedTripData.start_date)
   return (
     <div className="min-h-screen w-full relative app-preview">
       <div className="flex flex-col w-full h-full" id="app-demo">

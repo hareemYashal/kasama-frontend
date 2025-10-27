@@ -251,8 +251,6 @@ export default function Dashboard() {
     getFile();
   }, [activeTripDataState]);
 
-
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-slate-50 to-blue-50">
@@ -368,14 +366,15 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2">
                             <Calendar className="w-5 h-5" />
                             {format(
-                              new Date(activeTripDataState?.start_date),
+                              toUTCDate(activeTripDataState.start_date),
                               "MMM d"
                             )}{" "}
                             -{" "}
                             {format(
-                              new Date(activeTripDataState?.end_date),
+                              toUTCDate(activeTripDataState.end_date),
                               "MMM d, yyyy"
-                            )}
+                            )}{" "}
+                            -{" "}
                           </div>
                         )}
 
