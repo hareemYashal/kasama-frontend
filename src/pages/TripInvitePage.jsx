@@ -7,6 +7,7 @@ import { CalendarIcon, MapPinIcon, Users } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { toUTCDate } from "@/lib/utils";
 
 const TripInvitePage = () => {
   const [searchParams] = useSearchParams();
@@ -52,13 +53,6 @@ const TripInvitePage = () => {
       localStorage.setItem("inviteData", JSON.stringify({ tripId, code }));
       navigate(`/register?trip_id=${tripId}&code=${code}`);
     }
-  };
-
-  const toUTCDate = (dateString) => {
-    if (!dateString) return null;
-    return new Date(
-      new Date(dateString).toLocaleString("en-US", { timeZone: "UTC" })
-    );
   };
 
   if (isLoadingActiveTrip) {

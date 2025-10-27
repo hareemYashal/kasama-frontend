@@ -125,6 +125,7 @@ const ItineraryCalander = () => {
     if (defaultDate > tripEnd) defaultDate = tripEnd;
 
     setSelectedDate(defaultDate);
+    
     setCurrentMonth(defaultDate);
   }, [activeTrip]);
 

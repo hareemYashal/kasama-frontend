@@ -42,6 +42,7 @@ import { io } from "socket.io-client";
 
 import { Badge } from "@/components/ui/badge";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
+import { toUTCDate } from "@/lib/utils";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -250,12 +251,7 @@ export default function Dashboard() {
     getFile();
   }, [activeTripDataState]);
 
-  const toUTCDate = (dateString) => {
-    if (!dateString) return null;
-    return new Date(
-      new Date(dateString).toLocaleString("en-US", { timeZone: "UTC" })
-    );
-  };
+
 
   if (isLoading) {
     return (
@@ -264,6 +260,7 @@ export default function Dashboard() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -334,16 +331,8 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
-                      {format(
-                        toUTCDate(activeTripDataState?.start_date),
-                        "MMM d"
-                      )}{" "}
-                      -{" "}
-                      {format(
-                        toUTCDate(activeTripDataState?.end_date),
-                        "MMM d, yyyy"
-                      )}{" "}
-                      -{" "}
+                      {format(toUTCDate(trip.start_date), "MMM d")} -{" "}
+                      {format(toUTCDate(trip.end_date), "MMM d, yyyy")} -{" "}
                     </div>
                   </div>
                 </div>

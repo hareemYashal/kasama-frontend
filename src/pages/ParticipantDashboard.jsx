@@ -43,6 +43,7 @@ import { getActiveTripService, getTripService } from "@/services/trip";
 import { getPaymentRemainingsService } from "@/services/paynent";
 import { setActiveTripId } from "@/store/tripSlice";
 import ItineraryCalander from "@/components/dashboard/ItineraryCalander";
+import { toUTCDate } from "@/lib/utils";
 
 export default function ParticipantDashboard() {
   const navigate = useNavigate();
@@ -277,12 +278,6 @@ export default function ParticipantDashboard() {
   };
 
   // ✅ Converts any date string to fixed UTC date (same globally)
-  const toUTCDate = (dateString) => {
-    if (!dateString) return null;
-    return new Date(
-      new Date(dateString).toLocaleString("en-US", { timeZone: "UTC" })
-    );
-  };
 
   console.log("trip;;;;;;;;;;", trip);
 

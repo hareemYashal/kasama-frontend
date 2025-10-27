@@ -308,7 +308,7 @@ export default function MyTrips() {
                 // const isCurrentTrip = activeTripData?.data?.activeTrip?.id;
                 // const daysUntil = getDaysUntilTrip(trip.start_date);
                 // const isDeletable = canDeleteTrip(trip.id);
-
+                // console.log("trip.start_date<><><>>>>", trip.start_date);
                 return (
                   <Card
                     key={trip.id}
