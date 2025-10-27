@@ -46,6 +46,7 @@ import {
 } from "@/services/itinerary";
 import { toast } from "sonner";
 import KeyboardAwareDialog from "../ui/KeyboardAwareDialog";
+import { toUTCDate } from "@/lib/utils";
 
 const ItineraryCalander = () => {
   const [currentMonth, setCurrentMonth] = useState(null);
@@ -76,14 +77,15 @@ const ItineraryCalander = () => {
     if (editingItem) {
       setFormData({
         date: editingItem.date
-          ? format(new Date(editingItem.date), "yyyy-MM-dd")
+          ? format(toUTCDate(editingItem.date), "yyyy-MM-dd")
           : "",
         start_time: editingItem.start_time
-          ? format(new Date(editingItem.start_time), "HH:mm")
+          ? format(toUTCDate(editingItem.start_time), "HH:mm")
           : "",
         end_time: editingItem.end_time
-          ? format(new Date(editingItem.end_time), "HH:mm")
+          ? format(toUTCDate(editingItem.end_time), "HH:mm")
           : "",
+
         activity_title: editingItem.activity_title || "",
         notes: editingItem.notes || "",
       });
@@ -103,29 +105,18 @@ const ItineraryCalander = () => {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
     );
 
-    // ✅ If trip start is in past → use tripStart; else → use today
     // ✅ Correct logic: if trip start is in past → use tripStart (NOT today)
+    const tripStartUTC = toUTCDate(activeTrip.start_date);
+    const tripEndUTC = toUTCDate(activeTrip.end_date);
+
     let defaultDate;
 
-    // if trip hasn't started yet → show tripStart
-    if (tripStart > todayUTC) {
-      defaultDate = tripStart;
-    }
-    // if trip is ongoing → show tripStart (not today)
-    else if (todayUTC >= tripStart && todayUTC <= tripEnd) {
-      defaultDate = tripStart;
-    }
-    // if trip ended → show tripEnd
-    else {
-      defaultDate = tripEnd;
-    }
-
-    // ✅ Clamp inside trip range
-    if (defaultDate < tripStart) defaultDate = tripStart;
-    if (defaultDate > tripEnd) defaultDate = tripEnd;
+    if (tripStartUTC > todayUTC) defaultDate = tripStartUTC;
+    else if (todayUTC >= tripStartUTC && todayUTC <= tripEndUTC)
+      defaultDate = tripStartUTC;
+    else defaultDate = tripEndUTC;
 
     setSelectedDate(defaultDate);
-    
     setCurrentMonth(defaultDate);
   }, [activeTrip]);
 
@@ -202,10 +193,7 @@ const ItineraryCalander = () => {
   const handleAddItem = () => {
     setEditingItem(null);
     setFormData({
-      date: format(
-        new Date(selectedDate.toLocaleString("en-US", { timeZone: "UTC" })),
-        "yyyy-MM-dd"
-      ),
+      date: format(toUTCDate(selectedDate), "yyyy-MM-dd"),
       start_time: "",
       end_time: "",
       activity_title: "",
@@ -228,12 +216,8 @@ const ItineraryCalander = () => {
   // ✅ Group itineraries by date
   const itinerariesByDate = {};
   itineraries.forEach((item) => {
-    const dateKey = format(
-      new Date(
-        new Date(item.date).toLocaleString("en-US", { timeZone: "UTC" })
-      ),
-      "yyyy-MM-dd"
-    );
+    const dateKey = format(toUTCDate(item.date), "yyyy-MM-dd");
+
     if (!itinerariesByDate[dateKey]) itinerariesByDate[dateKey] = [];
     itinerariesByDate[dateKey].push(item);
   });
