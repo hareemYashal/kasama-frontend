@@ -67,8 +67,14 @@ export default function ItineraryForm({
     return format(d, "yyyy-MM-dd");
   };
 
+  const initialDate = item?.date
+    ? toLocalDate(item.date)
+    : selectedDate instanceof Date
+    ? format(selectedDate, "yyyy-MM-dd")
+    : toLocalDate(trip.start_date);
+
   const [formData, setFormData] = useState({
-    date: clampDate(toLocalDate(item?.date || selectedDate || trip.start_date)),
+    date: clampDate(initialDate),
     start_time: item?.start_time
       ? format(new Date(item.start_time), "HH:mm")
       : "",
