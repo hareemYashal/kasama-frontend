@@ -43,13 +43,19 @@ export default function ItineraryForm({
 
   // ---------- Initialize form ----------
 
-  const toLocalDate = (utcDate) => {
-    if (!utcDate) return "";
-    const d = new Date(utcDate);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+  const toLocalDate = (dateString) => {
+    if (!dateString) return "";
+
+    // When the string is "yyyy-MM-dd", treat it as local (not UTC)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split("-").map(Number);
+      const d = new Date(year, month - 1, day); // Local midnight
+      return format(d, "yyyy-MM-dd");
+    }
+
+    // Otherwise parse normally (like ISO datetime)
+    const d = new Date(dateString);
+    return format(d, "yyyy-MM-dd");
   };
 
   const [formData, setFormData] = useState({

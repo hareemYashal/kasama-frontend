@@ -285,6 +285,7 @@ export default function TripCreation() {
                     id="image"
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
+                    capture={false}
                     onChange={handleImageChange}
                     className="mt-2"
                   />
