@@ -104,13 +104,6 @@ export default function ItineraryForm({
   const handleDateChange = (e) => {
     const value = e.target.value;
     const clamped = clampDate(value);
-    if (clamped !== value)
-      toast.error(
-        `Please select a date between ${format(
-          tripStart,
-          "MMM d, yyyy"
-        )} and ${format(tripEnd, "MMM d, yyyy")}`
-      );
     handleChange("date", clamped);
   };
 
