@@ -95,26 +95,24 @@ const ItineraryCalander = () => {
   useEffect(() => {
     if (!activeTrip) return;
 
-    // ✅ Convert start and end to start/end of UTC day
-    const tripStart = new Date(activeTrip.start_date);
-    const tripEnd = new Date(activeTrip.end_date);
+    const tripStartUTC = toUTCDate(activeTrip.start_date);
+    const tripEndUTC = toUTCDate(activeTrip.end_date);
 
-    // ✅ Get today's UTC start of day for correct comparison
+    // ✅ Get today's UTC midnight
     const now = new Date();
     const todayUTC = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
     );
 
-    // ✅ Correct logic: if trip start is in past → use tripStart (NOT today)
-    const tripStartUTC = toUTCDate(activeTrip.start_date);
-    const tripEndUTC = toUTCDate(activeTrip.end_date);
-
     let defaultDate;
 
-    if (tripStartUTC > todayUTC) defaultDate = tripStartUTC;
-    else if (todayUTC >= tripStartUTC && todayUTC <= tripEndUTC)
+    if (todayUTC < tripStartUTC) {
       defaultDate = tripStartUTC;
-    else defaultDate = tripEndUTC;
+    } else if (todayUTC >= tripStartUTC && todayUTC <= tripEndUTC) {
+      defaultDate = todayUTC;
+    } else {
+      defaultDate = tripEndUTC;
+    }
 
     setSelectedDate(defaultDate);
     setCurrentMonth(defaultDate);
@@ -157,7 +155,7 @@ const ItineraryCalander = () => {
   const handleAddItem = () => {
     setEditingItem(null);
     setFormData({
-      date: format(toUTCDate(selectedDate), "yyyy-MM-dd"),
+      date: format(selectedDate, "yyyy-MM-dd"),
       start_time: "",
       end_time: "",
       activity_title: "",
@@ -279,9 +277,11 @@ const ItineraryCalander = () => {
 
     // ✅ Normalize tripStart to startOfDay & tripEnd to endOfDay
     const tripStart = activeTrip
-      ? startOfDay(new Date(activeTrip.start_date))
+      ? startOfDay(toUTCDate(activeTrip.start_date))
       : null;
-    const tripEnd = activeTrip ? endOfDay(new Date(activeTrip.end_date)) : null;
+    const tripEnd = activeTrip
+      ? endOfDay(toUTCDate(activeTrip.end_date))
+      : null;
 
     const rows = [];
     let days = [];
