@@ -27,15 +27,31 @@ export default function ItineraryForm({
   const activeTripId = useSelector((state) => state.trips.activeTripId);
   const dateInputRef = useRef(null);
 
+  const toUTCDate = (date) => {
+    const d = new Date(date);
+    return new Date(
+      Date.UTC(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate(),
+        d.getHours(),
+        d.getMinutes(),
+        d.getSeconds()
+      )
+    );
+  };
   // ---------- Date setup ----------
-  const tripStart = useMemo(() => new Date(trip.start_date), [trip.start_date]);
-  const tripEnd = useMemo(() => new Date(trip.end_date), [trip.end_date]);
+  const tripStart = useMemo(
+    () => toUTCDate(trip.start_date),
+    [trip.start_date]
+  );
+  const tripEnd = useMemo(() => toUTCDate(trip.end_date), [trip.end_date]);
   const minDate = format(tripStart, "yyyy-MM-dd");
   const maxDate = format(tripEnd, "yyyy-MM-dd");
 
   const clampDate = (date) => {
     if (!date) return minDate;
-    const d = new Date(date);
+    const d = toUTCDate(date);
     if (d < tripStart) return minDate;
     if (d > tripEnd) return maxDate;
     return format(d, "yyyy-MM-dd");
@@ -46,15 +62,7 @@ export default function ItineraryForm({
   const toLocalDate = (dateString) => {
     if (!dateString) return "";
 
-    // When the string is "yyyy-MM-dd", treat it as local (not UTC)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      const [year, month, day] = dateString.split("-").map(Number);
-      const d = new Date(year, month - 1, day); // Local midnight
-      return format(d, "yyyy-MM-dd");
-    }
-
-    // Otherwise parse normally (like ISO datetime)
-    const d = new Date(dateString);
+    const d = toUTCDate(dateString);
     return format(d, "yyyy-MM-dd");
   };
 
@@ -140,7 +148,7 @@ export default function ItineraryForm({
     const { date, start_time, end_time, activity_title, notes } = formData;
 
     if (!date) errs.date = "Date is required";
-    const d = new Date(date);
+    const d = toUTCDate(date);
     if (d < tripStart || d > tripEnd)
       errs.date = "Date must be within trip dates";
 
@@ -233,8 +241,6 @@ export default function ItineraryForm({
             Must be between {format(tripStart, "MMM d, yyyy")} –{" "}
             {format(tripEnd, "MMM d, yyyy")}
           </p>
-          {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
-
           {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
         </div>
 
