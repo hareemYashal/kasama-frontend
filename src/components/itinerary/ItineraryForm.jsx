@@ -14,6 +14,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import { Save, X } from "lucide-react";
+import { toUTCDate } from "@/lib/utils";
 
 export default function ItineraryForm({
   trip,
@@ -27,19 +28,19 @@ export default function ItineraryForm({
   const activeTripId = useSelector((state) => state.trips.activeTripId);
   const dateInputRef = useRef(null);
 
-  const toUTCDate = (date) => {
-    const d = new Date(date);
-    return new Date(
-      Date.UTC(
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate(),
-        d.getHours(),
-        d.getMinutes(),
-        d.getSeconds()
-      )
-    );
-  };
+  // const toUTCDate = (date) => {
+  //   const d = new Date(date);
+  //   return new Date(
+  //     Date.UTC(
+  //       d.getFullYear(),
+  //       d.getMonth(),
+  //       d.getDate(),
+  //       d.getHours(),
+  //       d.getMinutes(),
+  //       d.getSeconds()
+  //     )
+  //   );
+  // };
   // ---------- Date setup ----------
   const tripStart = useMemo(
     () => toUTCDate(trip.start_date),
