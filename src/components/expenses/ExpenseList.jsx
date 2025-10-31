@@ -34,12 +34,10 @@ export default function ExpenseList({
   const {mutate: addExpenseMutate} = useMutation({
     mutationFn: (data) => createExpenseService(token, data),
     onSuccess: (data) => {
-      console.log(data);
       toast.success(data.message);
       queryClient.invalidateQueries(["getExpenseListQuery"]);
     },
     onError: (error) => {
-      console.log(error);
       toast.error(error);
     },
   });
@@ -95,7 +93,6 @@ export default function ExpenseList({
   });
 
   const handleDeleteExpense = (expenseId, tripId) => {
-    console.log("Deleting expense:", expenseId);
     mutate(expenseId, tripId);
   };
   return (

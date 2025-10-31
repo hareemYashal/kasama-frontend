@@ -90,10 +90,6 @@ export default function ParticipantDashboard() {
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
-  console.log(
-    "activeTripData?.data?.activeTrip.booking_deadline=====>",
-    activeTripData?.data?.activeTrip.booking_deadline
-  );
   const { data: paymentData, isSuccess: activeTripSuccess } = useQuery({
     queryKey: ["getPaymentRemainingsQuery", tripId, authUerId],
     queryFn: () => getPaymentRemainingsService(token, tripId, authUerId),
@@ -111,11 +107,8 @@ export default function ParticipantDashboard() {
   }, [activeTripData, activeTripSuccess, dispatch]);
 
   const myContribution = paymentData?.data?.data;
-  console.log("paymentData()()", paymentData);
-  console.log("activeTripData--->", activeTripData);
 
   const apiData = participantsData?.data;
-  console.log("apiData--->", apiData);
   // Map API response to match component props
   const participants = apiData?.participants?.map((p) => ({
     id: p.user.id,
@@ -133,13 +126,9 @@ export default function ParticipantDashboard() {
     overpaid: p.paymentInfo?.overpaid ?? 0,
   }));
 
-  console.log("participants--->", participants);
-  console.log("contributions--->", contributions);
 
   const tripExpensesList = expenseDataList?.expenses;
   const totalAmount = expenseDataList?.totalAmount;
-  console.log("trip>>>>", trip);
-  console.log("totalAmount", totalAmount);
   useEffect(() => {
     if (activeTripData?.data?.activeTrip) {
       setTrip(activeTripData.data.activeTrip);
@@ -199,7 +188,6 @@ export default function ParticipantDashboard() {
   useEffect(() => {
     const handleUnreadCount = ({ unreadCount, tripId: countTripId }) => {
       if (countTripId === tripId) {
-        console.log("[v0] Unread count updated:", unreadCount);
         setUnreadCount(unreadCount);
       }
     };
@@ -276,10 +264,6 @@ export default function ParticipantDashboard() {
   const mockData = {
     participants: mockParticipants,
   };
-
-  // ✅ Converts any date string to fixed UTC date (same globally)
-
-  console.log("trip;;;;;;;;;;", trip);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">

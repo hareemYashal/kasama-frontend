@@ -73,20 +73,6 @@ export default function FeedbackPage() {
     setError(null);
 
     try {
-      // MOCK: simulate saving feedback
-      console.log("Feedback saved:", {
-        ...formData,
-        rating,
-        user_id: user?.id,
-        trip_id: user?.current_trip_id,
-      });
-
-      // MOCK: simulate sending email
-      console.log("Email sent to support@kasama.com", {
-        ...formData,
-        rating,
-      });
-
       // Simulate delay
       await new Promise((resolve) => setTimeout(resolve, 800));
 

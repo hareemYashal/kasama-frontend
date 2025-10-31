@@ -91,7 +91,6 @@ export default function Dashboard() {
     queryFn: () => getTripService(tripId),
   });
 
-  console.log("activeTripData----000998>>>", activeTripData);
   // Query for trip expense details
   const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
     useQuery({
@@ -120,7 +119,6 @@ export default function Dashboard() {
     }
   }, [getContributionsData]);
 
-  console.log("activeTripDataState", activeTripDataState);
   const participants = getContributionsData?.data?.participants?.map((p) => ({
     id: p.user.id,
     name: p.user.name,
@@ -149,7 +147,6 @@ export default function Dashboard() {
   }, [activeTripData, dispatch]);
 
   const tripDataList = tripExpenseDetails?.data?.data;
-  console.log("tripDataList", tripDataList);
   // Handle loading state
   const isLoading =
     isLoadingExpenses ||
@@ -209,11 +206,9 @@ export default function Dashboard() {
     s.emit("getMessages", { tripId });
     s.emit("getUnreadCount", { tripId, userId: authUerId });
   });
-  console.log("activeTripDataState", activeTripDataState);
   useEffect(() => {
     const handleUnreadCount = ({ unreadCount, tripId: countTripId }) => {
       if (countTripId === tripId) {
-        console.log("[v0] Unread count updated:", unreadCount);
         setUnreadCount(unreadCount);
       }
     };

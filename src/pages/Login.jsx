@@ -30,7 +30,6 @@ export default function LoginPage({ onNavigate }) {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   const token = useSelector((state) => state.user.token);
-  console.log("Hey I am the User", user);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -63,7 +62,6 @@ export default function LoginPage({ onNavigate }) {
   const { mutate, isPending } = useMutation({
     mutationFn: loginService,
     onSuccess: async (data) => {
-      console.log("Login success:", data);
       toast.success(data.message);
 
       // ✅ save user/token in Redux + localStorage
@@ -124,7 +122,6 @@ export default function LoginPage({ onNavigate }) {
           access_token: tokenResponse.access_token,
         });
 
-        console.log("GOOGLEresp", resp);
         // success flow identical to your current loginService success:
         toast.success(resp.data.message || "Login Successful");
         dispatch(setToken(resp.data.data.token));

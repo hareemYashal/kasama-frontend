@@ -1,6 +1,6 @@
 "use client";
 
-import {useState, useRef, useEffect} from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Megaphone,
   X,
@@ -13,11 +13,11 @@ import {
   User,
   Plus,
 } from "lucide-react";
-import {useSelector} from "react-redux";
-import {toast} from "sonner";
-import {io} from "socket.io-client";
-import {formatTime, normalizePoll} from "../utils/utils";
-import {RenderAttachments} from "@/components/chat/ChatAttachments";
+import { useSelector } from "react-redux";
+import { toast } from "sonner";
+import { io } from "socket.io-client";
+import { formatTime, normalizePoll } from "../utils/utils";
+import { RenderAttachments } from "@/components/chat/ChatAttachments";
 import WelcomeChat from "@/components/chat/WelcomeChat";
 import {
   groupMessagesByDate,
@@ -27,7 +27,7 @@ import {
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatLoader from "@/components/chat/ChatLoader";
 import ModalChatGIF from "@/components/chat/ModalChatGIF";
-import {ChatAnnouncement} from "@/components/chat/ChatAnnouncement";
+import { ChatAnnouncement } from "@/components/chat/ChatAnnouncement";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -96,7 +96,7 @@ const Chat = () => {
           });
 
           // Update local read status
-          const newReadStatus = {...readStatus};
+          const newReadStatus = { ...readStatus };
           unreadMessageIds.forEach((id) => {
             newReadStatus[id] = true;
           });
@@ -116,7 +116,7 @@ const Chat = () => {
 
     const res = await fetch(endpoint, {
       method: "GET",
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     if (!res.ok) {
       return null;
@@ -166,7 +166,7 @@ const Chat = () => {
   };
 
   const normalizeMessage = (m) => {
-    const msg = {...m};
+    const msg = { ...m };
     let rawPoll =
       msg.poll ??
       msg.pollOptions ??
@@ -200,7 +200,6 @@ const Chat = () => {
     if (normalized) msg.poll = normalized;
     return msg;
   };
-  console.log(authUerId, "id");
   useEffect(() => {
     if (!tripId || !token) return;
 
@@ -246,31 +245,29 @@ const Chat = () => {
           return msg;
         })
       );
-      console.log("[v0] Final processed messages:", processed);
       setMessages(processed);
       setIsLoadingMessages(false);
     };
 
     if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit("joinTripChat", {tripId, userId: authUerId});
-      socketRef.current.emit("getMessages", {tripId});
-      socketRef.current.emit("getUnreadCount", {tripId, userId: authUerId});
+      socketRef.current.emit("joinTripChat", { tripId, userId: authUerId });
+      socketRef.current.emit("getMessages", { tripId });
+      socketRef.current.emit("getUnreadCount", { tripId, userId: authUerId });
       return;
     }
 
-    const s = io(BASE_URL, {auth: {token}});
+    const s = io(BASE_URL, { auth: { token } });
     socketRef.current = s;
 
     s.on("connect", () => {
-      s.emit("joinTripChat", {tripId, userId: authUerId});
-      s.emit("getMessages", {tripId});
-      s.emit("getUnreadCount", {tripId, userId: authUerId});
+      s.emit("joinTripChat", { tripId, userId: authUerId });
+      s.emit("getMessages", { tripId });
+      s.emit("getUnreadCount", { tripId, userId: authUerId });
     });
 
     s.on("messages", processMessages);
     s.on("newMessage", async (incoming) => {
       const msg = normalizeMessage(incoming);
-      console.log("[v0] Received new message:", msg);
       if (msg.reactions && msg.reactions.length > 0) {
         setReactions((prev) => ({
           ...prev,
@@ -305,10 +302,6 @@ const Chat = () => {
           };
           setMessages((prev) => [...prev, processedMsg]);
         } catch (error) {
-          console.error(
-            "[v0] Error processing new message attachments:",
-            error
-          );
           setMessages((prev) => [...prev, msg]);
         }
       } else {
@@ -318,8 +311,6 @@ const Chat = () => {
 
     s.on("messageDelivered", async (delivered) => {
       const serverMsg = normalizeMessage(delivered);
-      console.log("[v0] Message delivered from server:", serverMsg);
-
       if (serverMsg.reactions && serverMsg.reactions.length > 0) {
         setReactions((prev) => ({
           ...prev,
@@ -358,7 +349,7 @@ const Chat = () => {
           };
         } catch (error) {
           console.error(
-            "[v0] Error processing delivered message attachments:",
+            "Error",
             error
           );
         }
@@ -383,19 +374,17 @@ const Chat = () => {
       });
     });
 
-    s.on("reactionUpdated", ({messageId, reactions: updatedReactions}) => {
-      console.log("[v0] Reaction updated:", {messageId, updatedReactions});
+    s.on("reactionUpdated", ({ messageId, reactions: updatedReactions }) => {
       setReactions((prev) => ({
         ...prev,
         [messageId]: updatedReactions,
       }));
     });
 
-    s.on("pollUpdated", ({messageId, poll}) => {
-      console.log("[v0] Poll updated:", {messageId, poll});
+    s.on("pollUpdated", ({ messageId, poll }) => {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === messageId ? normalizeMessage({...m, poll}) : m
+          m.id === messageId ? normalizeMessage({ ...m, poll }) : m
         )
       );
     });
@@ -404,15 +393,10 @@ const Chat = () => {
       console.log("socket disconnect:", reason);
     });
 
-    s.on("messageReadStatus", ({messageIds, readBy, readAt}) => {
-      console.log("[v0] Message read status updated:", {
-        messageIds,
-        readBy,
-        readAt,
-      });
+    s.on("messageReadStatus", ({ messageIds, readBy, readAt }) => {
       // Update read status for messages
       setReadStatus((prev) => {
-        const newStatus = {...prev};
+        const newStatus = { ...prev };
         messageIds.forEach((id) => {
           newStatus[id] = true;
         });
@@ -420,14 +404,13 @@ const Chat = () => {
       });
     });
 
-    s.on("unreadCount", ({unreadCount, tripId: countTripId}) => {
+    s.on("unreadCount", ({ unreadCount, tripId: countTripId }) => {
       if (countTripId === tripId) {
-        console.log("[v0] Unread count updated:", unreadCount);
         setUnreadCount(unreadCount);
       }
     });
 
-    s.on("unreadCountError", ({error}) => {
+    s.on("unreadCountError", ({ error }) => {
       console.error("[v0] Error getting unread count:", error);
     });
 
@@ -506,7 +489,7 @@ const Chat = () => {
       poll: normalizedOutgoingPoll,
       timestamp: new Date().toISOString(),
       senderId: authUerId,
-      sender: {name: authUser?.name || "You"},
+      sender: { name: authUser?.name || "You" },
       reactions: [],
     };
 
@@ -585,7 +568,7 @@ const Chat = () => {
   };
 
   const handleAddPollOption = () => {
-    setPollOptions([...pollOptions, {label: "", votes: 0}]);
+    setPollOptions([...pollOptions, { label: "", votes: 0 }]);
   };
 
   const handlePollChange = (index, value) => {
@@ -610,7 +593,7 @@ const Chat = () => {
       files: [],
       timestamp: new Date().toISOString(),
       senderId: authUerId,
-      sender: {name: authUser?.name || "You"},
+      sender: { name: authUser?.name || "You" },
       reactions: [], // Initialize empty reactions array
     };
 
@@ -701,7 +684,7 @@ const Chat = () => {
   return (
     <main
       className="flex flex-col h-screen w-full max-w-full overflow-x-hidden"
-      style={{maxWidth: "100vw", overflowX: "hidden"}}
+      style={{ maxWidth: "100vw", overflowX: "hidden" }}
     >
       {/* Header */}
       <ChatHeader />
@@ -715,7 +698,7 @@ const Chat = () => {
       <div
         ref={messagesContainerRef}
         className="flex flex-col flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-2 md:p-4 space-y-4 bg-[#F1F5F9] min-w-0"
-        style={{maxWidth: "100vw", overflowX: "hidden"}}
+        style={{ maxWidth: "100vw", overflowX: "hidden" }}
       >
         {isLoadingMessages ? (
           <div className="flex items-center justify-center h-full">
@@ -737,12 +720,12 @@ const Chat = () => {
                   <div
                     key={idx}
                     className="w-full max-w-full mb-3 px-1 min-w-0"
-                    style={{maxWidth: "100%", overflow: "hidden"}}
+                    style={{ maxWidth: "100%", overflow: "hidden" }}
                   >
                     {msg.type === "announcement" && (
                       <div
                         className="w-full max-w-full overflow-hidden"
-                        style={{maxWidth: "100%", overflow: "hidden"}}
+                        style={{ maxWidth: "100%", overflow: "hidden" }}
                       >
                         <ChatAnnouncement msg={msg} />
                       </div>
@@ -755,7 +738,7 @@ const Chat = () => {
                             ? "justify-end"
                             : "justify-start"
                         }`}
-                        style={{maxWidth: "100%", overflow: "hidden"}}
+                        style={{ maxWidth: "100%", overflow: "hidden" }}
                       >
                         <div
                           className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
@@ -787,7 +770,7 @@ const Chat = () => {
                           >
                             <div
                               className="max-w-[90%] sm:max-w-[85%] md:max-w-xs lg:max-w-md relative group/message shadow-sm w-full rounded-2xl px-4 py-3 bg-blue-500 text-white rounded-br-md min-w-0"
-                              style={{maxWidth: "90%", overflow: "hidden"}}
+                              style={{ maxWidth: "90%", overflow: "hidden" }}
                             >
                               {/* Keep poll bubble UI unchanged */}
                               <p className="text-sm font-medium leading-relaxed break-words mb-3">
@@ -797,11 +780,14 @@ const Chat = () => {
 
                               <div
                                 className="w-full max-w-full min-w-0"
-                                style={{maxWidth: "100%", overflow: "hidden"}}
+                                style={{ maxWidth: "100%", overflow: "hidden" }}
                               >
                                 <div
                                   className="rounded-lg bg-blue-100/80 backdrop-blur-sm p-4 w-full max-w-full min-w-0"
-                                  style={{maxWidth: "100%", overflow: "hidden"}}
+                                  style={{
+                                    maxWidth: "100%",
+                                    overflow: "hidden",
+                                  }}
                                 >
                                   <div className="mb-3">
                                     <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base text-slate-800 mb-1">
@@ -882,7 +868,7 @@ const Chat = () => {
                                             <div className="relative w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                               <div
                                                 className="absolute left-0 top-0 h-full bg-slate-800 rounded-full transition-all duration-300"
-                                                style={{width: `${percent}%`}}
+                                                style={{ width: `${percent}%` }}
                                               />
                                             </div>
                                           </button>
@@ -951,7 +937,7 @@ const Chat = () => {
                             ? "justify-end"
                             : "justify-start"
                         }`}
-                        style={{maxWidth: "100%", overflow: "hidden"}}
+                        style={{ maxWidth: "100%", overflow: "hidden" }}
                       >
                         <div
                           className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
@@ -982,7 +968,7 @@ const Chat = () => {
                           >
                             <div
                               className="px-4 py-2 rounded-2xl max-w-[90%] sm:max-w-xs md:max-w-sm break-words bg-blue-500 text-white rounded-br-md min-w-0"
-                              style={{maxWidth: "90%", overflow: "hidden"}}
+                              style={{ maxWidth: "90%", overflow: "hidden" }}
                             >
                               {/* Sender name (only for others' messages) */}
                               {msg.senderId !== authUerId && (
@@ -994,7 +980,7 @@ const Chat = () => {
                               {/* GIF content */}
                               <div
                                 className="rounded-lg overflow-hidden w-full max-w-full min-w-0"
-                                style={{maxWidth: "100%", overflow: "hidden"}}
+                                style={{ maxWidth: "100%", overflow: "hidden" }}
                               >
                                 <img
                                   src={msg.fileUrl || "/placeholder.svg"}
@@ -1069,7 +1055,7 @@ const Chat = () => {
                             ? "justify-end"
                             : "justify-start"
                         }`}
-                        style={{maxWidth: "100%", overflow: "hidden"}}
+                        style={{ maxWidth: "100%", overflow: "hidden" }}
                       >
                         <div
                           className={`flex items-start gap-2 w-full max-w-full min-w-0 ${
@@ -1190,11 +1176,11 @@ const Chat = () => {
       {/* Input Section */}
       <div
         className="flex-shrink-0 bg-white border-t border-slate-200 p-2 md:p-4 space-y-3 w-full max-w-full overflow-hidden min-w-0"
-        style={{maxWidth: "100vw", overflowX: "hidden"}}
+        style={{ maxWidth: "100vw", overflowX: "hidden" }}
       >
         <div
           className="bg-white p-2 md:p-4 space-y-3 w-full max-w-full overflow-hidden min-w-0"
-          style={{maxWidth: "100%", overflow: "hidden"}}
+          style={{ maxWidth: "100%", overflow: "hidden" }}
         >
           {/* Announcement Mode */}
           {mode === "announcement" && (
@@ -1324,15 +1310,15 @@ const Chat = () => {
           {mode !== "poll" && (
             <form
               className="w-full max-w-full min-w-0"
-              style={{maxWidth: "100%", overflow: "hidden"}}
+              style={{ maxWidth: "100%", overflow: "hidden" }}
             >
               <div
                 className="flex items-end gap-2 md:gap-3 w-full max-w-full min-w-0"
-                style={{maxWidth: "100%", overflow: "hidden"}}
+                style={{ maxWidth: "100%", overflow: "hidden" }}
               >
                 <div
                   className="flex-1 min-w-0 max-w-full"
-                  style={{maxWidth: "100%", overflow: "hidden"}}
+                  style={{ maxWidth: "100%", overflow: "hidden" }}
                 >
                   <textarea
                     className={`flex border px-3 py-2 ring-offset-background placeholder:text-muted-foreground
@@ -1398,11 +1384,11 @@ const Chat = () => {
           {mode !== "poll" && (
             <div
               className="flex justify-start items-center mt-2 w-full max-w-full overflow-hidden min-w-0"
-              style={{maxWidth: "100%", overflow: "hidden"}}
+              style={{ maxWidth: "100%", overflow: "hidden" }}
             >
               <div
                 className="flex items-center gap-1 flex-wrap max-w-full min-w-0"
-                style={{maxWidth: "100%", overflow: "hidden"}}
+                style={{ maxWidth: "100%", overflow: "hidden" }}
               >
                 <input
                   type="file"
@@ -1465,8 +1451,8 @@ const Chat = () => {
                     setMode("poll");
                     if (pollOptions.length === 0) {
                       setPollOptions([
-                        {label: "", votes: 0},
-                        {label: "", votes: 0},
+                        { label: "", votes: 0 },
+                        { label: "", votes: 0 },
                       ]);
                     }
                   }}

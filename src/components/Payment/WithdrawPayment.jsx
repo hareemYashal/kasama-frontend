@@ -46,7 +46,6 @@ const Withdraw = ({withDrawlAmount}) => {
 
     const data = {tripId, userId, amount, description: purpose};
     withdrawMutate({token, data});
-    //   console.log(data1,'aa')
   };
 
   return (

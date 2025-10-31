@@ -90,7 +90,6 @@ export default function Itinerary() {
     newExpanded.has(date) ? newExpanded.delete(date) : newExpanded.add(date);
     setExpandedDays(newExpanded);
   };
-  console.log("itineraries", itineraries);
   const groupItemsByDay = () => {
     if (!itineraries?.itineraries || !Array.isArray(itineraries.itineraries)) {
       return [];

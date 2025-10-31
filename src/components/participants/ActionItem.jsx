@@ -32,7 +32,6 @@ const ActionItem = ({tripId, participant,onMakeAdmin}) => {
       setIsOpen(false);
     },
     onError: (error) => {
-      console.log("💣 onError fired:", error);
       toast.error(error?.response?.data?.message || "Failed to delete");
     },
   });

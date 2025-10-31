@@ -18,8 +18,6 @@ export default function SocketListener() {
 
   useEffect(() => {
     socket.on("role_updated", async (data) => {
-      console.log("socket listening", data);
-
       if (data.userId !== authUser?.id) return;
 
       // Always refresh trips API

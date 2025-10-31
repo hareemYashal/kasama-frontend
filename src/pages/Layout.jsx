@@ -70,14 +70,12 @@ export default function Layout({ children, currentPageName }) {
   const dispatch = useDispatch();
 
   const user = useSelector((state) => state.user.user);
-  console.log("hey I am the user from  layout", user);
   const [trip, setTrip] = useState(null);
   const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
   const tripId = useSelector((state) => state.trips.activeTripId);
   // Optional: local fetch for recent notifications (fallback if store does not hold list)
-  console.log("tripId<><><>", tripId);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -186,7 +184,6 @@ export default function Layout({ children, currentPageName }) {
     setLoading(false);
   };
 
-  console.log("userProfileData", userProfileData);
   const hasAdminAccess =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
@@ -252,7 +249,6 @@ export default function Layout({ children, currentPageName }) {
   } else {
     navigationItems = [];
   }
-  console.log("navigationItems", navigationItems);
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">

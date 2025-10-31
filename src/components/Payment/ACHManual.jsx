@@ -88,8 +88,6 @@ const ACHPaymentsModal = ({
       } else {
         toast.error("Failed to enable ACH auto-payment.");
       }
-
-      console.log("ACH setup successful!", setupIntent);
       setSuccess(true);
     } catch (err) {
       setError(err.message);

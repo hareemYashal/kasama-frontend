@@ -47,14 +47,12 @@ export default function Participants() {
   let totalParticipant = participantsData?.data?.participants;
   let tripParticipantsNumber =
     participantsData?.data?.participants?.length || 0;
-  console.log(participantsData?.data?.participants?.length, "Heyyyyy");
   useEffect(() => {
     loadParticipantData();
   }, []);
   const queryClient = useQueryClient(); // ✅ yeh zaroori hai
 
   const handleMakeAdmin = async (participant) => {
-    console.log("handleMakeAdmin", participant);
     try {
       await makeAdminService(token, {
         userId: participant.user?.id, // 👈 Correct key
@@ -280,9 +278,7 @@ export default function Participants() {
       </div>
     );
   }
-
-  console.log("trip-0-0", tripDetails);
-
+  
   const isAdmin =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 

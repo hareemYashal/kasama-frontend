@@ -131,7 +131,6 @@ const ItineraryCalander = () => {
     onError: () => toast.error("Failed to save itinerary"),
   });
 
-  console.log("activeTrippppp", activeTrip);
   // ✅ Fetch all itineraries once
   const {
     data: itineraryRes,
@@ -268,7 +267,7 @@ const ItineraryCalander = () => {
     return <div className="grid grid-cols-7 gap-1 mb-4">{days}</div>;
   };
 
-  console.log("activitiesForSelectedDay", activitiesForSelectedDay);
+  
   const renderCells = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
@@ -411,13 +410,13 @@ const ItineraryCalander = () => {
                             isValid(new Date(a.end_time))
                               ? `${format(
                                   new Date(a.start_time),
-                                  "HH:mm"
-                                )} - ${format(new Date(a.end_time), "HH:mm")}`
+                                  "h:mm a"
+                                )} - ${format(new Date(a.end_time), "h:mm a")}`
                               : "Invalid time"}
                           </>
                         ) : a.start_time ? (
                           isValid(new Date(a.start_time)) ? (
-                            format(new Date(a.start_time), "HH:mm")
+                            format(new Date(a.start_time), "h:mm a")
                           ) : (
                             "Invalid time"
                           )

@@ -1,15 +1,15 @@
 "use client";
-import React, {useEffect} from "react";
-import {ActivityIcon, History, Trash2} from "lucide-react";
-import {useSelector, useDispatch} from "react-redux";
-import {useQuery, useQueryClient} from "@tanstack/react-query";
+import React, { useEffect } from "react";
+import { ActivityIcon, History, Trash2 } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import BackButton from "@/components/ui/BackButton";
 import {
   getNotificationsService,
   deleteNotificationService,
   markAsReadService,
 } from "@/services/notification";
-import {io} from "socket.io-client";
+import { io } from "socket.io-client";
 import {
   setNotifications,
   markAsRead,
@@ -25,7 +25,7 @@ const Notifications = () => {
   const user = useSelector((state) => state.user.user);
   const queryClient = useQueryClient();
   const notifications = useSelector((state) => state.notifications.list);
-  const {data: activeTripData} = useQuery({
+  const { data: activeTripData } = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -35,7 +35,7 @@ const Notifications = () => {
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
   // Fetch notifications from API
-  const {data} = useQuery({
+  const { data } = useQuery({
     queryKey: ["notifications", tripId, token],
     queryFn: () => getNotificationsService(tripId, token),
     enabled: !!tripId && !!token,
@@ -48,10 +48,10 @@ const Notifications = () => {
   }, [data, dispatch]);
 
   // Socket for real-time notifications
-  useEffect( () => {
+  useEffect(() => {
     if (!tripId || !token) return;
 
-    const socket = io(BASE_URL, {auth: {token}});
+    const socket = io(BASE_URL, { auth: { token } });
     socket.emit("joinTrip", tripId);
 
     socket.on(
@@ -62,21 +62,32 @@ const Notifications = () => {
         })
       // dispatch(setNotifications([notif, ...notifications]))
     );
-    socket.on("notificationDeleted", ({id}) =>
+    socket.on("notificationDeleted", ({ id }) =>
       dispatch(deleteNotification(id))
     );
 
     return () => socket.disconnect();
   }, [tripId, token, dispatch, notifications]);
 
-  const handleMarkRead = async (notifId) => {
-    try {
-      await markAsReadService(notifId, token);
-      dispatch(markAsRead(notifId));
-    } catch (error) {
-      console.error("Error marking notification as read", error);
-    }
-  };
+  useEffect(() => {
+    const markAllAsRead = async () => {
+      if (notifications.length > 0) {
+        const unread = notifications.filter((n) => !n.isRead);
+        if (unread.length > 0) {
+          try {
+            await Promise.all(
+              unread.map((notif) => markAsReadService(notif.id, token))
+            );
+            unread.forEach((notif) => dispatch(markAsRead(notif.id)));
+          } catch (error) {
+            console.error("Error marking all notifications as read:", error);
+          }
+        }
+      }
+    };
+
+    markAllAsRead();
+  }, [notifications, token, dispatch]);
 
   const handleDelete = async (notifId) => {
     try {
@@ -129,12 +140,8 @@ const Notifications = () => {
             notifications.map((item) => (
               <div
                 key={item.id}
-                onClick={() => handleMarkRead(item.id)}
-                className={`flex items-start gap-3 p-4 rounded-lg border transition-colors cursor-pointer ${
-                  !item.isRead
-                    ? "bg-slate-100 border-slate-200"
-                    : "bg-white border-slate-100 hover:border-slate-200"
-                }`}
+                // onClick={() => handleMarkRead(item.id)}
+                className={`flex items-start gap-3 p-4 bg-white border-slate-100 hover:border-slate-200 rounded-lg border transition-colors`}
               >
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <ActivityIcon className="w-4 h-4 text-blue-600" />

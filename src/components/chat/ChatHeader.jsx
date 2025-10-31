@@ -52,7 +52,6 @@ const ChatHeader = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  console.log("totalParticipant", totalParticipant);
   return (
     <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 p-3 md:p-6 flex items-center justify-between gap-2 md:gap-4 flex-shrink-0 z-10">
       <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">

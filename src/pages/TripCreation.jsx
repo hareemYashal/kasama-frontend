@@ -32,7 +32,6 @@ export default function TripCreation() {
   const BASE_URL = import.meta.env.VITE_API_URL;
 
   const token = useSelector((state) => state.user.token);
-  console.log(token, "Hey I am the Token of Redux");
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     trip_occasion: "",
@@ -55,7 +54,6 @@ export default function TripCreation() {
   const handleImageChange = async (e) => {
     setImageLoading(true);
     const file = e.target.files[0];
-    console.log(file, "");
     if (!file) return;
 
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -73,7 +71,6 @@ export default function TripCreation() {
     }
 
     setPreviewUrl(URL.createObjectURL(file));
-    console.log(file, "ss");
     try {
       const uploadResult = await uploadToS3({
         file: file,
@@ -86,7 +83,6 @@ export default function TripCreation() {
         toast.error("Failed to upload image.");
         return;
       }
-      console.log(uploadResult, "I am the upload result");
       setImgkey(uploadResult.key);
       formData.image = uploadResult.key;
 
@@ -116,7 +112,6 @@ export default function TripCreation() {
   const { mutate, isLoading } = useMutation({
     mutationFn: (formData) => createTripService(formData, token),
     onSuccess: (data) => {
-      console.log("Trip Created Successfully:", data);
       localStorage.setItem("selectedTripId", data?.data?.id); // save in localStorage
 
       toast.success(data.message);
@@ -129,7 +124,6 @@ export default function TripCreation() {
   });
 
   const handleSubmit = () => {
-    console.log(" Form Data:", formData);
     mutate(formData);
   };
   const nextStep = () => {

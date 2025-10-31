@@ -1,14 +1,14 @@
 "use client";
 
-import {useState, useEffect, useMemo} from "react";
-import {useNavigate} from "react-router-dom";
-import {createPageUrl} from "@/utils";
-import {loadStripe} from "@stripe/stripe-js";
-import {Elements} from "@stripe/react-stripe-js";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Switch} from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -39,20 +39,20 @@ import {
   ShieldCheck,
   Loader2,
 } from "lucide-react";
-import {useMutation, useQuery} from "@tanstack/react-query";
-import {useQueryClient} from "@tanstack/react-query";
-import {getPaymentRemainingsService} from "@/services/paynent";
-import {useSelector} from "react-redux";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { getPaymentRemainingsService } from "@/services/paynent";
+import { useSelector } from "react-redux";
 import {
   participantStatusUpdateService,
   participantTripCheck,
   totalParticipantsService,
 } from "@/services/participant";
-import {toast} from "sonner";
-import {getTripService} from "@/services/trip";
+import { toast } from "sonner";
+import { getTripService } from "@/services/trip";
 import PaymentsForm from "@/components/Payment/AutoPayment";
 import ACHPaymentsModal from "@/components/Payment/ACHManual";
-import {getExpenseByTripIdService} from "@/services/expense";
+import { getExpenseByTripIdService } from "@/services/expense";
 import Withdraw from "@/components/Payment/WithdrawPayment";
 
 export default function Payments() {
@@ -73,7 +73,7 @@ export default function Payments() {
   const hasAdminAcess =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 
-  const {data: participantsData} = useQuery({
+  const { data: participantsData } = useQuery({
     queryKey: ["totalParticipantsService"],
     queryFn: () => totalParticipantsService(token, tripId),
     enabled: !!token && !!tripId,
@@ -95,14 +95,13 @@ export default function Payments() {
   const [isOpenACH, setIsACHOpen] = useState(false);
 
   const [autoSavePayload, setAutoSavePayloadData] = useState("");
-  const {data: tripExpenseDetails, isLoading: isLoadingExpenseDetails} =
+  const { data: tripExpenseDetails, isLoading: isLoadingExpenseDetails } =
     useQuery({
       queryKey: ["getExpenseByTripIdService", tripId],
       queryFn: () => getExpenseByTripIdService(token, tripId),
       enabled: !!token && !!tripId,
     });
   const tripDataList = tripExpenseDetails?.data?.data;
-  console.log("tripDataList", tripDataList);
   const [loading, setLoading] = useState(null);
   const [oneTimeAmount, setOneTimeAmount] = useState("");
   const [selectedFriend, setSelectedFriend] = useState(null);
@@ -212,7 +211,6 @@ export default function Payments() {
       const result = await response.json();
 
       if (result.success) {
-        console.log("Setup Intent created:", result.setupIntent);
         // Store the setup intent for Stripe Elements integration
         localStorage.setItem(
           "currentSetupIntent",
@@ -400,21 +398,20 @@ export default function Payments() {
 
   const [processingOneTimePayment, setProcessingOneTimePayment] =
     useState(false);
-  const {data: paymentData, isSuccess: isPaymentDataSuccess} = useQuery({
+  const { data: paymentData, isSuccess: isPaymentDataSuccess } = useQuery({
     queryKey: ["getPaymentRemainingsQuery", authTripId, authUerId],
     queryFn: () =>
       getPaymentRemainingsService(authToken, authTripId, authUerId),
     enabled: !!authToken && !!authTripId && !!authUerId,
   });
-  console.log("paymentData", paymentData);
 
-  const {data: savedPaymentMethodData} = useQuery({
+  const { data: savedPaymentMethodData } = useQuery({
     queryKey: ["getPaymentMethod", authUerId, authTripId],
     queryFn: async () => {
       const response = await fetch(
         `${BASE_URL}/payment/getPaymentMethod?userId=${authUerId}&tripId=${authTripId}`,
         {
-          headers: {Authorization: `Bearer ${authToken}`},
+          headers: { Authorization: `Bearer ${authToken}` },
         }
       );
       const result = await response.json();
@@ -423,13 +420,13 @@ export default function Payments() {
     enabled: !!authToken && !!authUerId && !!authTripId,
   });
 
-  const {data: autoPaymentDataResponse} = useQuery({
+  const { data: autoPaymentDataResponse } = useQuery({
     queryKey: ["getAutoPayment", authUerId, authTripId],
     queryFn: async () => {
       const response = await fetch(
         `${BASE_URL}/payment/get-auto-payment?userId=${authUerId}&tripId=${authTripId}`,
         {
-          headers: {Authorization: `Bearer ${authToken}`},
+          headers: { Authorization: `Bearer ${authToken}` },
         }
       );
       const result = await response.json();
@@ -441,7 +438,6 @@ export default function Payments() {
   useEffect(() => {
     if (paymentData?.data?.data) {
       const apiData = paymentData.data.data;
-      console.log("paymentData", apiData);
 
       setPaymentDetailData(apiData);
 
@@ -491,15 +487,14 @@ export default function Payments() {
     queryFn: () => participantTripCheck(authToken, authUerId, authTripId),
     enabled: !!authToken && !!authTripId && !!authUerId,
   });
-  console.log("isInvitedData", isInvitedData);
   useEffect(() => {
     if (invitedSuccess) {
       setIsInvited(!!isInvitedData?.invitation);
     }
   }, [invitedSuccess, isInvitedData]);
 
-  const {mutate: updateMutation, isPending} = useMutation({
-    mutationFn: ({authToken, authUerId, authTripId, status}) =>
+  const { mutate: updateMutation, isPending } = useMutation({
+    mutationFn: ({ authToken, authUerId, authTripId, status }) =>
       participantStatusUpdateService(authToken, authUerId, authTripId, status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -511,7 +506,7 @@ export default function Payments() {
 
   const handleRequest = () => {
     const status = "REQUESTED";
-    updateMutation({authToken, authUerId, authTripId, status});
+    updateMutation({ authToken, authUerId, authTripId, status });
   };
 
   // -----------------------------
@@ -521,12 +516,11 @@ export default function Payments() {
       try {
         const response = await fetch(
           `${BASE_URL}/payment/getPaymentRemainings?tripId=${authTripId}&userId=${authUerId}`,
-          {headers: {Authorization: `Bearer ${authToken}`}}
+          { headers: { Authorization: `Bearer ${authToken}` } }
         );
         const result = await response.json();
 
         if (result.success) {
-          console.log("fetchPaymentRemainings", result.data);
           setPaymentDetailData(result.data.data);
           setContribution((prev) => ({
             ...(prev || {}),
@@ -551,18 +545,7 @@ export default function Payments() {
       return;
     }
 
-    const {amount, totalCharge} = calculateOneTimePaymentBreakdown();
-
-    // Debug logs
-    console.log("=== DEBUG ONE TIME PAYMENT ===");
-    console.log("Raw oneTimeAmount (string):", oneTimeAmount);
-    console.log(
-      "Parsed oneTimeAmount (number):",
-      Number.parseFloat(oneTimeAmount)
-    );
-    console.log("Breakdown.amount (base):", amount);
-    console.log("Breakdown.totalCharge:", totalCharge);
-    console.log("Remaining balance:", contribution.amount_remaining);
+    const { amount, totalCharge } = calculateOneTimePaymentBreakdown();
 
     // Safe parse
     const parsedAmount = Number.parseFloat(oneTimeAmount);
@@ -632,16 +615,12 @@ export default function Payments() {
   };
 
   const handlePayForFriend = async () => {
-    console.log("selectedFriend", selectedFriend);
-    console.log("friendPaymentAmount", friendPaymentAmount);
-    console.log("paymentMethod", paymentMethod);
-
     if (!selectedFriend || !friendPaymentAmount) {
       alert("Please select a participant and enter a valid amount");
       return;
     }
 
-    const {totalCharge} = friendBreakdown;
+    const { totalCharge } = friendBreakdown;
 
     setProcessingFriendPayment(true);
 
@@ -815,15 +794,7 @@ export default function Payments() {
   }) => {
     try {
       await ensureStripeJsLoaded();
-      console.log(STRIPE_PUBLISHABLE_KEY, "STRIPE_PUBLISHABLE_KEY");
       const stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
-      console.log(
-        stripe,
-        "stripe",
-        STRIPE_PUBLISHABLE_KEY,
-        "STRIPE_PUBLISHABLE_KEY"
-      );
-
       // Create a PaymentIntent on the server sized to cents
       const createPiResponse = await fetch(
         `${BASE_URL}/payment/add-payment-intent`,
@@ -834,7 +805,7 @@ export default function Payments() {
                 Authorization: `Bearer ${authToken}`,
                 "Content-Type": "application/json",
               }
-            : {"Content-Type": "application/json"},
+            : { "Content-Type": "application/json" },
           body: JSON.stringify({
             // server expects amount in cents (controller uses Math.round(amount))
             amount: Math.round((amount || 0) * 100),
@@ -851,9 +822,9 @@ export default function Payments() {
         throw new Error(`Server error: ${createPiResponse.status}`);
       }
 
-      const {clientSecret} = await createPiResponse.json();
+      const { clientSecret } = await createPiResponse.json();
 
-      const {paymentIntent, error: collectError} =
+      const { paymentIntent, error: collectError } =
         await stripe.collectBankAccountForPayment({
           clientSecret,
           params: {
@@ -872,9 +843,8 @@ export default function Payments() {
       }
 
       if (paymentIntent?.status === "requires_confirmation") {
-        const {error: confirmError} = await stripe.confirmUsBankAccountPayment(
-          clientSecret
-        );
+        const { error: confirmError } =
+          await stripe.confirmUsBankAccountPayment(clientSecret);
         if (confirmError) {
           throw new Error(confirmError.message);
         }
@@ -909,17 +879,17 @@ export default function Payments() {
   const friendBreakdown = useMemo(() => {
     const amount = Number.parseFloat(friendPaymentAmount);
     if (!friendPaymentAmount || isNaN(amount) || amount <= 0) {
-      return {amount: 0, stripeFee: 0, totalCharge: 0};
+      return { amount: 0, stripeFee: 0, totalCharge: 0 };
     }
 
     const platformFee = 1.0;
     const stripeFee = calculateStripeFee(amount, paymentMethod?.type || "card");
     const totalCharge = amount + platformFee + stripeFee;
 
-    return {amount, stripeFee, totalCharge};
+    return { amount, stripeFee, totalCharge };
   }, [friendPaymentAmount, paymentMethod?.type]);
 
-  const {data: tripData, isLoading: isLoadingTripData} = useQuery({
+  const { data: tripData, isLoading: isLoadingTripData } = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
@@ -1567,13 +1537,13 @@ export default function Payments() {
                                           </SelectItem>
                                         ))
                                       : [
-                                          {value: "1", label: "Monday"},
-                                          {value: "2", label: "Tuesday"},
-                                          {value: "3", label: "Wednesday"},
-                                          {value: "4", label: "Thursday"},
-                                          {value: "5", label: "Friday"},
-                                          {value: "6", label: "Saturday"},
-                                          {value: "7", label: "Sunday"},
+                                          { value: "1", label: "Monday" },
+                                          { value: "2", label: "Tuesday" },
+                                          { value: "3", label: "Wednesday" },
+                                          { value: "4", label: "Thursday" },
+                                          { value: "5", label: "Friday" },
+                                          { value: "6", label: "Saturday" },
+                                          { value: "7", label: "Sunday" },
                                         ].map((day) => (
                                           <SelectItem
                                             key={day.value}

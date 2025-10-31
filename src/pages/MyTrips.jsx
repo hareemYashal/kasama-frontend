@@ -77,13 +77,11 @@ export default function MyTrips() {
   const authUerId = authUser?.id;
   const handleSwitchToTrip = async (tripId) => {
     try {
-      console.log("Switching to trip:", tripId);
       navigate("/dashboard");
     } catch (error) {
       console.error("Error switching trip:", error);
     }
   };
-  console.log("requestText", requestText);
 
   const handleCreateNewTrip = () => {
     navigate("/TripCreation");
@@ -304,11 +302,6 @@ export default function MyTrips() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myTrips.length > 0 ? (
               myTrips.map((trip) => {
-                // const tripStatus = getTripStatus(trip);
-                // const isCurrentTrip = activeTripData?.data?.activeTrip?.id;
-                // const daysUntil = getDaysUntilTrip(trip.start_date);
-                // const isDeletable = canDeleteTrip(trip.id);
-                // console.log("trip.start_date<><><>>>>", trip.start_date);
                 return (
                   <Card
                     key={trip.id}

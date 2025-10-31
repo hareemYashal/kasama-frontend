@@ -38,7 +38,6 @@ export default function ParticipantList({
         {participants?.length > 0 ? (
           participants.map((participant) => {
             const profile = participant?.user?.Profile;
-            console.log("profile", profile);
             return (
               <div
                 key={participant.id}

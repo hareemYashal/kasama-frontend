@@ -42,7 +42,6 @@ const TripInvitePage = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success(res.data.message);
-        console.log("res?.data?.data?.id", res);
         localStorage.setItem("selectedTripId", res?.data?.data?.trip?.id); // save in localStorage
         navigate("/mytrips");
       } catch (err) {
@@ -74,7 +73,6 @@ const TripInvitePage = () => {
     );
   }
 
-  console.log('invitedTripData.start_date',invitedTripData.start_date)
   return (
     <div className="min-h-screen w-full relative app-preview">
       <div className="flex flex-col w-full h-full" id="app-demo">

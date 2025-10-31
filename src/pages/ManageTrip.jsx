@@ -55,8 +55,6 @@ export default function ManageTrip() {
 
   useEffect(() => {
     if (tripData) {
-      console.log("tripData", tripData);
-
       setFormData({
         occasion: tripData?.trip_occasion || "",
         destination: tripData?.destination || "",
@@ -79,7 +77,6 @@ export default function ManageTrip() {
     mutationFn: ({ formDataToSend, tripId, token }) =>
       updateTripService(formDataToSend, tripId, token),
     onSuccess: (data) => {
-      console.log("Trip Updated Successfully", data);
       setSaving(false);
       navigate("/dashboard");
     },

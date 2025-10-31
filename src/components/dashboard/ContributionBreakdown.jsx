@@ -44,7 +44,6 @@ export default function ContributionBreakdown({
 
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  console.log("contributions----->", contributions);
   const isCreator =
     user?.trip_role === "creator" || user?.trip_role === "co-admin";
 

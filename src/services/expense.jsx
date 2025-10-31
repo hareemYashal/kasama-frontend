@@ -96,7 +96,6 @@ const getFileUrl = async (BASE_URL, token, fileKey) => {
 
   if (json?.success && json?.data?.url) {
     const result = json.data.url;
-    console.log(result, "err");
     return result;
   }
 

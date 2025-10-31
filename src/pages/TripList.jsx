@@ -57,25 +57,14 @@ export default function MyTrips() {
   const token = useSelector((state) => state.user.token);
   const dispatch = useDispatch();
   const myTrips = useSelector((state) => state.trips.myTrips || []);
-  console.log("hey I am the My Trips", myTrips);
-  console.log(setMyTrips, "Hey I am the SetMyTrips");
   const authUser = useSelector((state) => state.user.user);
-  console.log("authUser", authUser);
   // Dummy Data
   const queryClient = useQueryClient();
 
   const tripId = useSelector((state) => state.trips.activeTripId);
   const authToken = useSelector((state) => state.user.token);
   const authUerId = authUser?.id;
-  const handleSwitchToTrip = async (tripId) => {
-    try {
-      console.log("Switching to trip:", tripId);
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Error switching trip:", error);
-    }
-  };
-  console.log("requestText", requestText);
+
   const handleCreateNewTrip = () => {
     navigate("/TripCreation");
   };
@@ -84,7 +73,6 @@ export default function MyTrips() {
     queryFn: () => getAllTripsWithRole(token),
     enabled: !!token,
   });
-  console.log("data", data);
   useEffect(() => {
     if (isSuccess && data?.data?.trips) {
       const tripData = data.data.trips;
@@ -92,18 +80,10 @@ export default function MyTrips() {
     }
   }, [isSuccess, data, dispatch]);
 
-  //   const { data: activeTripData, isSuccess: activeTripSuccess } = useQuery({
-  //     queryKey: ["getActiveTrip", token],
-  //     queryFn: () => getActiveTripService(token),
-  //     enabled: !!token,
-  //   });
   const { data: activeTripData, isLoading: isLoadingActiveTrip } = useQuery({
     queryKey: ["getTripService", tripId],
     queryFn: () => getTripService(tripId),
   });
-  console.log(activeTripData);
-  console.log(data?.data?.trips, "Hey  I am the All Trips");
-  console.log("Heyyyyyyyy", myTrips);
   const { mutate } = useMutation({
     mutationFn: ({ token, tripId }) => deleteTripService(token, tripId),
     onSuccess: (_, variables) => {
@@ -390,7 +370,7 @@ export default function MyTrips() {
                                     "user",
                                     JSON.stringify(updatedUser)
                                   );
-                                //   dispatch(setActiveTripId(trip.id));
+                                  //   dispatch(setActiveTripId(trip.id));
                                   localStorage.setItem(
                                     "activeTripId",
                                     JSON.stringify(trip.id)
@@ -407,7 +387,7 @@ export default function MyTrips() {
                                     "user",
                                     JSON.stringify(updatedUser)
                                   );
-                                //   dispatch(setActiveTripId(trip.id));
+                                  //   dispatch(setActiveTripId(trip.id));
                                   localStorage.setItem(
                                     "activeTripId",
                                     JSON.stringify(trip.id)

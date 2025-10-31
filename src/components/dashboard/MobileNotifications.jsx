@@ -3,10 +3,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import React, {useEffect} from "react";
-import {ActivityIcon, History, Trash2} from "lucide-react";
-import {useSelector, useDispatch} from "react-redux";
-import {useQuery} from "@tanstack/react-query";
+import React, { useEffect } from "react";
+import { ActivityIcon, History, Trash2 } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { useQuery } from "@tanstack/react-query";
 import BackButton from "@/components/ui/BackButton";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,7 +14,7 @@ import {
   deleteNotificationService,
   markAsReadService,
 } from "@/services/notification";
-import {io} from "socket.io-client";
+import { io } from "socket.io-client";
 import {
   setNotifications,
   markAsRead,
@@ -22,11 +22,11 @@ import {
 } from "@/store/notificationSlice";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-const MobileNotifications = ({unreadCount}) => {
+const MobileNotifications = ({ unreadCount }) => {
   const dispatch = useDispatch();
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
   const notifications = useSelector((state) => state.notifications.list);
   const handleDelete = async (notifId) => {
@@ -38,8 +38,26 @@ const MobileNotifications = ({unreadCount}) => {
     }
   };
 
+  const handleMarkAllRead = async () => {
+    try {
+      if (!notifications?.length) return;
+
+      const unread = notifications.filter((n) => !n.isRead);
+      if (unread.length === 0) return;
+
+      unread.forEach((notif) => dispatch(markAsRead(notif.id)));
+
+      await Promise.all(
+        unread.map((notif) => markAsReadService(notif.id, token))
+      );
+
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
   // Fetch notifications from API
-  const {data} = useQuery({
+  const { data } = useQuery({
     queryKey: ["notifications", tripId, token],
     queryFn: () => getNotificationsService(tripId, token),
     enabled: !!tripId && !!token,
@@ -55,10 +73,10 @@ const MobileNotifications = ({unreadCount}) => {
   useEffect(() => {
     if (!tripId || !token) return;
 
-    const socket = io(BASE_URL, {auth: {token}});
+    const socket = io(BASE_URL, { auth: { token } });
     socket.emit("joinTrip", tripId);
 
-   socket.on(
+    socket.on(
       "newNotification",
       async (notif) =>
         await queryClient.invalidateQueries({
@@ -66,21 +84,13 @@ const MobileNotifications = ({unreadCount}) => {
         })
       // dispatch(setNotifications([notif, ...notifications]))
     );
-    socket.on("notificationDeleted", ({id}) =>
+    socket.on("notificationDeleted", ({ id }) =>
       dispatch(deleteNotification(id))
     );
 
     return () => socket.disconnect();
   }, [tripId, token, dispatch, notifications]);
 
-  const handleMarkRead = async (notifId) => {
-    try {
-      await markAsReadService(notifId, token);
-      dispatch(markAsRead(notifId));
-    } catch (error) {
-      console.error("Error marking notification as read", error);
-    }
-  };
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     if (seconds < 30) return "just now";
@@ -97,7 +107,10 @@ const MobileNotifications = ({unreadCount}) => {
     <div className="flex items-center gap-3 md:hidden block">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="relative inline-flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors">
+          <button
+            onClick={handleMarkAllRead}
+            className="relative inline-flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
+          >
             <div className="relative">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -106,12 +119,10 @@ const MobileNotifications = ({unreadCount}) => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-bell w-4 h-4"
-                data-source-location="layout:299:30"
-                data-dynamic-content="false"
               >
                 <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
                 <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
@@ -124,9 +135,6 @@ const MobileNotifications = ({unreadCount}) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b">
-            {/* <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-              <Bell className="w-3 h-3" />
-            </span> */}
             <span className="text-sm font-medium text-slate-800">
               Recent Activity
             </span>
@@ -136,12 +144,7 @@ const MobileNotifications = ({unreadCount}) => {
               notifications.map((n, idx) => (
                 <div
                   key={n.id || idx}
-                  onClick={() => handleMarkRead(n.id)}
-                  className={`flex justify-between items-start p-4 rounded-lg border transition-colors cursor-pointer ${
-                    !n.isRead
-                      ? "bg-slate-100 border-slate-200"
-                      : "bg-white border-slate-100 hover:border-slate-200"
-                  }`}
+                  className={`flex justify-between items-start p-4 rounded-lg border transition-colors bg-white border-slate-100 hover:border-slate-200`}
                 >
                   {/* Left section: icon + message */}
                   <div className="flex items-start gap-3">

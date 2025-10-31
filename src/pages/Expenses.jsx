@@ -281,8 +281,6 @@ export default function Expenses() {
   });
   const tripData = tripExpenseData?.data?.data;
 
-  console.log("hey i am the Trip Data", tripData);
-  console.log("Hey Iiiiaiaiaiaiaia", tripExpenseData);
   // SecondQuery
   const { data: participantsData } = useQuery({
     queryKey: ["totalParticipantsService"],
@@ -305,8 +303,6 @@ export default function Expenses() {
     }
   }, [expenseListSuccess, expenseDataList, dispatch]);
 
-  console.log(tripExpensesList);
-  console.log('expenseDataList999', expenseDataList);
   const totalAmount = expenses.reduce(
     (sum, exp) => sum + (Number(exp.amount) || 0),
     0
@@ -369,29 +365,14 @@ export default function Expenses() {
 
   const handleAddExpense = (newExpense) => {
     setExpenses((prev) => [...prev, newExpense]);
-
-    // ✅ Invalidate react-query caches so data is fresh
     queryClient.invalidateQueries(["getExpenseByTripIdService", tripId]);
     queryClient.invalidateQueries(["getExpenseListQuery", tripId]);
-
-    // ✅ Also return success so ExpenseList knows to reset/close form
     return true;
   };
-  console.log("user?.trip_role", user?.trip_role);
 
   const isAdmin = user?.trip_role === "creator" || user?.trip_role === "co-admin";
   const totalContributed = getTotalContributed();
   const myContribution = getMyContribution();
-  console.log("EpenrIsAdmin", isAdmin);
-
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  //     </div>
-  //   );
-  // }
-
   if (!trip) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -406,8 +387,6 @@ export default function Expenses() {
       </div>
     );
   }
-
-  console.log("tripData", tripData);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">

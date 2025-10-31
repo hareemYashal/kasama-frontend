@@ -98,14 +98,10 @@ export default function RegisterPage() {
     mutationFn: registerService,
     onSuccess: async (data) => {
       toast.success(data.message || "Registration successful!");
-      console.log("REGISTERUSERdata--->", data);
-
       const tripId = new URLSearchParams(window.location.search).get("trip_id");
       const code = new URLSearchParams(window.location.search).get("code");
 
       if (tripId && code) {
-        console.log("YESSS--->");
-
         try {
           // ✅ use axiosInstance only
           await axiosInstance.post(
@@ -124,9 +120,6 @@ export default function RegisterPage() {
       }
     },
     onError: (error) => {
-      console.log("No--->");
-
-      console.log("error", error);
       toast.error(error?.response?.data?.message || "Error in registration");
     },
   });

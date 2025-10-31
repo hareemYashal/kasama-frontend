@@ -78,7 +78,6 @@ const PaymentsModal = ({
       } else {
         toast.error("Failed to enable auto payment.");
       }
-      console.log("Card setup successful!", setupIntent);
       setSuccess(true);
     } catch (err) {
       setError(err.message);
