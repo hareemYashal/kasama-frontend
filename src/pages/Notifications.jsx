@@ -10,6 +10,7 @@ import {
   User,
   NotepadText,
   BarChart3,
+  Users,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -120,7 +121,9 @@ const Notifications = () => {
       case "expense":
         return <CreditCard className="w-4 h-4 text-orange-600" />;
       case "poll":
-        return <BarChart3 className="w-4 h-4 text-pink-600" />; // new color + icon
+        return <BarChart3 className="w-4 h-4 text-pink-600" />;
+      case "participant":
+        return <Users className="w-4 h-4 text-indigo-600" />;
       default:
         return <ActivityIcon className="w-4 h-4 text-slate-600" />;
     }
@@ -186,6 +189,8 @@ const Notifications = () => {
         ? "bg-orange-100"
         : item.type === "poll"
         ? "bg-pink-100"
+        : item.type === "participant"
+        ? "bg-indigo-100"
         : "bg-slate-100"
     }`}
                 >
