@@ -1,6 +1,16 @@
 "use client";
-import React, { useEffect } from "react";
-import { ActivityIcon, History, Trash2 } from "lucide-react";
+import { useEffect } from "react";
+import {
+  ActivityIcon,
+  History,
+  Trash2,
+  CreditCard,
+  Megaphone,
+  DollarSign,
+  User,
+  NotepadText,
+  BarChart3,
+} from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import BackButton from "@/components/ui/BackButton";
@@ -97,6 +107,24 @@ const Notifications = () => {
       console.error("Error deleting notification", error);
     }
   };
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "chat":
+        return <Megaphone className="w-4 h-4 text-blue-600" />;
+      case "itinerary":
+        return <NotepadText className="w-4 h-4 text-green-600" />;
+      case "trip":
+        return <User className="w-4 h-4 text-purple-600" />;
+      case "payment":
+        return <DollarSign className="w-4 h-4 text-yellow-600" />;
+      case "expense":
+        return <CreditCard className="w-4 h-4 text-orange-600" />;
+      case "poll":
+        return <BarChart3 className="w-4 h-4 text-pink-600" />; // new color + icon
+      default:
+        return <ActivityIcon className="w-4 h-4 text-slate-600" />;
+    }
+  };
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -143,9 +171,27 @@ const Notifications = () => {
                 // onClick={() => handleMarkRead(item.id)}
                 className={`flex items-start gap-3 p-4 bg-white border-slate-100 hover:border-slate-200 rounded-lg border transition-colors`}
               >
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <ActivityIcon className="w-4 h-4 text-blue-600" />
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
+    ${
+      item.type === "chat"
+        ? "bg-blue-100"
+        : item.type === "itinerary"
+        ? "bg-green-100"
+        : item.type === "trip"
+        ? "bg-purple-100"
+        : item.type === "payment"
+        ? "bg-yellow-100"
+        : item.type === "expense"
+        ? "bg-orange-100"
+        : item.type === "poll"
+        ? "bg-pink-100"
+        : "bg-slate-100"
+    }`}
+                >
+                  {getNotificationIcon(item.type)}
                 </div>
+
                 <div className="flex-1 min-w-0">
                   <p
                     className={`text-sm font-medium ${

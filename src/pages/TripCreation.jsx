@@ -268,7 +268,7 @@ export default function TripCreation() {
                 </div>
 
                 {/* 👇 Image Upload Field */}
-                <div>
+                {/* <div>
                   <Label
                     htmlFor="image"
                     className="text-sm font-semibold text-slate-700"
@@ -284,7 +284,6 @@ export default function TripCreation() {
                     className="mt-2"
                   />
 
-                  {/* ✅ Preview */}
                   {previewUrl && (
                     <img
                       src={previewUrl}
@@ -292,7 +291,7 @@ export default function TripCreation() {
                       className="mt-3 w-full h-48 object-cover rounded-lg border"
                     />
                   )}
-                </div>
+                </div> */}
               </div>
             )}
 

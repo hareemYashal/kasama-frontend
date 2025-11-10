@@ -1058,7 +1058,7 @@ export default function Payments() {
                           </div>
                         </div>
                       ) : !paymentMethod ? (
-                        <div className="space-y-6">
+                        <div className="space-y-2">
                           <p className="text-slate-600">
                             Add a secure payment method for this trip
                           </p>
@@ -1075,41 +1075,39 @@ export default function Payments() {
 
                             <DialogContent className="sm:max-w-md">
                               <DialogHeader>
-                                <DialogTitle>Add Payment Method</DialogTitle>
+                                <DialogTitle className="mb-1">
+                                  Add Payment Method
+                                </DialogTitle>
+                                <div className="flex items-center gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                  <Shield className="w-4 h-4 text-green-600" />
+
+                                  <span
+                                    data-source-location="pages/Payments:550:24"
+                                    data-dynamic-content="false"
+                                    className="text-sm text-slate-600"
+                                  >
+                                    Secure Payments Powered by
+                                  </span>
+                                  <img
+                                    src="/assets/stripe-security-logo.png"
+                                    alt="Stripe"
+                                    className="h-14"
+                                  />
+                                </div>
+
                                 <DialogDescription>
-                                  Choose a secure way to pay for this trip
+                                  Choose your preferred payment method for this
+                                  trip
                                 </DialogDescription>
                               </DialogHeader>
 
-                              <div className="space-y-4">
-                                {/* Credit/Debit Card */}
-                                <div
-                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
-                                    methodType === "card"
-                                      ? "border-blue-500 bg-blue-50"
-                                      : "border-gray-200 hover:border-blue-300"
-                                  }`}
-                                  onClick={() => setMethodType("card")}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <CreditCard className="w-5 h-5 text-slate-600" />
-                                    <div>
-                                      <h4 className="font-semibold">
-                                        Credit/Debit Card
-                                      </h4>
-                                      <p className="text-sm text-slate-500">
-                                        2.9% + 30¢ per transaction
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-
+                              <div className="space-y-4 my-4">
                                 {/* ACH Bank Transfer */}
                                 <div
-                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                                     methodType === "ach"
-                                      ? "border-blue-500 bg-blue-50"
-                                      : "border-gray-200 hover:border-blue-300"
+                                      ? "border-green-500 bg-green-50"
+                                      : "border-gray-200 hover:border-green-300"
                                   }`}
                                   onClick={() => setMethodType("ach")}
                                 >
@@ -1121,6 +1119,31 @@ export default function Payments() {
                                       </h4>
                                       <p className="text-sm text-slate-500">
                                         0.8% fee (capped at $5)
+                                      </p>
+                                      <p className="text-xs text-green-700 mt-2 font-medium">
+                                        💡 Save money on fees — pay with your
+                                        bank account
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                {/* Credit/Debit Card */}
+                                <div
+                                  className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                    methodType === "card"
+                                      ? "border-green-500 bg-green-50"
+                                      : "border-gray-200 hover:border-green-300"
+                                  }`}
+                                  onClick={() => setMethodType("card")}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <CreditCard className="w-5 h-5 text-slate-600" />
+                                    <div>
+                                      <h4 className="font-semibold">
+                                        Credit/Debit Card
+                                      </h4>
+                                      <p className="text-sm text-slate-500">
+                                        2.9% + 30¢ per transaction
                                       </p>
                                     </div>
                                   </div>
@@ -1190,44 +1213,38 @@ export default function Payments() {
 
                               <DialogContent className="sm:max-w-md">
                                 <DialogHeader>
-                                  <DialogTitle>
+                                <DialogTitle className="mb-1">
                                     Change Payment Method
                                   </DialogTitle>
+                                  <div className="flex items-center gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                    <Shield className="w-4 h-4 text-green-600" />
+
+                                    <span
+                                      data-source-location="pages/Payments:550:24"
+                                      data-dynamic-content="false"
+                                      className="text-sm text-slate-600"
+                                    >
+                                      Secure Payments Powered by
+                                    </span>
+                                    <img
+                                      src="/assets/stripe-security-logo.png"
+                                      alt="Stripe"
+                                      className="h-14"
+                                    />
+                                  </div>
                                   <DialogDescription>
                                     Choose a different payment method for this
                                     trip
                                   </DialogDescription>
                                 </DialogHeader>
 
-                                <div className="space-y-4">
-                                  {/* Credit/Debit Card */}
-                                  <div
-                                    className={`p-4 border-2 rounded-xl cursor-pointer ${
-                                      methodType === "card"
-                                        ? "border-blue-500 bg-blue-50"
-                                        : "border-gray-200 hover:border-blue-300"
-                                    }`}
-                                    onClick={() => setMethodType("card")}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <CreditCard className="w-5 h-5 text-slate-600" />
-                                      <div>
-                                        <h4 className="font-semibold">
-                                          Credit/Debit Card
-                                        </h4>
-                                        <p className="text-sm text-slate-500">
-                                          2.9% + 30¢ per transaction
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-
+                                <div className="space-y-4 my-4">
                                   {/* ACH Bank Transfer */}
                                   <div
-                                    className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                                       methodType === "ach"
-                                        ? "border-blue-500 bg-blue-50"
-                                        : "border-gray-200 hover:border-blue-300"
+                                        ? "border-green-500 bg-green-50"
+                                        : "border-gray-200 hover:border-green-300"
                                     }`}
                                     onClick={() => setMethodType("ach")}
                                   >
@@ -1239,6 +1256,32 @@ export default function Payments() {
                                         </h4>
                                         <p className="text-sm text-slate-500">
                                           0.8% fee (capped at $5)
+                                        </p>
+                                        <p className="text-xs text-green-700 mt-2 font-medium">
+                                          💡 Save money on fees — pay with your
+                                          bank account
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Credit/Debit Card */}
+                                  <div
+                                    className={`p-4 border-2 rounded-xl cursor-pointer ${
+                                      methodType === "card"
+                                        ? "border-green-500 bg-green-50"
+                                        : "border-gray-200 hover:border-green-300"
+                                    }`}
+                                    onClick={() => setMethodType("card")}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <CreditCard className="w-5 h-5 text-slate-600" />
+                                      <div>
+                                        <h4 className="font-semibold">
+                                          Credit/Debit Card
+                                        </h4>
+                                        <p className="text-sm text-slate-500">
+                                          2.9% + 30¢ per transaction
                                         </p>
                                       </div>
                                     </div>
@@ -1778,12 +1821,13 @@ export default function Payments() {
               />
             )}
             {/* Compliance Note */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-6 border-2 border-amber-200 shadow-lg">
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-blue-600 mt-1" />
-                <div>
+                <Shield className="w-5 h-5 text-amber-600 mt-1" />
+
+                <div className="flex-1">
                   <h4 className="font-semibold text-slate-800">
-                    Security & Compliance
+                    Security &amp; Compliance
                   </h4>
                   <p className="text-sm text-slate-600 mt-1">
                     All payment data is processed securely through Stripe.
@@ -1791,6 +1835,14 @@ export default function Payments() {
                     other sensitive information. Your payment preferences are
                     stored locally on your device only.
                   </p>
+                  <div className="flex items-center gap-1 mt-3 text-slate-500">
+                    <span className="text-xs">Powered by</span>
+                    <img
+                      src="/assets/stripe-security-logo.png"
+                      alt="Stripe"
+                      className="h-14"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
