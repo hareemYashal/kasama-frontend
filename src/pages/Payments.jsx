@@ -975,6 +975,23 @@ export default function Payments() {
               </Button>
             </div>
 
+            <div className="flex items-center gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              <Shield className="w-4 h-4 text-green-600" />
+
+              <span
+                data-source-location="pages/Payments:550:24"
+                data-dynamic-content="false"
+                className="text-sm text-slate-600"
+              >
+                Secure Payments Powered by
+              </span>
+              <img
+                src="/assets/stripe-security-logo.png"
+                alt="Stripe"
+                className="h-14"
+              />
+            </div>
+
             {/* Header */}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-slate-200/60">
               <div className="flex items-center gap-3 mb-6">
@@ -1213,7 +1230,7 @@ export default function Payments() {
 
                               <DialogContent className="sm:max-w-md">
                                 <DialogHeader>
-                                <DialogTitle className="mb-1">
+                                  <DialogTitle className="mb-1">
                                     Change Payment Method
                                   </DialogTitle>
                                   <div className="flex items-center gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
