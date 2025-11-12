@@ -25,6 +25,7 @@ import { useSelector } from "react-redux";
 import { updateTripService, getTripByIdService } from "@/services/trip";
 import { toast } from "sonner";
 import { uploadToS3 } from "@/utils/utils";
+import heic2any from "heic2any";
 
 export default function ManageTrip() {
   const BASE_URL = import.meta.env.VITE_API_URL;
@@ -108,59 +109,14 @@ export default function ManageTrip() {
     }
     return null;
   };
-  const handleImageChange = async (e) => {
-    setImageLoading(true);
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Please select a valid image file (JPG, PNG, or WebP)");
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image file size must be less than 5MB");
-      e.target.value = "";
-      return;
-    }
-
-    setUrl(URL.createObjectURL(file));
-    try {
-      const uploadResult = await uploadToS3({
-        file: file,
-        BASE_URL,
-        token,
-        folder: "trip-images",
-      });
-
-      if (!uploadResult?.key) {
-        toast.error("Failed to upload image.");
-        return;
-      }
-      setTripImageFile(uploadResult.key);
-      formData.image = uploadResult.key;
-      setPreviewUrl(uploadResult.key);
-
-      const signedUrl = await getFileUrl(uploadResult.key);
-      if (signedUrl) {
-        setPreviewUrl(signedUrl);
-
-        toast.success("Image uploaded successfully!");
-      } else {
-        toast.error("Failed to generate signed URL.");
-      }
-    } catch (err) {
-      console.error("Image upload failed:", err);
-      toast.error("Error uploading image.");
-    } finally {
-      setImageLoading(false);
-    }
-  };
   useEffect(() => {
-    if (previewUrl === null || previewUrl == "null") return;
+    if (!previewUrl || previewUrl === "null") return;
+
+    // ⚡ Skip fetching if it's already a full URL or blob URL
+    if (previewUrl.startsWith("http") || previewUrl.startsWith("blob:")) {
+      setUrl(previewUrl);
+      return;
+    }
 
     const fetchFileUrl = async () => {
       try {
@@ -173,6 +129,133 @@ export default function ManageTrip() {
 
     fetchFileUrl();
   }, [previewUrl]);
+
+  const handleImageChange = async (e) => {
+    try {
+      setImageLoading(true);
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 🧩 Force-detect extension when type is missing
+      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+      let mimeType = file.type;
+
+      if (!mimeType) {
+        if (fileExtension === "heic") mimeType = "image/heic";
+        else if (fileExtension === "heif") mimeType = "image/heif";
+        else if (fileExtension === "jpg" || fileExtension === "jpeg")
+          mimeType = "image/jpeg";
+        else if (fileExtension === "png") mimeType = "image/png";
+        else if (fileExtension === "webp") mimeType = "image/webp";
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/heic",
+        "image/heif",
+      ];
+
+      if (!allowedTypes.includes(mimeType)) {
+        toast.error(
+          "Please select a valid image (JPG, PNG, WebP, HEIC, or HEIF)"
+        );
+        e.target.value = "";
+        setImageLoading(false);
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image file size must be less than 5MB");
+        e.target.value = "";
+        setImageLoading(false);
+        return;
+      }
+
+      let fileToUpload = file;
+      let previewURL = null;
+
+      // ✅ HEIC/HEIF conversion with empty type handling
+      if (["heic", "heif"].includes(fileExtension)) {
+        try {
+          // ✅ Force MIME if browser didn’t detect it
+          const heicFile = new File([file], file.name, { type: "image/heic" });
+
+          // ✅ Convert HEIC/HEIF → JPEG using heic2any
+          const convertedBlob = await heic2any({
+            blob: heicFile,
+            toType: "image/jpeg",
+            quality: 0.9,
+          });
+
+          const blobItem = Array.isArray(convertedBlob)
+            ? convertedBlob[0]
+            : convertedBlob;
+
+          if (!blobItem || !(blobItem instanceof Blob)) {
+            throw new Error("Conversion failed: invalid blob");
+          }
+
+          // ✅ Create preview and File object
+          previewURL = URL.createObjectURL(blobItem);
+          setUrl(previewURL);
+
+          fileToUpload = new File(
+            [blobItem],
+            file.name.replace(/\.[^/.]+$/, ".jpg"),
+            {
+              type: "image/jpeg",
+            }
+          );
+
+          console.log("✅ Converted HEIC/HEIF → JPEG:", fileToUpload);
+          toast.info("HEIC/HEIF converted to JPEG successfully");
+        } catch (err) {
+          console.error("❌ HEIC conversion failed:", err);
+          toast.error("Failed to convert HEIC/HEIF image.");
+          setImageLoading(false);
+          return;
+        }
+      } else {
+        previewURL = URL.createObjectURL(file);
+        setUrl(previewURL);
+      }
+
+      // ✅ Upload to S3
+      const uploadResult = await uploadToS3({
+        file: fileToUpload,
+        BASE_URL,
+        token,
+        folder: "trip-images",
+      });
+
+      if (!uploadResult?.key) {
+        toast.error("Failed to upload image.");
+        setImageLoading(false);
+        return;
+      }
+
+      formData.image = uploadResult.key;
+      setTripImageFile(uploadResult.key);
+
+      // ✅ Get signed URL
+      const signedUrl = await getFileUrl(uploadResult.key);
+      if (signedUrl) {
+        setPreviewUrl(signedUrl);
+        // setUrl(signedUrl);
+        toast.success("Image uploaded successfully!");
+      } else {
+        toast.error("Failed to generate signed URL.");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Error uploading image.");
+    } finally {
+      setImageLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -199,7 +282,7 @@ export default function ManageTrip() {
       </div>
     );
   }
-
+  console.log("url", url);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -256,7 +339,7 @@ export default function ManageTrip() {
                     <Label htmlFor="trip_image">Upload Trip Image</Label>
                     <input
                       type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                       capture={false}
                       onChange={handleImageChange}
                       id="profile_photo"
@@ -264,7 +347,7 @@ export default function ManageTrip() {
                     />
 
                     <p className="text-xs text-slate-500 mt-1">
-                      Supported formats: JPG, PNG, WebP (max 5MB)
+                      Supported formats: JPG, PNG, WebP, HEIC, or HEIF (max 5MB)
                     </p>
                   </div>
                 </div>

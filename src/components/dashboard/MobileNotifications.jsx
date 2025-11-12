@@ -1,14 +1,23 @@
+"use client";
+import React, { useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import React, { useEffect } from "react";
-import { ActivityIcon, History, Trash2 } from "lucide-react";
+import {
+  ActivityIcon,
+  Trash2,
+  CreditCard,
+  Megaphone,
+  DollarSign,
+  User,
+  NotepadText,
+  BarChart3,
+  Users,
+} from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { useQuery } from "@tanstack/react-query";
-import BackButton from "@/components/ui/BackButton";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getNotificationsService,
   deleteNotificationService,
@@ -20,15 +29,59 @@ import {
   markAsRead,
   deleteNotification,
 } from "@/store/notificationSlice";
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 const MobileNotifications = ({ unreadCount }) => {
   const dispatch = useDispatch();
   const tripId = useSelector((state) => state.trips.activeTripId);
   const token = useSelector((state) => state.user.token);
+  const notifications = useSelector((state) => state.notifications.list);
   const queryClient = useQueryClient();
 
-  const notifications = useSelector((state) => state.notifications.list);
+  // 🔹 Icon logic same as desktop
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "chat":
+        return <Megaphone className="w-4 h-4 text-blue-600" />;
+      case "itinerary":
+        return <NotepadText className="w-4 h-4 text-green-600" />;
+      case "trip":
+        return <User className="w-4 h-4 text-purple-600" />;
+      case "payment":
+        return <DollarSign className="w-4 h-4 text-yellow-600" />;
+      case "expense":
+        return <CreditCard className="w-4 h-4 text-orange-600" />;
+      case "poll":
+        return <BarChart3 className="w-4 h-4 text-pink-600" />;
+      case "participant":
+        return <Users className="w-4 h-4 text-indigo-600" />;
+      default:
+        return <ActivityIcon className="w-4 h-4 text-slate-600" />;
+    }
+  };
+
+  const getNotificationBg = (type) => {
+    switch (type) {
+      case "chat":
+        return "bg-blue-100";
+      case "itinerary":
+        return "bg-green-100";
+      case "trip":
+        return "bg-purple-100";
+      case "payment":
+        return "bg-yellow-100";
+      case "expense":
+        return "bg-orange-100";
+      case "poll":
+        return "bg-pink-100";
+      case "participant":
+        return "bg-indigo-100";
+      default:
+        return "bg-slate-100";
+    }
+  };
+
   const handleDelete = async (notifId) => {
     try {
       await deleteNotificationService(notifId, token);
@@ -41,16 +94,13 @@ const MobileNotifications = ({ unreadCount }) => {
   const handleMarkAllRead = async () => {
     try {
       if (!notifications?.length) return;
-
       const unread = notifications.filter((n) => !n.isRead);
       if (unread.length === 0) return;
 
       unread.forEach((notif) => dispatch(markAsRead(notif.id)));
-
       await Promise.all(
         unread.map((notif) => markAsReadService(notif.id, token))
       );
-
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
     }
@@ -69,20 +119,15 @@ const MobileNotifications = ({ unreadCount }) => {
     }
   }, [data, dispatch]);
 
-  // Socket for real-time notifications
+  // Socket for real-time updates
   useEffect(() => {
     if (!tripId || !token) return;
 
     const socket = io(BASE_URL, { auth: { token } });
     socket.emit("joinTrip", tripId);
 
-    socket.on(
-      "newNotification",
-      async (notif) =>
-        await queryClient.invalidateQueries({
-          queryKey: ["notifications"],
-        })
-      // dispatch(setNotifications([notif, ...notifications]))
+    socket.on("newNotification", async () =>
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
     );
     socket.on("notificationDeleted", ({ id }) =>
       dispatch(deleteNotification(id))
@@ -133,12 +178,14 @@ const MobileNotifications = ({ unreadCount }) => {
             </div>
           </button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b">
             <span className="text-sm font-medium text-slate-800">
               Recent Activity
             </span>
           </div>
+
           <div className="max-h-96 overflow-y-auto">
             {notifications && notifications.length > 0 ? (
               notifications.map((n, idx) => (
@@ -148,8 +195,12 @@ const MobileNotifications = ({ unreadCount }) => {
                 >
                   {/* Left section: icon + message */}
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <ActivityIcon className="w-4 h-4 text-blue-600" />
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${getNotificationBg(
+                        n.type
+                      )}`}
+                    >
+                      {getNotificationIcon(n.type)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p
@@ -157,7 +208,7 @@ const MobileNotifications = ({ unreadCount }) => {
                           !n.isRead ? "text-slate-600" : "text-slate-800"
                         }`}
                       >
-                        {n.message || n.title || n.text || "Notification"}
+                        {n.message || "Notification"}
                       </p>
                       {(n.createdAt || n.created_at) && (
                         <p className="text-xs text-slate-500 mt-1">
@@ -170,7 +221,7 @@ const MobileNotifications = ({ unreadCount }) => {
                   {/* Right section: delete button */}
                   <button
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent triggering mark-read
+                      e.stopPropagation();
                       handleDelete(n.id);
                     }}
                     className="text-red-500 hover:text-red-700 ml-4 flex-shrink-0"
