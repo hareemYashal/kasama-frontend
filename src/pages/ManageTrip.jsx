@@ -211,7 +211,6 @@ export default function ManageTrip() {
           );
 
           console.log("✅ Converted HEIC/HEIF → JPEG:", fileToUpload);
-          toast.info("HEIC/HEIF converted to JPEG successfully");
         } catch (err) {
           console.error("❌ HEIC conversion failed:", err);
           toast.error("Failed to convert HEIC/HEIF image.");
