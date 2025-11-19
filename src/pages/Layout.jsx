@@ -232,7 +232,7 @@ export default function Layout({ children, currentPageName }) {
   const notifications =
     notificationsData?.notifications || notificationsData?.data || [];
   const commonNavItems = [
-        { title: "FAQ", url: createPageUrl("Help"), icon: HelpCircle },
+    { title: "FAQ", url: createPageUrl("Help"), icon: HelpCircle },
     {
       title: "Tips for Using Kasama",
       url: createPageUrl("Tips"),
@@ -299,13 +299,12 @@ export default function Layout({ children, currentPageName }) {
                 <p className="text-xs text-slate-500">{tdata.destination}</p>
                 <div className="flex items-center gap-1 mt-3">
                   <Badge
-                    className={`inline-flex items-center rounded-full border px-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 font-medium text-xs py-0.5 ${
-                      user?.trip_role === "creator"
-                        ? "bg-amber-100 text-amber-800 border-amber-200"
-                        : user?.trip_role === "co-admin"
+                    className={`inline-flex items-center rounded-full border px-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 font-medium text-xs py-0.5 ${user?.trip_role === "creator"
+                      ? "bg-amber-100 text-amber-800 border-amber-200"
+                      : user?.trip_role === "co-admin"
                         ? "bg-orange-100 text-orange-800 border-orange-200"
                         : "bg-blue-200 hover:bg-blue-50 text-blue-700 transition-all"
-                    }`}
+                      }`}
                   >
                     <span className="mr-1.5">
                       {user?.trip_role === "creator" ? (
@@ -349,8 +348,8 @@ export default function Layout({ children, currentPageName }) {
                     {user?.trip_role === "creator"
                       ? "Admin"
                       : user?.trip_role === "co-admin"
-                      ? "Co-Admin"
-                      : "Participant"}
+                        ? "Co-Admin"
+                        : "Participant"}
                   </Badge>
                 </div>
               </div>
@@ -394,15 +393,13 @@ export default function Layout({ children, currentPageName }) {
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                           asChild
-                          className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
-                            location.pathname === item.url
-                              ? "bg-blue-50 text-blue-700 shadow-sm"
-                              : ""
-                          } ${
-                            item.title === "Notifications"
+                          className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${location.pathname === item.url
+                            ? "bg-blue-50 text-blue-700 shadow-sm"
+                            : ""
+                            } ${item.title === "Notifications"
                               ? "hidden md:flex"
                               : ""
-                          }`}
+                            }`}
                         >
                           <Link
                             to={item.url}
@@ -456,11 +453,10 @@ export default function Layout({ children, currentPageName }) {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
-                        className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
-                          location.pathname === item.url
-                            ? "bg-blue-50 text-blue-700 shadow-sm"
-                            : ""
-                        }`}
+                        className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${location.pathname === item.url
+                          ? "bg-blue-50 text-blue-700 shadow-sm"
+                          : ""
+                          }`}
                       >
                         <Link
                           to={item.url}
@@ -477,11 +473,10 @@ export default function Layout({ children, currentPageName }) {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${
-                        location.pathname === createPageUrl("Policies")
-                          ? "bg-blue-50 text-blue-700 shadow-sm"
-                          : ""
-                      }`}
+                      className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-xl mb-1 ${location.pathname === createPageUrl("Policies")
+                        ? "bg-blue-50 text-blue-700 shadow-sm"
+                        : ""
+                        }`}
                     >
                       <Link
                         to={createPageUrl("Policies")}
@@ -572,7 +567,7 @@ export default function Layout({ children, currentPageName }) {
                               </div>
                             </div>
                             <div
-                         
+
                               className="flex items-center gap-2 text-xs text-slate-500 italic"
                             >
                               <svg
@@ -586,7 +581,7 @@ export default function Layout({ children, currentPageName }) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 className="lucide lucide-book-text w-4 h-4 flex-shrink-0 mt-0.5"
-                               
+
                               >
                                 <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
                                 <path d="M8 11h8" />
@@ -674,21 +669,18 @@ export default function Layout({ children, currentPageName }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-h-screen">
-          {location.pathname !== "/chat" && (
+          {location.pathname === createPageUrl("Profile") ? (
             <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
+                {/* Sidebar trigger: only on md and smaller screens */}
                 <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200 md:hidden" />
-                <img
-                      src="/assets/kasama-logo1.png"
-                      alt="Kasama Logo"
-                      className="object-contain w-32"
-                    />
               </div>
               <div className="flex flex-row justify-end gap-2">
                 <MobileNotifications
                   notifications={notifications}
                   unreadCount={unreadCount}
                 />
+                {/* Logout button: visible only on Profile page */}
                 {location.pathname === createPageUrl("Profile") && (
                   <button
                     onClick={handleLogout}
@@ -700,7 +692,32 @@ export default function Layout({ children, currentPageName }) {
                 )}
               </div>
             </header>
-          )}
+          ) : null}
+
+          <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 flex items-center justify-between md:hidden">
+            <div className="flex items-center gap-4">
+              {/* Sidebar trigger: only on md and smaller screens */}
+              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-xl transition-all duration-200" />
+            </div>
+            <div className="flex flex-row justify-end gap-2">
+              <MobileNotifications
+                notifications={notifications}
+                unreadCount={unreadCount}
+              />
+              {/* Logout button: only visible on Profile page */}
+              {location.pathname === createPageUrl("Profile") && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Logout
+                </button>
+              )}
+            </div>
+          </header>
+
+
 
           <div className="flex-1 overflow-auto">{children}</div>
         </main>
