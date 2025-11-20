@@ -29,6 +29,8 @@ import heic2any from "heic2any";
 
 export default function ManageTrip() {
   const BASE_URL = import.meta.env.VITE_API_URL;
+  const CLIENT_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB UX guard
+  const API_UPLOAD_LIMIT_BYTES = 1024 * 1024; // ~1MB API gateway cap
 
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -109,6 +111,81 @@ export default function ManageTrip() {
     }
     return null;
   };
+
+  const compressImageForUpload = async (file, maxBytes = API_UPLOAD_LIMIT_BYTES) => {
+    if (typeof window === "undefined") return file;
+    if (!file?.type?.startsWith("image/")) return file;
+    if (file.size <= maxBytes) return file;
+
+    const loadImageFromFile = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const imageElement = await loadImageFromFile(objectUrl);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        return file;
+      }
+
+      const MAX_DIMENSION = 1600;
+      const largestSide = Math.max(imageElement.width, imageElement.height);
+      const scale =
+        largestSide > MAX_DIMENSION ? MAX_DIMENSION / largestSide : 1;
+
+      const targetWidth = Math.max(1, Math.round(imageElement.width * scale));
+      const targetHeight = Math.max(1, Math.round(imageElement.height * scale));
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      ctx.drawImage(imageElement, 0, 0, targetWidth, targetHeight);
+
+      const canvasToBlob = (quality) =>
+        new Promise((resolve) => {
+          canvas.toBlob(
+            (blob) => {
+              resolve(blob);
+            },
+            "image/jpeg",
+            quality
+          );
+        });
+
+      let quality = 0.85;
+      let blob = await canvasToBlob(quality);
+
+      while (blob && blob.size > maxBytes && quality > 0.4) {
+        quality -= 0.1;
+        blob = await canvasToBlob(quality);
+      }
+
+      if (!blob || blob.size > maxBytes) {
+        return null;
+      }
+
+      return new File(
+        [blob],
+        file.name.replace(/\.[^/.]+$/, ".jpg"),
+        {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        }
+      );
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      return null;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
   useEffect(() => {
     if (!previewUrl || previewUrl === "null") return;
 
@@ -160,14 +237,14 @@ export default function ManageTrip() {
 
       if (!allowedTypes.includes(mimeType)) {
         toast.error(
-          "Please select a valid image (JPG, PNG, WebP, HEIC, or HEIF)"
+          "Please select a valid image (JPG, JPEG, PNG, WebP, HEIC, or HEIF)"
         );
         e.target.value = "";
         setImageLoading(false);
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > CLIENT_MAX_FILE_SIZE) {
         toast.error("Image file size must be less than 5MB");
         e.target.value = "";
         setImageLoading(false);
@@ -180,7 +257,7 @@ export default function ManageTrip() {
       // ✅ HEIC/HEIF conversion with empty type handling
       if (["heic", "heif"].includes(fileExtension)) {
         try {
-          // ✅ Force MIME if browser didn’t detect it
+          // ✅ Force MIME if browser didn't detect it
           const heicFile = new File([file], file.name, { type: "image/heic" });
 
           // ✅ Convert HEIC/HEIF → JPEG using heic2any
@@ -218,8 +295,35 @@ export default function ManageTrip() {
           return;
         }
       } else {
+        // ✅ For JPEG, PNG, WebP - use file directly (will be compressed if needed)
+        fileToUpload = file;
         previewURL = URL.createObjectURL(file);
         setUrl(previewURL);
+      }
+
+      // ✅ Compress ALL images (JPEG, PNG, WebP, converted HEIC) against API upload limit (~1MB) before sending
+      const compressedFile = await compressImageForUpload(fileToUpload);
+
+      if (!compressedFile) {
+        toast.error(
+          "Image is too large. Please choose a smaller one (needs to be under 1MB after compression)."
+        );
+        e.target.value = "";
+        setImageLoading(false);
+        return;
+      }
+
+      fileToUpload = compressedFile;
+      previewURL = URL.createObjectURL(fileToUpload);
+      setUrl(previewURL);
+
+      if (fileToUpload.size > API_UPLOAD_LIMIT_BYTES) {
+        toast.error(
+          "Image is too large. Please choose a smaller one (needs to be under 1MB after compression)."
+        );
+        e.target.value = "";
+        setImageLoading(false);
+        return;
       }
 
       // ✅ Upload to S3
@@ -346,7 +450,7 @@ export default function ManageTrip() {
                     />
 
                     <p className="text-xs text-slate-500 mt-1">
-                      Supported formats: JPG, PNG, WebP, HEIC, or HEIF (max 5MB)
+                      Supported formats: JPG,JPEG, PNG, WebP, HEIC, or HEIF (max 5MB)
                     </p>
                   </div>
                 </div>
